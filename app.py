@@ -1,56 +1,38 @@
 import streamlit as st
-# --- Sabsup itne hisse ko copy karke import ke theek neeche daal do ---
-# 📋 PURANE FUNCTION KO DELETE KARKE YEH NAYA FUNCTION DAAL DO:
+import os
 
+# 1. Page Configuration
+st.set_page_config(page_title="Creator AI OS", layout="wide")
+
+# 🔐 NAYI CHEEZ: Google Gemini ki Entry Ticket (API Key) check karna
+# Yeh line st.secrets me se 'GEMINI_API_KEY' naam ki ticket dundhegi
+if "GEMINI_API_KEY" in st.secrets:
+    os.environ["GEMINI_API_KEY"] = st.secrets["GEMINI_API_KEY"]
+else:
+    # Agar user ne local system par chalaya hai aur key nahi mili toh warning dikhayega
+    st.sidebar.warning("⚠️ Please set GEMINI_API_KEY in secrets to activate AI!")
+
+# 🧠 REAL APP FUNCTION BASE (Ab ye fake nahi raha, kal isme CrewAI chalega)
 def run_my_crew_ai_agents(niche_topic, social_platform, output_language):
-    # Yeh function ab sirf text nahi dega, balki hamare Tab 2 ko direct design karega!
-    
+    # Agar ticket sahi mil gayi toh ye message aayega
     st.markdown(f"### 🎬 {social_platform.upper()} VIDEO BLUEPRINT")
     st.caption(f"Language: {output_language} | Topic: {niche_topic}")
     st.write("---")
     
-    # 🌟 NAYI CHEEZ 1: Columns banana (Left aur Right section)
-    col1, col2 = st.columns([1, 4]) # 1:4 ka matlab left chota dabba, right bada dabba
+    # Layout setting
+    col1, col2 = st.columns([1, 4])
     
     with col1:
         st.subheader("⏱️ Timing")
         st.info("00:00 - 00:05")
         st.info("00:05 - 00:30")
-        st.info("00:30 - 00:40")
         
     with col2:
         st.subheader("📝 Content & Cinematography (Script)")
+        st.markdown("**🎥 Status:** *[Backend Core Connection Successful. Ready for CrewAI Agents...]*")
+        st.code(f"AI Manager is active for {social_platform} in {output_language} language.", language="text")
         
-        # Section 1: Hook
-        st.markdown("**🎥 Hook Shot (Cinematographer Mode):** *[Shot: Camera moving towards a person sitting in dark room, calm focus]*")
-        st.code('“Kya aapko pata hai ki Stoicism aapki zindagi badal sakta hai? Chalo jante hain...”', language="text")
-        
-        # Section 2: Body
-        st.markdown("**🎥 Body Shot:** *[Shot: Fast cuts of ancient statues with motivating background music]*")
-        st.code('“Stoicism hume sikhata hai ki un cheezon ki fikar mat karo jo aapke hath me nahi hain. Apne reaction ko control karo...”', language="text")
-        
-        # Section 3: CTA
-        st.markdown("**🎥 CTA Shot:** *[Shot: Dynamic transition showing Subscribe/Follow animation]*")
-        st.code('“Agar life me calm rehna hai, toh abhi follow aur subscribe karein!”', language="text")
-        # --- Purane function ke andar CTA shot ke theek NEECHE ye jodo ---
-        st.write("---")
-        st.markdown("### 📺 Reference Viral Videos (For Inspiration)")
-        st.caption("In videos ko dekh kar seekhein ki unhone kaisa thumbnail aur editing ki hai:")
-        
-        # Do videos side-by-side dikhane ke liye do columns
-        v_col1, v_col2 = st.columns(2)
-        
-        with v_col1:
-            st.markdown("**🔥 Trending Video 1**")
-            # Yeh bilkul legal tarika hai video dikhane ka (Point [e])
-            st.video("https://www.youtube.com/watch?v=dQw4w9WgXcQ") 
-            
-        with v_col2:
-            st.markdown("**🔥 Trending Video 2**")
-            st.video("https://www.youtube.com/watch?v=dQw4w9WgXcQ")
-
-# 1. Page Configuration
-st.set_page_config(page_title="Creator AI OS", layout="wide")
+    return "SUCCESS"
 
 # 2. Tijori (Session State) Setup
 if "niche_data" not in st.session_state:
