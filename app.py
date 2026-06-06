@@ -1,7 +1,6 @@
 import streamlit as st
 import os
-# 🌟 UPDATE: LLM import hata diya h taaki version ka jhanjhat khatam ho jaye
-from crewai import Agent, Task, Crew
+from crewai import Agent, Task, Crew, LLM
 
 # 1. Page Configuration
 st.set_page_config(page_title="Creator AI OS", layout="wide")
@@ -15,17 +14,22 @@ else:
 # 🧠 REAL BACKEND: Controlled & Safe CrewAI Function
 def run_my_crew_ai_agents(niche_topic, social_platform, output_language):
     
-    # 2. Agent 1: Script Writer Agent (Direct Gemini Model Configuration)
+    # 🌟 UPGRADE: Lagaye gaye hain strict guards taaki Free API limits khatam na ho (Loop Chaos Protection)
+    my_llm = LLM(
+        model="gemini/gemini-2.5-flash", 
+        api_key=os.environ["GEMINI_API_KEY"],
+        max_rpm=2,       # 1 minute me max 2 requests (Strict Limit)
+        timeout=30,      # Server slow hone par 30 seconds ka sabr (Wait time)
+        max_retries=2    # Fail hone par crash nahi hoga, 2 baar fir koshish karega
+    )
+    
+    # 2. Agent 1: Script Writer Agent (Strictly Single Controlled Agent)
     script_writer = Agent(
         role="Expert Social Media Script Writer",
         goal=f"Create a single highly viral script blueprint for {social_platform} on '{niche_topic}' in {output_language}.",
         backstory="A disciplined scriptwriter who delivers exact results in one go without wasting API calls or repeating queries.",
-        
-        # 🌟 MAGIC LINE: Bina alag se import kiye direct model aur settings lagana
-        llm="gemini/gemini-1.5-flash", 
-        
-        max_rpm=2,              # 1 minute me max 2 requests (Strict Limit)
-        allow_delegation=False, # Loop Chaos Protection
+        llm=my_llm,
+        allow_delegation=False, # Isko false rakha h taaki ye deuse agents se loop na banaye
         verbose=True
     )
     
@@ -55,7 +59,7 @@ if "niche_data" not in st.session_state:
 if "script_data" not in st.session_state:
     st.session_state["script_data"] = ""
 
-# 3. Sidebar Layout
+# 3. Sidebar Layout (Yahan variables: platform aur language hain)
 with st.sidebar:
     st.title("⚙️ Control Panel")
     platform = st.selectbox("Platform Chunein:", ["YouTube", "Instagram", "Facebook", "X (Twitter)"])
@@ -63,7 +67,7 @@ with st.sidebar:
     st.write("---")
     st.caption("Powered by Gemini & CrewAI")
 
-# 4. Main Screen Title (FIXED: Aapki dhundhi hui line wapas aa gayi!)
+# 4. Main Screen Title
 st.title("🚀 Creator AI Manager")
 st.write(f"Abhi aapka **{platform}** manager active hai, aur AI aapko **{language}** me reply karega.")
 st.write("---")
@@ -72,28 +76,36 @@ st.write("---")
 tab1, tab2, tab3 = st.tabs(["🔥 Trend Researcher", "📝 Script Generator", "📊 Channel Analytics"])
 
 # --- TAB 1: TREND RESEARCHER ---
-    # --- Tab 1 ke andar ka purana code hata kar ye jodo ---
 with tab1:
-    st.header("🔥 Content Research & Client Input Form")
-    st.write("Is form ka use karke data ko safe aur organize tarike se submit karein.")
+    st.header("Find What's Viral Today")
     
-    # 🌟 NAYI CHEEZ: st.form se saare inputs ek sath group ho jaate hain aur page refresh nahi hota baar-baar
-    with st.form("my_freelance_form"):
-        client_name = st.text_input("Creator / Client Ka Naam:")
-        project_niche = st.text_input("Content Niche (Topic):")
+    # Form ka use kiya taaki page button dabane par hi refresh ho
+    with st.form("trend_form"):
+        user_niche = st.text_input(
+            "Apna Niche ya Topic dalein:", 
+            value=st.session_state["niche_data"],
+            placeholder="Yahan type karein..."
+        ) 
         
-        # Interactive Slider numeric inputs ke liye
-        estimated_budget = st.slider("Project Budget ($)", 10, 500, 50) 
+        submit_btn = st.form_submit_button("🚀 Scrap & Analyze Trends")
         
-        # Form ka apna special submit button
-        submitted = st.form_submit_button("Save Input Data")
-        
-        if submitted:
-            if client_name and project_niche:
-                st.success(f"Done! {client_name} ka data form me submit ho gaya.")
-                st.info(f"Niche: {project_niche} | Budget: ${estimated_budget}")
+        if submit_btn:
+            if user_niche:
+                with st.spinner("🧠 AI Agents active ho rahe hain... Script taiyar ho rahi hai..."):
+                    # 🌟 FIXED CONNECTION: Yahan niche platform=platform aur output_language=language kar diya h match karne k liye
+                    ai_output = run_my_crew_ai_agents(
+                        niche_topic=user_niche, 
+                        social_platform=platform, 
+                        output_language=language
+                    )
+                    
+                    # Tijori me data save karna
+                    st.session_state["niche_data"] = user_niche
+                    st.session_state["script_data"] = ai_output
+                
+                st.success("🎉 Asli AI Script ready hai! Kripya 'Script Generator' tab par jayein.")
             else:
-                st.error("Kripya saari jankari bharein!")
+                st.error("Kripya 'Apna Niche dalein' wale box me kuch likhein!")
 
 # --- TAB 2: SCRIPT GENERATOR ---
 with tab2:
@@ -101,23 +113,21 @@ with tab2:
     
     if st.session_state["script_data"] != "":
         st.success("Aapki Script Taiyar Hai!")
+        # 🌟 REAL OUTPUT: Jo AI generate karega use screen par print karna
+        st.write(st.session_state["script_data"])
     else:
         st.warning("Pehle Tab 1 par jaakar trends analyze karein, tabhi script banegi.")
 
 # --- TAB 3: CHANNEL ANALYTICS ---
-
-    # --- Tab 3 ke andar ka purana text hata kar ye jodo ---
 with tab3:
     st.header("📊 Multi-Platform Weekly Performance Report")
     st.caption("Aapke saare linked social media handles ki progress yahan dikhegi.")
     st.write("---")
     
-    # 🌟 NAYI CHEEZ: Ek hi line me 3 platforms ke cards dikhane ke liye 3 columns
     m_col1, m_col2, m_col3 = st.columns(3)
     
     with m_col1:
         st.subheader("🔴 YouTube Stats")
-        # st.metric(label, value, delta) -> delta se + ya - ka arrow banta h
         st.metric(label="Subscribers", value="15,400", delta="+1,200 (Is Hafte)")
         st.metric(label="Total Views", value="240K", delta="+45K")
         
