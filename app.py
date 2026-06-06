@@ -1,6 +1,7 @@
 import streamlit as st
 import os
-from crewai import Agent, Task, Crew, LLM
+# 🌟 UPDATE: LLM import hata diya h taaki version ka jhanjhat khatam ho jaye
+from crewai import Agent, Task, Crew
 
 # 1. Page Configuration
 st.set_page_config(page_title="Creator AI OS", layout="wide")
@@ -14,22 +15,17 @@ else:
 # 🧠 REAL BACKEND: Controlled & Safe CrewAI Function
 def run_my_crew_ai_agents(niche_topic, social_platform, output_language):
     
-    # 🌟 UPGRADE: Lagaye gaye hain strict guards taaki Free API limits khatam na ho (Loop Chaos Protection)
-    my_llm = LLM(
-        model="gemini/gemini-2.5-flash", 
-        api_key=os.environ["GEMINI_API_KEY"],
-        max_rpm=2,       # 1 minute me max 2 requests (Strict Limit)
-        timeout=30,      # Server slow hone par 30 seconds ka sabr (Wait time)
-        max_retries=2    # Fail hone par crash nahi hoga, 2 baar fir koshish karega
-    )
-    
-    # 2. Agent 1: Script Writer Agent (Strictly Single Controlled Agent)
+    # 2. Agent 1: Script Writer Agent (Direct Gemini Model Configuration)
     script_writer = Agent(
         role="Expert Social Media Script Writer",
         goal=f"Create a single highly viral script blueprint for {social_platform} on '{niche_topic}' in {output_language}.",
         backstory="A disciplined scriptwriter who delivers exact results in one go without wasting API calls or repeating queries.",
-        llm=my_llm,
-        allow_delegation=False, # Isko false rakha h taaki ye dusre agents se faltu baatein karke loop na banaye
+        
+        # 🌟 MAGIC LINE: Bina alag se import kiye direct model aur settings lagana
+        llm="gemini/gemini-1.5-flash", 
+        
+        max_rpm=2,              # 1 minute me max 2 requests (Strict Limit)
+        allow_delegation=False, # Loop Chaos Protection
         verbose=True
     )
     
