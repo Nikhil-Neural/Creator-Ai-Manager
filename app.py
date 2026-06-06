@@ -1,38 +1,56 @@
 import streamlit as st
 import os
+from crewai import Agent, Task, Crew, LLM
 
 # 1. Page Configuration
 st.set_page_config(page_title="Creator AI OS", layout="wide")
 
-# 🔐 NAYI CHEEZ: Google Gemini ki Entry Ticket (API Key) check karna
-# Yeh line st.secrets me se 'GEMINI_API_KEY' naam ki ticket dundhegi
+# 🔐 API Key Security Check
 if "GEMINI_API_KEY" in st.secrets:
     os.environ["GEMINI_API_KEY"] = st.secrets["GEMINI_API_KEY"]
 else:
-    # Agar user ne local system par chalaya hai aur key nahi mili toh warning dikhayega
     st.sidebar.warning("⚠️ Please set GEMINI_API_KEY in secrets to activate AI!")
 
-# 🧠 REAL APP FUNCTION BASE (Ab ye fake nahi raha, kal isme CrewAI chalega)
+# 🧠 REAL BACKEND: Controlled & Safe CrewAI Function
 def run_my_crew_ai_agents(niche_topic, social_platform, output_language):
-    # Agar ticket sahi mil gayi toh ye message aayega
-    st.markdown(f"### 🎬 {social_platform.upper()} VIDEO BLUEPRINT")
-    st.caption(f"Language: {output_language} | Topic: {niche_topic}")
-    st.write("---")
     
-    # Layout setting
-    col1, col2 = st.columns([1, 4])
+    # 🌟 UPGRADE: Lagaye gaye hain strict guards taaki Free API limits khatam na ho (Loop Chaos Protection)
+    my_llm = LLM(
+        model="gemini/gemini-1.5-flash", 
+        api_key=os.environ["GEMINI_API_KEY"],
+        max_rpm=2,       # 1 minute me max 2 requests (Strict Limit)
+        timeout=30,      # Server slow hone par 30 seconds ka sabr (Wait time)
+        max_retries=2    # Fail hone par crash nahi hoga, 2 baar fir koshish karega
+    )
     
-    with col1:
-        st.subheader("⏱️ Timing")
-        st.info("00:00 - 00:05")
-        st.info("00:05 - 00:30")
-        
-    with col2:
-        st.subheader("📝 Content & Cinematography (Script)")
-        st.markdown("**🎥 Status:** *[Backend Core Connection Successful. Ready for CrewAI Agents...]*")
-        st.code(f"AI Manager is active for {social_platform} in {output_language} language.", language="text")
-        
-    return "SUCCESS"
+    # 2. Agent 1: Script Writer Agent (Strictly Single Controlled Agent)
+    script_writer = Agent(
+        role="Expert Social Media Script Writer",
+        goal=f"Create a single highly viral script blueprint for {social_platform} on '{niche_topic}' in {output_language}.",
+        backstory="A disciplined scriptwriter who delivers exact results in one go without wasting API calls or repeating queries.",
+        llm=my_llm,
+        allow_delegation=False, # Isko false rakha h taaki ye dusre agents se faltu baatein karke loop na banaye
+        verbose=True
+    )
+    
+    # 3. Task: Isko ekdum clear and limited instruction dena
+    write_script_task = Task(
+        description=f"Write a standard video script structure for {social_platform}. Topic: {niche_topic}. Language: {output_language}. Keep it precise and do not call the model recursively.",
+        expected_output="A well-formatted script with timing blocks like [00:00 - 00:05] Hook, Shot Description, and dialogues.",
+        agent=script_writer
+    )
+    
+    # 4. Crew Connection
+    crew = Crew(
+        agents=[script_writer],
+        tasks=[write_script_task],
+        verbose=True
+    )
+    
+    # Run the controlled crew
+    result = crew.kickoff()
+    
+    return str(result)
 
 # 2. Tijori (Session State) Setup
 if "niche_data" not in st.session_state:
