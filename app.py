@@ -123,15 +123,28 @@ with tab1:
                 st.error("Kripya 'Apna Niche dalein' wale box me kuch likhein!")
 
 # --- TAB 2: SCRIPT GENERATOR ---
+    # --- TAB 2: SCRIPT GENERATOR (With Pro Download Feature) ---
 with tab2:
-    st.header("AI Script & Cinematography Blueprint")
+    st.header("📝 AI Script & Cinematography Blueprint")
+    st.write("---")
     
     if st.session_state["script_data"] != "":
-        st.success("Aapki Script Taiyar Hai!")
-        # 🌟 REAL OUTPUT: Jo AI generate karega use screen par print karna
-        st.write(st.session_state["script_data"])
+        st.success("🎉 Aapki Script Taiyar Hai!")
+        
+        # 🌟 REAL OUTPUT: Jo AI ne generate kiya use saaf-saaf border ke andar dikhana
+        st.info("💡 Tip: Aap is script ko neeche diye gaye button se download kar sakte hain.")
+        st.text_area("Your Generated Script:", value=st.session_state["script_data"], height=400)
+        
+        # 📥 PRO FEATURE: Download Button Integration
+        # Yeh button session state ke data ko uthayega aur text file me convert kar dega
+        st.download_button(
+            label="📥 Download Script as Text File",
+            data=st.session_state["script_data"],
+            file_name=f"{platform.lower()}_{st.session_state['niche_data'].replace(' ', '_')}_script.txt",
+            mime="text/plain"
+        )
     else:
-        st.warning("Pehle Tab 1 par jaakar trends analyze karein, tabhi script banegi.")
+        st.warning("⚠️ Pehle Tab 1 par jaakar trends analyze karein, tabhi script banegi.")
 
 # --- TAB 3: CHANNEL ANALYTICS ---
 with tab3:
