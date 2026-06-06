@@ -12,44 +12,59 @@ else:
     st.sidebar.warning("⚠️ Please set GEMINI_API_KEY in secrets to activate AI!")
 
 # 🧠 REAL BACKEND: Controlled & Safe CrewAI Function
+# --- Real Backend: 2 Agents Connection (Researcher + Writer) ---
 def run_my_crew_ai_agents(niche_topic, social_platform, output_language):
     
-    # 🌟 UPGRADE: Lagaye gaye hain strict guards taaki Free API limits khatam na ho (Loop Chaos Protection)
     my_llm = LLM(
         model="gemini/gemini-2.5-flash", 
         api_key=os.environ["GEMINI_API_KEY"],
-        max_rpm=2,       # 1 minute me max 2 requests (Strict Limit)
-        timeout=30,      # Server slow hone par 30 seconds ka sabr (Wait time)
-        max_retries=2    # Fail hone par crash nahi hoga, 2 baar fir koshish karega
+        max_rpm=2,       
+        timeout=30,      
+        max_retries=2    
     )
     
-    # 2. Agent 1: Script Writer Agent (Strictly Single Controlled Agent)
-    script_writer = Agent(
-        role="Expert Social Media Script Writer",
-        goal=f"Create a single highly viral script blueprint for {social_platform} on '{niche_topic}' in {output_language}.",
-        backstory="A disciplined scriptwriter who delivers exact results in one go without wasting API calls or repeating queries.",
+    # 🕵️‍♂️ AGENT 1: Trend Researcher (Naya Agent!)
+    trend_researcher = Agent(
+        role="Senior Content Trend Analyst",
+        goal=f"Analyze what hooks people on the topic '{niche_topic}' for {social_platform}.",
+        backstory="An expert in studying viral retention algorithms. Knows exactly what sub-topics are trending right now.",
         llm=my_llm,
-        allow_delegation=False, # Isko false rakha h taaki ye deuse agents se loop na banaye
+        allow_delegation=False,
         verbose=True
     )
     
-    # 3. Task: Isko ekdum clear and limited instruction dena
+    # 📝 AGENT 2: Script Writer (Aapka purana agent)
+    script_writer = Agent(
+        role="Expert Social Media Script Writer",
+        goal=f"Create a single highly viral script blueprint in {output_language} based on the Researcher's findings.",
+        backstory="A disciplined scriptwriter who takes raw research and turns it into high-retention video blueprints.",
+        llm=my_llm,
+        allow_delegation=False,
+        verbose=True
+    )
+    
+    # 📋 TASK 1: Research Kaam
+    research_task = Task(
+        description=f"Identify 3 viral angles or psychological hooks for the topic: {niche_topic} on {social_platform}.",
+        expected_output="Top 3 viral sub-themes or hooks for this specific content niche.",
+        agent=trend_researcher
+    )
+    
+    # 📋 TASK 2: Writing Kaam (Iske paas piche se research ka data automatic aayega)
     write_script_task = Task(
-        description=f"Write a standard video script structure for {social_platform}. Topic: {niche_topic}. Language: {output_language}. Keep it precise and do not call the model recursively.",
+        description=f"Using the 3 viral angles found by the researcher, write a complete video script for {social_platform} in {output_language} language.",
         expected_output="A well-formatted script with timing blocks like [00:00 - 00:05] Hook, Shot Description, and dialogues.",
         agent=script_writer
     )
     
-    # 4. Crew Connection
+    # 🤝 THE REAL CREW: Ab dono agents line se kaam karenge sequential order me!
     crew = Crew(
-        agents=[script_writer],
-        tasks=[write_script_task],
+        agents=[trend_researcher, script_writer],
+        tasks=[research_task, write_script_task],
         verbose=True
     )
     
-    # Run the controlled crew
     result = crew.kickoff()
-    
     return str(result)
 
 # 2. Tijori (Session State) Setup
