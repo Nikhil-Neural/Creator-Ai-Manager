@@ -91,36 +91,47 @@ st.write("---")
 tab1, tab2, tab3 = st.tabs(["🔥 Trend Researcher", "📝 Script Generator", "📊 Channel Analytics"])
 
 # --- TAB 1: TREND RESEARCHER ---
+# --- TAB 1: TREND RESEARCHER (Premium Designer Look) ---
 with tab1:
-    st.header("Find What's Viral Today")
+    # Ek sundar banner aur subtitle
+    st.markdown("### 🔥 AI Content Strategy Hub")
+    st.caption("Apna topic daliye aur hamare dual-agents (Researcher + Writer) ko apna jaadu karne dijiye.")
+    st.write("---")
     
-    # Form ka use kiya taaki page button dabane par hi refresh ho
-    with st.form("trend_form"):
-        user_niche = st.text_input(
-            "Apna Niche ya Topic dalein:", 
-            value=st.session_state["niche_data"],
-            placeholder="Yahan type karein..."
-        ) 
-        
-        submit_btn = st.form_submit_button("🚀 Scrap & Analyze Trends")
-        
-        if submit_btn:
-            if user_niche:
-                with st.spinner("🧠 AI Agents active ho rahe hain... Script taiyar ho rahi hai..."):
-                    # 🌟 FIXED CONNECTION: Yahan niche platform=platform aur output_language=language kar diya h match karne k liye
-                    ai_output = run_my_crew_ai_agents(
-                        niche_topic=user_niche, 
-                        social_platform=platform, 
-                        output_language=language
-                    )
+    # Poore form ko ek sundar clean box (container) me daalna
+    with st.container():
+        with st.form("trend_form"):
+            # Input Section ko clean banana
+            user_niche = st.text_input(
+                "🎯 Kis topic par video banani hai?", 
+                value=st.session_state["niche_data"],
+                placeholder="E.g., What is AGI, Stoicism Guide, Python for Beginners..."
+            )
+            
+            # Ek choti warning indicator taaki user ko pata rahe background me kya chal rha h
+            st.markdown(
+                f"ℹ️ *AI is current set for **{platform}** in **{language}** mode. Change settings from the sidebar if needed.*"
+            )
+            
+            # Submit Button ko full-width aur design dena
+            submit_btn = st.form_submit_button("🚀 Launch AI Agents & Generate Blueprint", use_container_width=True)
+            
+            if submit_btn:
+                if user_niche:
+                    # Spinner text ko thoda aur exciting banana
+                    with st.spinner("🕵️‍♂️ Senior Analyst is researching hooks... Please wait 15 seconds..."):
+                        ai_output = run_my_crew_ai_agents(
+                            niche_topic=user_niche, 
+                            social_platform=platform, 
+                            output_language=language
+                        )
+                        
+                        st.session_state["niche_data"] = user_niche
+                        st.session_state["script_data"] = ai_output
                     
-                    # Tijori me data save karna
-                    st.session_state["niche_data"] = user_niche
-                    st.session_state["script_data"] = ai_output
-                
-                st.success("🎉 Asli AI Script ready hai! Kripya 'Script Generator' tab par jayein.")
-            else:
-                st.error("Kripya 'Apna Niche dalein' wale box me kuch likhein!")
+                    st.success("✨ Success! Research and Script generation complete. Go to 'Script Generator' tab.")
+                else:
+                    st.error("⚠️ Opps! Kripya 'Topic' waale box me kuch likhein barna agents confuse ho jayenge!")
 
 # --- TAB 2: SCRIPT GENERATOR ---
     # --- TAB 2: SCRIPT GENERATOR (With Pro Download Feature) ---
