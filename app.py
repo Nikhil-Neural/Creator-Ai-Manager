@@ -16,7 +16,7 @@ else:
 def run_my_crew_ai_agents(niche_topic, social_platform, output_language):
     
     my_llm = LLM(
-        model="gemini/gemini-2.5-flash", 
+        model="gemini/gemini-1.5-flash", 
         api_key=os.environ["GEMINI_API_KEY"],
         max_rpm=2,       
         timeout=30,      
