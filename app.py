@@ -1,7 +1,10 @@
 # ── Groq Cache Fix (SABSE PEHLE) ──────────────────────
-from crewai.llms import cache as _cache
-_cache.mark_cache_breakpoint = lambda msg: msg
-
+# ✅ LAGAO YE:
+try:
+    from crewai.llms import cache as _cache
+    _cache.mark_cache_breakpoint = lambda msg: msg
+except ImportError:
+    pass  # Naye version mein fix already built-in hai
 import streamlit as st
 import os
 from crewai import Agent, Task, Crew, LLM
