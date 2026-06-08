@@ -20,7 +20,8 @@ if not GEMINI_KEY and not GROQ_KEY:
 
 # ── Smart LLM Loader: Gemini → Groq Fallback ──────────
 def get_llm():
-    """Pehle Gemini try karo, fail ho toh Groq use karo."""
+    """Pehle Gemini try karo, fail ho toh Groq use karo — silently."""
+    
     if GEMINI_KEY:
         try:
             llm = LLM(
@@ -29,14 +30,16 @@ def get_llm():
                 timeout=25,
                 max_retries=1
             )
-            # Quick test — agar initialize hua toh theek hai
-            st.sidebar.success("🟢 Gemini Active")
+            st.session_state["active_model"] = "gemini"
+            st.session_state["model_error"]  = ""
             return llm
-        except Exception:
-            st.sidebar.warning("🟡 Gemini failed, Groq pe switch ho raha hai...")
+        except Exception as e:
+            # Error silently save karo — sidebar mein nahi dikhana
+            st.session_state["active_model"] = "groq"
+            st.session_state["model_error"]  = str(e)
 
     if GROQ_KEY:
-        st.sidebar.info("🔵 Groq Active (Fallback)")
+        st.session_state["active_model"] = "groq"
         return LLM(
             model="groq/llama-3.3-70b-versatile",
             api_key=GROQ_KEY,
@@ -73,15 +76,20 @@ def run_my_crew_ai_agents(niche_topic, social_platform, output_language):
     )
 
     research_task = Task(
-        description=f"Find 3 viral angles/hooks for: '{niche_topic}' on {social_platform}.",
-        expected_output="Top 3 viral sub-themes or hooks for this content niche.",
-        agent=trend_researcher
+    description=f"""Find 3 viral angles/hooks for: '{niche_topic}' on {social_platform}.
+    IMPORTANT: Respond ONLY in {output_language} language. 
+    If Hinglish, mix Hindi and English naturally.""",
+    expected_output=f"Top 3 viral hooks in {output_language} language.",
+    agent=trend_researcher
     )
 
     write_script_task = Task(
-        description=f"Using the 3 viral angles, write a complete video script for {social_platform} in {output_language}.",
-        expected_output="Formatted script with timing blocks [00:00-00:05], hook, shot description, dialogues.",
-        agent=script_writer
+    description=f"""Using the 3 viral angles, write a complete video script for {social_platform}.
+    STRICT RULE: The ENTIRE script must be written in {output_language} language only.
+    If Hinglish — mix Hindi+English. If Hindi — pure Hindi. If English — pure English.
+    Format: [00:00-00:05] Hook, Shot Description, Dialogues.""",
+    expected_output=f"Complete formatted script strictly in {output_language} language.",
+    agent=script_writer
     )
 
     crew = Crew(
@@ -96,12 +104,19 @@ def run_my_crew_ai_agents(niche_topic, social_platform, output_language):
 if "niche_data"   not in st.session_state: st.session_state["niche_data"]   = ""
 if "script_data"  not in st.session_state: st.session_state["script_data"]  = ""
 if "active_model" not in st.session_state: st.session_state["active_model"] = ""
+if "model_error"  not in st.session_state: st.session_state["model_error"]  = ""
 
 # ── Sidebar ────────────────────────────────────────────
 with st.sidebar:
     st.title("⚙️ Control Panel")
     platform = st.selectbox("Platform:", ["YouTube", "Instagram", "Facebook", "X (Twitter)"])
     language = st.selectbox("Language:", ["Hinglish", "Hindi", "English"])
+    
+    # User ko nahi dikhta — sirf tum dekh sako debug ke liye
+    with st.expander("🔧 Debug Info (Only for Admin)"):
+        st.caption(f"Active Model: {st.session_state.get('active_model', 'N/A')}")
+        if st.session_state.get("model_error"):
+            st.caption(f"Gemini Error: {st.session_state['model_error']}")
     st.write("---")
     st.caption("Powered by Gemini + Groq & CrewAI")
 
