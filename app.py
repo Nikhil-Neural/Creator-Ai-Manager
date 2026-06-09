@@ -75,14 +75,23 @@ def run_crew(niche_topic, social_platform, output_language, llm, target_words, t
     )
 
     script_writer = Agent(
-        role="Expert Social Media Script Writer",
-        goal=f"Create a viral script blueprint in {output_language} from the research.",
-        backstory="Disciplined scriptwriter who turns raw research into high-retention video blueprints.",
+        role="Human-Centric Storyteller & Retention Expert",
+        goal=f"Create an emotionally resonance video blueprint in {output_language} that feels 100% written by a human creator, not an AI.",
+        backstory="""You are a world-class YouTube & Instagram creator with 10M+ subscribers. 
+        You despise robotic, generic AI content. You understand human psychology, FOMO, empathy, 
+        curiosity, and regional nuances (Hinglish/Hindi/English slang). 
+        
+        CRITICAL ANTI-AI RULES:
+        - NEVER use generic AI words like 'revolutionize', 'delve', 'moreover', 'testament', or 'furthermore'.
+        - Use natural conversation filler words that humans actually say (e.g., 'Yaar', 'Suno', 'Dekho', 'Honestly').
+        - Write with conversational pacing: short sentences, dramatic pauses, and direct 'you'/'tum' storytelling.
+        - Focus heavily on injecting human vulnerabilities, humor, or deep curiosity in every line.""",
         llm=llm,
         max_iter=2,
         max_rpm=5,
         allow_delegation=False,
         verbose=True
+
     )
 
     research_task = Task(
@@ -97,6 +106,7 @@ def run_crew(niche_topic, social_platform, output_language, llm, target_words, t
         STRICT RULE 1: The ENTIRE bundle must be written in {output_language} language only.
         
         STRICT RULE 2 (EXACT DURATION CONTROL): The SECTION 1 (Script Blueprint) must be perfectly paced for a video of exactly {video_duration} MINUTES ({target_seconds} SECONDS). To achieve this, write exactly around {target_words} words for the script section. Do not shortcut this!
+        STRICT RULE 3 (HUMAN NUANCE ENGINE): Every dialogue line must sound like a real human talking to their best friend. No textbook language. Use emotional triggers (shock, excitement, empathy, or relief) depending on the script's core topic. Break down complex concepts using simple daily-life analogies (ghar-parivar, dukan, dosto ki baatein), just like a real content creator does.
         
         You must format the output exactly into these 4 clear sections:
         
