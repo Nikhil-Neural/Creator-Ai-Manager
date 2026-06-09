@@ -1,5 +1,5 @@
 streamlit
+crewai[google-genai]
 crewai[litellm]
 litellm
-python-dotenv
 groq
