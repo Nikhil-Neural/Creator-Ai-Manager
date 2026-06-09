@@ -26,7 +26,7 @@ def get_gemini_llm():
         model="gemini/gemini-2.5-flash",
         api_key=GEMINI_KEY,
         timeout=60,
-        max_retries=2
+        max_retries=3
     )
 
 def get_groq_llm():
