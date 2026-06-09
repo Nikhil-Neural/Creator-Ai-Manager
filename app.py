@@ -18,10 +18,11 @@ GROQ_KEY   = st.secrets.get("GROQ_API_KEY", "")
 if not GEMINI_KEY and not GROQ_KEY:
     st.sidebar.error("⚠️ Koi bhi API key set nahi hai!")
 
-# ── LLM Objects — Simple, No try/except ───────────────
+# ── LLM Objects — Adjusted for LiteLLM ─────────────────
 def get_gemini_llm():
+    # 🌟 FIX: LiteLLM framework me 'google_genai/' prefix use hota h standard Gemini models k liye
     return LLM(
-        model="gemini/gemini-2.5-flash",
+        model="google_genai/gemini-2.5-flash",
         api_key=GEMINI_KEY,
         timeout=25,
         max_retries=1
@@ -40,10 +41,8 @@ if "script_data"   not in st.session_state: st.session_state["script_data"]   = 
 if "active_model"  not in st.session_state: st.session_state["active_model"]  = ""
 if "gemini_error"  not in st.session_state: st.session_state["gemini_error"]  = ""
 
-# ── CrewAI Backend — Fallback SAHI JAGAH pe ───────────
+# ── CrewAI Backend ─────────────────────────────────────
 def run_crew(niche_topic, social_platform, output_language, llm):
-    """Crew run karo given LLM ke saath."""
-    
     trend_researcher = Agent(
         role="Senior Content Trend Analyst",
         goal=f"Analyze what hooks people on '{niche_topic}' for {social_platform}.",
@@ -92,18 +91,17 @@ def run_crew(niche_topic, social_platform, output_language, llm):
     return str(crew.kickoff())
 
 def run_my_crew_ai_agents(niche_topic, social_platform, output_language):
-    """Pehle Gemini try karo — fail ho toh Groq. Fallback sahi jagah pe."""
-    
     # Pehle Gemini try karo
     if GEMINI_KEY:
         try:
+            # Local state clean karna har run se pehle
+            st.session_state["gemini_error"] = ""
             gemini_llm = get_gemini_llm()
             result = run_crew(niche_topic, social_platform, output_language, gemini_llm)
             st.session_state["active_model"] = "gemini"
-            st.session_state["gemini_error"] = ""
             return result
         except Exception as e:
-            # Gemini actually fail hua — ab Groq pe jao
+            # 🌟 LIVE CAPTURE: Pura error pakad kar state me save karo
             st.session_state["gemini_error"] = str(e)
 
     # Groq fallback
@@ -122,15 +120,14 @@ with st.sidebar:
     language = st.selectbox("Language:", ["Hinglish", "Hindi", "English"])
     st.write("---")
     
-    # ✅ Sirf debug info — koi status message nahi user ke liye
-    with st.expander("🔧 Debug Info"):
+    with st.expander("🔧 Debug Info", expanded=True):
         model = st.session_state.get("active_model", "N/A")
-        st.caption(f"Last used: **{model}**")
+        st.write(f"Last Engine Used: **{model.upper()}**")
         err = st.session_state.get("gemini_error", "")
         if err:
-            st.caption(f"Gemini error: {err[:200]}")  # Pura error nahi — sirf pehle 200 chars
+            st.error(f"Gemini Log: {err[:250]}")
         else:
-            st.caption("Gemini: No errors recorded")
+            st.success("Gemini status: Healthy/Untested")
     
     st.write("---")
     st.caption("Powered by Gemini + Groq & CrewAI")
@@ -146,6 +143,10 @@ with tab1:
     st.markdown("### 🔥 AI Content Strategy Hub")
     st.caption("Topic daliye — Researcher + Writer agents kaam karenge.")
     st.write("---")
+
+    # 🌟 LIVE USER WARNING BOX: Agar Gemini fail hua h, toh screen par warning dikhao
+    if st.session_state["gemini_error"]:
+        st.warning(f"ℹ️ **System Alert:** Gemini API crash ho gayi thi, isliye app ne automatic Meta Llama (Groq) ko trigger kiya. Ghabraiye mat, aapki script niche ready hai!")
 
     with st.form("trend_form"):
         user_niche = st.text_input(
@@ -163,7 +164,7 @@ with tab1:
                         ai_output = run_my_crew_ai_agents(user_niche, platform, language)
                         st.session_state["niche_data"]  = user_niche
                         st.session_state["script_data"] = ai_output
-                        st.success("✅ Done! 'Generated Script' tab mein dekho.")
+                        st.rerun() # Page refresh taaki naye alerts instantly dikhein
                     except Exception as e:
                         st.error(f"❌ Error: {e}")
             else:
@@ -173,7 +174,9 @@ with tab2:
     st.header("📝 AI Script & Blueprint")
     st.write("---")
     if st.session_state["script_data"]:
-        st.success("🎉 Script Taiyar Hai!")
+        # Banner dynamic batayega kis model ne likha h
+        engine = st.session_state.get("active_model", "AI")
+        st.success(f"🎉 Script Taiyar Hai! (Generated via {engine.upper()})")
         st.info("💡 Neeche se download kar sakte ho.")
         st.text_area("Generated Script:", value=st.session_state["script_data"], height=400)
         st.download_button(
@@ -184,6 +187,9 @@ with tab2:
         )
     else:
         st.warning("⚠️ Pehle Tab 1 mein topic dalo aur agents run karo.")
+
+with tab2:
+    pass # Code clean rakhne k liye purane tab lines repeated context handle ho gaye
 
 with tab3:
     st.header("📊 Multi-Platform Report")
@@ -199,6 +205,6 @@ with tab3:
         st.metric("Followers",        "8,900", "+850")
         st.metric("Reels Engagement", "12%",   "-2%")
     with c3:
-        st.subheader("🐦 X (Twitter)")
+        st.subheader("📸 X (Twitter)")
         st.metric("Followers",    "3,200", "+150")
         st.metric("Impressions",  "50K",   "+12K")
