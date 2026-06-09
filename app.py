@@ -154,7 +154,7 @@ with tab1:
     st.write("---")
 
     if st.session_state["gemini_error"]:
-        st.info("ℹ️ **System Optimization:** Main Neural Grid busy hone ki wajah se app ne automatic secondary cloud processor ko route kar diya hai. Script uninterrupted niche taiyar ho chuki hai!")
+        st.info("ℹ️ **System Optimization:** Main Neural Grid busy hone ki wajah se app ne automatic secondary cloud processor ko route kar diya hai. Script uninterrupted taiyar ho chuki hai!")
 
     with st.form("trend_form"):
         user_niche = st.text_input(
