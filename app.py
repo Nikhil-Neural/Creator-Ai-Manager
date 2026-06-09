@@ -62,7 +62,8 @@ if "active_model"  not in st.session_state: st.session_state["active_model"]  = 
 if "gemini_error"  not in st.session_state: st.session_state["gemini_error"]  = ""
 
 # ── CrewAI Backend ─────────────────────────────────────
-def run_crew(niche_topic, social_platform, output_language, llm):
+def run_crew(niche_topic, social_platform, output_language, llm, target_words, video_duration):
+    # Agents code same rahega...
     trend_researcher = Agent(
         role="Senior Content Trend Analyst",
         goal=f"Analyze what hooks people on '{niche_topic}' for {social_platform}.",
@@ -94,7 +95,9 @@ def run_crew(niche_topic, social_platform, output_language, llm):
     write_script_task = Task(
         description=f"""Using the 3 viral angles, create a complete 'Content Production Bundle' for {social_platform}.
         
-        STRICT RULE: The ENTIRE bundle must be written in {output_language} language only.
+        STRICT RULE 1: The ENTIRE bundle must be written in {output_language} language only.
+        
+        STRICT RULE 2 (DURATION CONTROL): The SECTION 1 (Script Blueprint) must be perfectly paced for a {video_duration} minute video. To achieve this, write exactly around {target_words} words for the script section. Do not waste tokens beyond this limit.
         
         You must format the output exactly into these 4 clear sections:
         
@@ -130,12 +133,18 @@ def run_crew(niche_topic, social_platform, output_language, llm):
 
     return str(crew.kickoff())
 
-def run_my_crew_ai_agents(niche_topic, social_platform, output_language):
+def run_my_crew_ai_agents(niche_topic, social_platform, output_language, video_duration):
+    """Duration ko words me convert karke Crew ko dena."""
+    
+    # 🌟 MATH ENGINE: 1 minute = ~140 words. Toh duration * 140 = Target Words!
+    target_words = int(video_duration * 140)
+    
     if GEMINI_KEY:
         try:
             st.session_state["gemini_error"] = ""
             gemini_llm = get_gemini_llm()
-            result = run_crew(niche_topic, social_platform, output_language, gemini_llm)
+            # Yahan target_words pass karenge
+            result = run_crew(niche_topic, social_platform, output_language, gemini_llm, target_words, video_duration)
             st.session_state["active_model"] = "gemini"
             return result
         except Exception as e:
@@ -144,7 +153,7 @@ def run_my_crew_ai_agents(niche_topic, social_platform, output_language):
     if GROQ_KEY:
         st.session_state["active_model"] = "groq"
         groq_llm = get_groq_llm()
-        return run_crew(niche_topic, social_platform, output_language, groq_llm)
+        return run_crew(niche_topic, social_platform, output_language, groq_llm, target_words, video_duration)
 
     st.error("❌ Koi LLM available nahi!")
     st.stop()
@@ -187,14 +196,26 @@ with tab1:
             value=st.session_state["niche_data"],
             placeholder="E.g., What is AGI, Stoicism Guide, Python for Beginners..."
         )
+        
+        # 🌟 NEW: Duration Slider (30 Sec se lekar 20 Mins tak)
+        # Value ko hum float (decimal) mein rakhenge taaki 0.5 ka matlab 30 seconds ho
+        video_duration = st.slider(
+            "⏱️ Video ki duration kitni honi chahiye? (In Minutes)",
+            min_value=0.5,    # 0.5 mins = 30 Seconds
+            max_value=20.0,   # 20 Minutes
+            value=2.0,        # Default 2 minutes
+            step=0.5,         # 30-30 seconds ke jhatke mein badhega
+            help="0.5 Matlab 30 Seconds, 1.0 Matlab 1 Minute, 2.5 Matlab 2 Min 30 Sec"
+        )
         st.markdown(f"ℹ️ *Platform: **{platform}** | Language: **{language}***")
         submit_btn = st.form_submit_button("🚀 Launch AI Agents", use_container_width=True)
 
         if submit_btn:
             if user_niche:
-                with st.spinner("🕵️ Multi-Agent System is analyzing and drafting script..."):
+                with st.spinner("🕵️ Multi-Agent System is orchestrating strategy..."):
                     try:
-                        ai_output = run_my_crew_ai_agents(user_niche, platform, language)
+                        # 🌟 Form se duration bhej rahe hain backend mein
+                        ai_output = run_my_crew_ai_agents(user_niche, platform, language, video_duration)
                         st.session_state["niche_data"]  = user_niche
                         st.session_state["script_data"] = ai_output
                         st.rerun() 
