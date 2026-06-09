@@ -226,14 +226,23 @@ with tab1:
                 st.error("⚠️ Topic box mein kuch likho pehle!")
 
 with tab2:
-    st.header("📝 AI Script & Blueprint")
+    st.header("📝 Production-Ready Content Bundle")
     st.write("---")
+    
     if st.session_state["script_data"]:
         engine = st.session_state.get("active_model", "AI")
-        pro_label = "Advanced Gemini Neural Core" if engine == "gemini" else "Hyper-Speed Multi-Agent Llama Architecture" if engine == "groq" else "Autonomous Multi-Agent AI System"
+        pro_label = "Advanced Gemini Neural Core" if engine == "gemini" else "Hyper-Speed Multi-Agent Llama Architecture"
+        st.success(f"🎉 Bundle Ready! — Engine: **{pro_label}**")
+        
+        raw_content = st.session_state["script_data"]
+        
+        # 🌟 SMART DIVISION: Content ko alag-alag expanders me saaf dikhane ke liye
+        # Hum user ko poora content block bhi dikhayenge aur niche clean segregation bhi denge
+        with st.expander("🎬 1. Complete Video Script Blueprint", expanded=True):
+            st.text_area("Script Copy Zone:", value=raw_content, height=350, key="script_box_view")
             
-        st.success(f"🎉 Production Blueprint Ready! — Generated via **[{pro_label}]**")
-        st.text_area("Generated Script Content:", value=st.session_state["script_data"], height=400)
+        st.markdown("### 🛠️ Quick Copy Distribution Channels")
+        st.caption("Apne alag-alag platforms ke liye yahan se direct copy karein:")
         
         # 🌟 TWO DOWNLOAD BUTTONS SIDE-BY-SIDE USING COLUMNS
         col1, col2 = st.columns(2)
