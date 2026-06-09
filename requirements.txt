@@ -3,3 +3,5 @@ crewai[google-genai]
 crewai[litellm]
 litellm
 groq
+python-dotenv
+python-docx
