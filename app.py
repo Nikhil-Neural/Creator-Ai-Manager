@@ -26,7 +26,7 @@ def get_gemini_llm():
         model="gemini/gemini-2.5-flash",
         api_key=GEMINI_KEY,
         timeout=60,
-        max_retries=3
+        max_retries=2
     )
 
 def get_groq_llm():
@@ -92,8 +92,33 @@ def run_crew(niche_topic, social_platform, output_language, llm):
     )
 
     write_script_task = Task(
-        description=f"Using the 3 viral angles, write a complete video script for {social_platform} in {output_language}.",
-        expected_output=f"Complete formatted script strictly in {output_language} language.",
+        description=f"""Using the 3 viral angles, create a complete 'Content Production Bundle' for {social_platform}.
+        
+        STRICT RULE: The ENTIRE bundle must be written in {output_language} language only.
+        
+        You must format the output exactly into these 4 clear sections:
+        
+        ---
+        SECTION 1: 🎬 VIDEO SCRIPT BLUEPRINT
+        Write a complete high-retention script for {social_platform}. 
+        Format like this: [00:00-00:05] Hook, Visual Description, Dialogues.
+        
+        ---
+        SECTION 2: 🚀 VIRAL METADATA BUNDLE
+        - 3 High-CTR Clickable Titles
+        - SEO Description (2 lines)
+        - 10 High-Volume Target Keywords
+        
+        ---
+        SECTION 3: 📸 INSTAGRAM REELS / SHORTS EXTENSION
+        - Short Viral Caption for social feed
+        - 15 Trending & Niche Hashtags (#)
+        
+        ---
+        SECTION 4: 🐦 X (TWITTER) / LINKEDIN TEXT THREAD
+        - Convert the core summary of this script into a 3-part textual post/thread to post directly on X or LinkedIn.
+        """,
+        expected_output=f"A complete formatted production bundle including script, metadata, social captions, and text thread strictly in {output_language} language.",
         agent=script_writer
     )
 
