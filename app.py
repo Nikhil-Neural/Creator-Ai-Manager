@@ -207,7 +207,7 @@ with tab1:
             step=0.5,         # 30-30 seconds ke jhatke mein badhega
             help="0.5 Matlab 30 Seconds, 1.0 Matlab 1 Minute, 2.5 Matlab 2 Min 30 Sec"
         )
-        st.markdown(f"ℹ️ *Platform: **{platform}** | Language: **{language}***")
+        st.markdown(f"ℹ️ Apki Script *Platform: **{platform}** ke leye Language: **{language}*** me likhi jaa rahi hai. To Change 'Control Pannel' se kare.")
         submit_btn = st.form_submit_button("🚀 Launch AI Agents", use_container_width=True)
 
         if submit_btn:
