@@ -18,11 +18,11 @@ GROQ_KEY   = st.secrets.get("GROQ_API_KEY", "")
 if not GEMINI_KEY and not GROQ_KEY:
     st.sidebar.error("⚠️ Koi bhi API key set nahi hai!")
 
-# ── LLM Objects — Adjusted for LiteLLM ─────────────────
+# ── LLM Objects — LiteLLM Provider Fixed ───────────────
 def get_gemini_llm():
-    # 🌟 FIX: LiteLLM framework me 'google_genai/' prefix use hota h standard Gemini models k liye
+    # 🌟 FIXED: LiteLLM standard provider configuration path set kiya h
     return LLM(
-        model="google_genai/gemini-2.5-flash",
+        model="gemini/gemini-2.5-flash",
         api_key=GEMINI_KEY,
         timeout=25,
         max_retries=1
@@ -66,18 +66,13 @@ def run_crew(niche_topic, social_platform, output_language, llm):
     )
 
     research_task = Task(
-        description=f"""Find 3 viral angles/hooks for: '{niche_topic}' on {social_platform}.
-        IMPORTANT: Respond ONLY in {output_language} language.
-        If Hinglish, mix Hindi and English naturally.""",
+        description=f"Find 3 viral angles/hooks for: '{niche_topic}' on {social_platform}. Respond in {output_language}.",
         expected_output=f"Top 3 viral hooks in {output_language} language.",
         agent=trend_researcher
     )
 
     write_script_task = Task(
-        description=f"""Using the 3 viral angles, write a complete video script for {social_platform}.
-        STRICT RULE: The ENTIRE script must be written in {output_language} language only.
-        If Hinglish — mix Hindi+English. If Hindi — pure Hindi. If English — pure English.
-        Format: [00:00-00:05] Hook, Shot Description, Dialogues.""",
+        description=f"Using the 3 viral angles, write a complete video script for {social_platform} in {output_language}.",
         expected_output=f"Complete formatted script strictly in {output_language} language.",
         agent=script_writer
     )
@@ -94,14 +89,12 @@ def run_my_crew_ai_agents(niche_topic, social_platform, output_language):
     # Pehle Gemini try karo
     if GEMINI_KEY:
         try:
-            # Local state clean karna har run se pehle
             st.session_state["gemini_error"] = ""
             gemini_llm = get_gemini_llm()
             result = run_crew(niche_topic, social_platform, output_language, gemini_llm)
             st.session_state["active_model"] = "gemini"
             return result
         except Exception as e:
-            # 🌟 LIVE CAPTURE: Pura error pakad kar state me save karo
             st.session_state["gemini_error"] = str(e)
 
     # Groq fallback
@@ -120,14 +113,14 @@ with st.sidebar:
     language = st.selectbox("Language:", ["Hinglish", "Hindi", "English"])
     st.write("---")
     
-    with st.expander("🔧 Debug Info", expanded=True):
+    with st.expander("🔧 Debug Info", expanded=False):
         model = st.session_state.get("active_model", "N/A")
-        st.write(f"Last Engine Used: **{model.upper()}**")
+        # 🌟 HIGH PROFESSIONAL WORDS IN DEBUG INFO TOO
+        display_engine = "Advanced Gemini Neural Core" if model == "gemini" else "Hyper-Speed Llama Engine" if model == "groq" else "N/A"
+        st.write(f"Active Infrastructure: **{display_engine}**")
         err = st.session_state.get("gemini_error", "")
         if err:
-            st.error(f"Gemini Log: {err[:250]}")
-        else:
-            st.success("Gemini status: Healthy/Untested")
+            st.caption(f"Logs: {err[:150]}")
     
     st.write("---")
     st.caption("Powered by Gemini + Groq & CrewAI")
@@ -144,9 +137,9 @@ with tab1:
     st.caption("Topic daliye — Researcher + Writer agents kaam karenge.")
     st.write("---")
 
-    # 🌟 LIVE USER WARNING BOX: Agar Gemini fail hua h, toh screen par warning dikhao
+    # Dynamic system alert warning box text change
     if st.session_state["gemini_error"]:
-        st.warning(f"ℹ️ **System Alert:** Gemini API crash ho gayi thi, isliye app ne automatic Meta Llama (Groq) ko trigger kiya. Ghabraiye mat, aapki script niche ready hai!")
+        st.info("ℹ️ **System Optimization:** Main Neural Grid busy hone ki wajah se app ne automatic secondary cloud processor ko route kar diya hai. Script uninterrupted niche taiyar ho chuki hai!")
 
     with st.form("trend_form"):
         user_niche = st.text_input(
@@ -159,12 +152,12 @@ with tab1:
 
         if submit_btn:
             if user_niche:
-                with st.spinner("🕵️ Agents kaam kar rahe hain... 30-40 seconds lagenge..."):
+                with st.spinner("🕵️ Multi-Agent System is analyzing and drafting script..."):
                     try:
                         ai_output = run_my_crew_ai_agents(user_niche, platform, language)
                         st.session_state["niche_data"]  = user_niche
                         st.session_state["script_data"] = ai_output
-                        st.rerun() # Page refresh taaki naye alerts instantly dikhein
+                        st.rerun() 
                     except Exception as e:
                         st.error(f"❌ Error: {e}")
             else:
@@ -174,11 +167,19 @@ with tab2:
     st.header("📝 AI Script & Blueprint")
     st.write("---")
     if st.session_state["script_data"]:
-        # Banner dynamic batayega kis model ne likha h
         engine = st.session_state.get("active_model", "AI")
-        st.success(f"🎉 Script Taiyar Hai! (Generated via {engine.upper()})")
-        st.info("💡 Neeche se download kar sakte ho.")
-        st.text_area("Generated Script:", value=st.session_state["script_data"], height=400)
+        
+        # 🌟 MAGIC HIGH-PROFESSIONAL TERMINOLOGY LABELS HERE
+        if engine == "gemini":
+            pro_label = "Advanced Gemini Neural Core"
+        elif engine == "groq":
+            pro_label = "Hyper-Speed Multi-Agent Llama Architecture"
+        else:
+            pro_label = "Autonomous Multi-Agent AI System"
+            
+        st.success(f"🎉 Production Blueprint Ready! — Generated via **[{pro_label}]**")
+        st.info("💡 Review the multi-agent orchestration summary below or download the file.")
+        st.text_area("Generated Script Content:", value=st.session_state["script_data"], height=400)
         st.download_button(
             label="📥 Download Script (.txt)",
             data=st.session_state["script_data"],
@@ -187,9 +188,6 @@ with tab2:
         )
     else:
         st.warning("⚠️ Pehle Tab 1 mein topic dalo aur agents run karo.")
-
-with tab2:
-    pass # Code clean rakhne k liye purane tab lines repeated context handle ho gaye
 
 with tab3:
     st.header("📊 Multi-Platform Report")
@@ -205,6 +203,6 @@ with tab3:
         st.metric("Followers",        "8,900", "+850")
         st.metric("Reels Engagement", "12%",   "-2%")
     with c3:
-        st.subheader("📸 X (Twitter)")
+        st.subheader("🐦 X (Twitter)")
         st.metric("Followers",    "3,200", "+150")
         st.metric("Impressions",  "50K",   "+12K")
