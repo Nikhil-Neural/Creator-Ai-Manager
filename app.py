@@ -26,7 +26,7 @@ def get_gemini_llm():
         model="gemini/gemini-2.5-flash",
         api_key=GEMINI_KEY,
         timeout=60,
-        max_retries=3
+        max_retries=4
     )
 
 def get_groq_llm():
@@ -62,8 +62,7 @@ if "active_model"  not in st.session_state: st.session_state["active_model"]  = 
 if "gemini_error"  not in st.session_state: st.session_state["gemini_error"]  = ""
 
 # ── CrewAI Backend ─────────────────────────────────────
-def run_crew(niche_topic, social_platform, output_language, llm, target_words, video_duration):
-    # Agents code same rahega...
+def run_crew(niche_topic, social_platform, output_language, llm, target_words, target_seconds):
     trend_researcher = Agent(
         role="Senior Content Trend Analyst",
         goal=f"Analyze what hooks people on '{niche_topic}' for {social_platform}.",
@@ -97,7 +96,7 @@ def run_crew(niche_topic, social_platform, output_language, llm, target_words, v
         
         STRICT RULE 1: The ENTIRE bundle must be written in {output_language} language only.
         
-        STRICT RULE 2 (DURATION CONTROL): The SECTION 1 (Script Blueprint) must be perfectly paced for a {video_duration} minute video. To achieve this, write exactly around {target_words} words for the script section. Do not waste tokens beyond this limit.
+        STRICT RULE 2 (EXACT DURATION CONTROL): The SECTION 1 (Script Blueprint) must be perfectly paced for a video of exactly {video_duration} MINUTES ({target_seconds} SECONDS). To achieve this, write exactly around {target_words} words for the script section. Do not shortcut this!
         
         You must format the output exactly into these 4 clear sections:
         
@@ -134,17 +133,18 @@ def run_crew(niche_topic, social_platform, output_language, llm, target_words, v
     return str(crew.kickoff())
 
 def run_my_crew_ai_agents(niche_topic, social_platform, output_language, video_duration):
-    """Duration ko words me convert karke Crew ko dena."""
+    """Duration ko exact words aur seconds me convert karke Crew ko dena."""
     
-    # 🌟 MATH ENGINE: 1 minute = ~140 words. Toh duration * 140 = Target Words!
-    target_words = int(video_duration * 140)
+    # 🌟 NEW ACCURATE MATH ENGINE
+    target_seconds = int(video_duration * 60) # 0.5 min * 60 = 30 Seconds exact
+    target_words = int(video_duration * 140)   # 0.5 min * 140 = 70 Words exact
     
     if GEMINI_KEY:
         try:
             st.session_state["gemini_error"] = ""
             gemini_llm = get_gemini_llm()
-            # Yahan target_words pass karenge
-            result = run_crew(niche_topic, social_platform, output_language, gemini_llm, target_words, video_duration)
+            # Yahan hum target_seconds aur target_words dono bhej rahe hain
+            result = run_crew(niche_topic, social_platform, output_language, gemini_llm, target_words, target_seconds)
             st.session_state["active_model"] = "gemini"
             return result
         except Exception as e:
@@ -153,7 +153,7 @@ def run_my_crew_ai_agents(niche_topic, social_platform, output_language, video_d
     if GROQ_KEY:
         st.session_state["active_model"] = "groq"
         groq_llm = get_groq_llm()
-        return run_crew(niche_topic, social_platform, output_language, groq_llm, target_words, video_duration)
+        return run_crew(niche_topic, social_platform, output_language, groq_llm, target_words, target_seconds)
 
     st.error("❌ Koi LLM available nahi!")
     st.stop()
@@ -207,7 +207,8 @@ with tab1:
             step=0.5,         # 30-30 seconds ke jhatke mein badhega
             help="0.5 Matlab 30 Seconds, 1.0 Matlab 1 Minute, 2.5 Matlab 2 Min 30 Sec"
         )
-        st.markdown(f"ℹ️ Apki Script *Platform: **{platform}** ke leye Language: **{language}*** me likhi jaa rahi hai. To Change 'Control Pannel' se kare.")
+        # 🌟 UI UPGRADE: Professional status container
+        st.info(f"📋 Configuration: **{platform}** Pipeline | Output Language: **{language}** (Change via Sidebar Control Panel)")
         submit_btn = st.form_submit_button("🚀 Launch AI Agents", use_container_width=True)
 
         if submit_btn:
