@@ -16,6 +16,9 @@ st.set_page_config(page_title="Creator AI OS", layout="wide")
 # ── API Keys ───────────────────────────────────────────
 GEMINI_KEY = st.secrets.get("GEMINI_API_KEY", "")
 GROQ_KEY   = st.secrets.get("GROQ_API_KEY", "")
+SERPER_KEY = st.secrets.get("SERPER_API_KEY", "")
+from crewai_tools import SerperDevTool
+search_tool = SerperDevTool(api_key=SERPER_KEY) if SERPER_KEY else None
 
 if not GEMINI_KEY and not GROQ_KEY:
     st.sidebar.error("⚠️ Koi bhi API key set nahi hai!")
@@ -63,10 +66,14 @@ if "gemini_error"  not in st.session_state: st.session_state["gemini_error"]  = 
 
 # ── CrewAI Backend ─────────────────────────────────────
 def run_crew(niche_topic, social_platform, output_language, llm, target_words, target_seconds):
+    agent_tools = [search_tool] if search_tool else []
     trend_researcher = Agent(
-        role="Senior Content Trend Analyst",
-        goal=f"Analyze what hooks people on '{niche_topic}' for {social_platform}.",
-        backstory="Expert in viral retention algorithms. Knows what sub-topics trend right now.",
+        role="Senior Real-Time Content Trend Analyst",
+        goal=f"Google search and analyze what is currently trending RIGHT NOW regarding '{niche_topic}' on {social_platform}.",
+        backstory="""You are a live internet detective. You don't rely on old memory. 
+        You use Google Search to find live viral spikes, break-out keywords, and what audience 
+        is actively talking about today. You ignore outdated data completely.""",
+        tools=agent_tools,  # 🌟 NEW: Agent ko live internet access de diya!
         llm=llm,
         max_iter=2,
         max_rpm=5,
@@ -144,59 +151,37 @@ def run_crew(niche_topic, social_platform, output_language, llm, target_words, t
     return str(crew.kickoff())
 
 def run_my_crew_ai_agents(niche_topic, social_platform, output_language, video_duration):
-    """Duration ko exact words aur seconds me convert karke Crew ko dena."""
-    
-    # 🌟 NEW ACCURATE MATH ENGINE
-    target_seconds = int(video_duration * 60) # 0.5 min * 60 = 30 Seconds exact
-    target_words = int(video_duration * 140)   # 0.5 min * 140 = 70 Words exact
+    target_seconds = int(video_duration * 60)
+    target_words = int(video_duration * 140)
     
     if GEMINI_KEY:
         try:
-            st.session_state["gemini_error"] = ""
+            # 🛠️ DEVELOPER LOG: Sirf terminal me print hoga, web UI par nahi
+            print(f"[SYSTEM LOG] Attempting to launch Engine 1: Google Gemini...")
+            
             gemini_llm = get_gemini_llm()
-            # Yahan hum target_seconds aur target_words dono bhej rahe hain
-            result = run_crew(niche_topic, social_platform, output_language, gemini_llm, target_words, target_seconds)
+            result = run_crew(niche_topic, social_platform, output_language, gemini_llm, target_words, target_seconds, video_duration)
             st.session_state["active_model"] = "gemini"
+            
+            print(f"[SYSTEM LOG] Success! Script served via Gemini.")
             return result
         except Exception as e:
-            st.session_state["gemini_error"] = str(e)
+            print(f"[CRITICAL WARNING] Gemini Failed! Error: {str(e)}")
+            print(f"[SYSTEM LOG] Triggering Silent Failover... Routing request to Meta Llama Infrastructure.")
 
     if GROQ_KEY:
         st.session_state["active_model"] = "groq"
         groq_llm = get_groq_llm()
-        return run_crew(niche_topic, social_platform, output_language, groq_llm, target_words, target_seconds)
-
-    st.error("❌ Koi LLM available nahi!")
-    st.stop()
+        result = run_crew(niche_topic, social_platform, output_language, groq_llm, target_words, target_seconds, video_duration)
+        
+        print(f"[SYSTEM LOG] Success! Script served silently via Meta Llama Architecture.")
+        return result
 
 # ── Sidebar ────────────────────────────────────────────
 with st.sidebar:
     st.title("⚙️ Control Panel")
     platform = st.selectbox("Platform:", ["YouTube", "Instagram", "Facebook", "X (Twitter)"])
     language = st.selectbox("Language:", ["Hinglish", "Hindi", "English"])
-    st.write("---")
-    
-    with st.expander("🔧 Debug Info", expanded=True):
-        model = st.session_state.get("active_model", "N/A")
-        pro_engine = "Advanced Gemini Neural Core" if model == "gemini" else "Hyper-Speed Multi-Agent Llama Architecture" if model == "groq" else "N/A"
-        st.write(f"Active Infrastructure: **{pro_engine}**")
-        
-        # 🌟 NEW METRICS BLOCK FOR PHASE 2 LIVE STATUS
-        st.markdown("---")
-        st.caption("⚡ Core Pipeline Matrix:")
-        st.write("🔄 Context Sync Pipeline: **ACTIVE**")
-        
-        # Agar script data session state me h, to duration metrics live show karo
-        if st.session_state["script_data"]:
-            st.write("📊 Memory Allocation: **RAM Virtual Buffer**")
-            st.success("✅ Content Bundle: **Synchronized**")
-        else:
-            st.write("📊 Memory Allocation: **Idle**")
-            st.info("⏳ Waiting for Form Trigger...")
-            
-        err = st.session_state.get("gemini_error", "")
-        if err:
-            st.error(f"Gemini Log: {err[:250]}")
     st.write("---")
     st.caption("Powered by Gemini + Groq & CrewAI")
 
@@ -211,30 +196,58 @@ with tab1:
     st.markdown("### 🔥 AI Content Strategy Hub")
     st.caption("Topic daliye — Researcher + Writer agents kaam karenge.")
     st.write("---")
-
-    if st.session_state["gemini_error"]:
-        st.info("ℹ️ **System Optimization:** Main Neural Grid busy hone ki wajah se app ne automatic secondary cloud processor ko route kar diya hai. Script uninterrupted taiyar ho chuki hai!")
-
     with st.form("trend_form"):
-        user_niche = st.text_input(
-            "🎯 Kis topic par video banani hai?",
-            value=st.session_state["niche_data"],
-            placeholder="E.g., What is AGI, Stoicism Guide, Python for Beginners..."
+        # 🌟 FEATURE 1: App ke Modes select karne ke liye dynamic dropdown
+        app_mode = st.selectbox(
+            "🔮 Kis Mode me kaam karna hai?",
+            [
+                "🚀 Complete Blueprint Mode (Topic se fresh bundle)", 
+                "✍️ Repurpose My Script Mode (Apni script se bundle)", 
+                "🎨 Ultimate Thumbnail Creator Mode (Thumbnail Ideas)"
+            ]
         )
         
-        # 🌟 NEW: Duration Slider (30 Sec se lekar 20 Mins tak)
-        # Value ko hum float (decimal) mein rakhenge taaki 0.5 ka matlab 30 seconds ho
+        st.write("---")
+        
+        # 🌟 FEATURE 2: Dynamic Input Engine (Mode ke hisab se UI badlega)
+        if "🚀 Complete Blueprint Mode" in app_mode:
+            user_niche = st.text_input(
+                "🎯 Kis topic par video banani hai?",
+                value=st.session_state["niche_data"],
+                placeholder="E.g., What is AGI, Stoicism Guide, Python for Beginners..."
+            )
+            # User script paste nahi kar sakta is mode me
+            user_pasted_script = ""
+            
+        elif "✍️ Repurpose My Script Mode" in app_mode:
+            user_niche = st.text_input(
+                "🎯 Video ka Main Topic/Title kya hai?",
+                value=st.session_state["niche_data"],
+                placeholder="E.g., Claude AI in 1 Minute..."
+            )
+            # Naya Bada Text Box khulega user ki script paste karne ke liye
+            user_pasted_script = st.text_area(
+                "📝 Apni pehle se likhi hui Script yahan Paste karein:",
+                height=250,
+                placeholder="Yahan apni poori script paste karo, CrewAI isse direct Titles, Captions aur Thread bana dega..."
+            )
+            
+        elif "🎨 Ultimate Thumbnail Creator Mode" in app_mode:
+            user_niche = st.text_input(
+                "🎯 Kis topic ya script ke liye Thumbnail Ideas chahiye?",
+                value=st.session_state["niche_data"],
+                placeholder="E.g., AI Tools for Marketing..."
+            )
+            user_pasted_script = ""
+
+        # Duration slider jo humne pehle set kiya tha (sirf video modes me kaam aayega)
         video_duration = st.slider(
             "⏱️ Video ki duration kitni honi chahiye? (In Minutes)",
-            min_value=0.5,    # 0.5 mins = 30 Seconds
-            max_value=20.0,   # 20 Minutes
-            value=2.0,        # Default 2 minutes
-            step=0.5,         # 30-30 seconds ke jhatke mein badhega
-            help="0.5 Matlab 30 Seconds, 1.0 Matlab 1 Minute, 2.5 Matlab 2 Min 30 Sec"
+            min_value=0.5, max_value=20.0, value=2.0, step=0.5
         )
-        # 🌟 UI UPGRADE: Professional status container
-        st.info(f"📋 Configuration: **{platform}** Pipeline | Output Language: **{language}** (Change via Sidebar Control Panel)")
-        submit_btn = st.form_submit_button("🚀 Launch AI Agents", use_container_width=True)
+        
+        st.write("---")
+        submit_btn = st.form_submit_button("🚀 Launch AI Agents Grid", use_container_width=True)
 
         if submit_btn:
             if user_niche:
@@ -255,9 +268,8 @@ with tab2:
     st.write("---")
     
     if st.session_state["script_data"]:
-        engine = st.session_state.get("active_model", "AI")
-        pro_label = "Advanced Gemini Neural Core" if engine == "gemini" else "Hyper-Speed Multi-Agent Llama Architecture"
-        st.success(f"🎉 Bundle Ready! — Engine: **{pro_label}**")
+        # 🌟 SILENT ENGINE: User ko ab koi model name nahi dikhega, sirf product quality dikhega
+        st.success("🎉 Your Viral Content Production Bundle is Successfully Generated!")
         
         raw_content = st.session_state["script_data"]
         
@@ -266,8 +278,8 @@ with tab2:
         with st.expander("🎬 1. Complete Video Script Blueprint", expanded=True):
             st.text_area("Script Copy Zone:", value=raw_content, height=350, key="script_box_view")
             
-        st.markdown("### 🛠️ Quick Copy Distribution Channels")
-        st.caption("Apne alag-alag platforms ke liye yahan se direct copy karein:")
+        st.markdown("### 📥 Save Your Content Bundle")
+        st.caption("Apne pure production bundle ko ek click mein download karein:")
         
         # 🌟 TWO DOWNLOAD BUTTONS SIDE-BY-SIDE USING COLUMNS
         col1, col2 = st.columns(2)
