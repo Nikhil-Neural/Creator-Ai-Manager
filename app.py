@@ -25,8 +25,8 @@ def get_gemini_llm():
     return LLM(
         model="gemini/gemini-2.5-flash",
         api_key=GEMINI_KEY,
-        timeout=60,
-        max_retries=4
+        timeout=45,
+        max_retries=2
     )
 
 def get_groq_llm():
@@ -131,7 +131,8 @@ def run_crew(niche_topic, social_platform, output_language, llm, target_words, t
         - Convert the core summary of this script into a 3-part textual post/thread to post directly on X or LinkedIn.
         """,
         expected_output=f"A complete formatted production bundle including script, metadata, social captions, and text thread strictly in {output_language} language.",
-        agent=script_writer
+        agent=script_writer,
+        context=[research_task]
     )
 
     crew = Crew(
