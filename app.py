@@ -197,55 +197,57 @@ with tab1:
     st.caption("Topic daliye — Researcher + Writer agents kaam karenge.")
     st.write("---")
     with st.form("trend_form"):
-        # 🌟 FEATURE 1: App ke Modes select karne ke liye dynamic dropdown
-        app_mode = st.selectbox(
+        # 🌟 UI UPGRADE: Dropdown hata kar saare modes saamne horizontal buttons me dikhenge
+        app_mode = st.radio(
             "🔮 Kis Mode me kaam karna hai?",
             [
-                "🚀 Complete Blueprint Mode (Topic se fresh bundle)", 
-                "✍️ Repurpose My Script Mode (Apni script se bundle)", 
-                "🎨 Ultimate Thumbnail Creator Mode (Thumbnail Ideas)"
-            ]
+                "🚀 Complete Blueprint Mode", 
+                "✍️ Repurpose My Script Mode", 
+                "🎨 Ultimate Thumbnail Creator Mode"
+            ],
+            horizontal=True, # Saare options ek hi line me samne dikhenge!
+            help="Apna workflow chunein. Har mode ke hisab se niche ke options badal jayenge."
         )
         
         st.write("---")
         
-        # 🌟 FEATURE 2: Dynamic Input Engine (Mode ke hisab se UI badlega)
-        if "🚀 Complete Blueprint Mode" in app_mode:
+        # 🌟 DYNAMIC INPUT & SLIDER ENGINE
+        if app_mode == "🚀 Complete Blueprint Mode":
             user_niche = st.text_input(
                 "🎯 Kis topic par video banani hai?",
                 value=st.session_state["niche_data"],
                 placeholder="E.g., What is AGI, Stoicism Guide, Python for Beginners..."
             )
-            # User script paste nahi kar sakta is mode me
+            # Slider sirf isi mode me dikhega!
+            video_duration = st.slider(
+                "⏱️ Video ki duration kitni honi chahiye? (In Minutes)",
+                min_value=0.5, max_value=20.0, value=2.0, step=0.5
+            )
             user_pasted_script = ""
             
-        elif "✍️ Repurpose My Script Mode" in app_mode:
+        elif app_mode == "✍️ Repurpose My Script Mode":
             user_niche = st.text_input(
                 "🎯 Video ka Main Topic/Title kya hai?",
                 value=st.session_state["niche_data"],
                 placeholder="E.g., Claude AI in 1 Minute..."
             )
-            # Naya Bada Text Box khulega user ki script paste karne ke liye
             user_pasted_script = st.text_area(
                 "📝 Apni pehle se likhi hui Script yahan Paste karein:",
                 height=250,
                 placeholder="Yahan apni poori script paste karo, CrewAI isse direct Titles, Captions aur Thread bana dega..."
             )
+            # Is mode me duration ki zaroorat nahi h, backend safe rakhne ke leye default 2 mins set kar dete h background me
+            video_duration = 2.0
             
-        elif "🎨 Ultimate Thumbnail Creator Mode" in app_mode:
+        elif app_mode == "🎨 Ultimate Thumbnail Creator Mode":
             user_niche = st.text_input(
                 "🎯 Kis topic ya script ke liye Thumbnail Ideas chahiye?",
                 value=st.session_state["niche_data"],
                 placeholder="E.g., AI Tools for Marketing..."
             )
+            video_duration = 2.0
             user_pasted_script = ""
 
-        # Duration slider jo humne pehle set kiya tha (sirf video modes me kaam aayega)
-        video_duration = st.slider(
-            "⏱️ Video ki duration kitni honi chahiye? (In Minutes)",
-            min_value=0.5, max_value=20.0, value=2.0, step=0.5
-        )
-        
         st.write("---")
         submit_btn = st.form_submit_button("🚀 Launch AI Agents Grid", use_container_width=True)
 
@@ -254,7 +256,7 @@ with tab1:
                 with st.spinner("🕵️ Multi-Agent System is orchestrating strategy..."):
                     try:
                         # 🌟 Form se duration bhej rahe hain backend mein
-                        ai_output = run_my_crew_ai_agents(user_niche, platform, language, video_duration)
+                        ai_output = run_my_crew_ai_agents(user_niche, platform, language, video_duration, app_mode, user_pasted_script)
                         st.session_state["niche_data"]  = user_niche
                         st.session_state["script_data"] = ai_output
                         st.rerun() 
