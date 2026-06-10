@@ -5,3 +5,4 @@ litellm
 groq
 python-dotenv
 python-docx
+crewai-tools
