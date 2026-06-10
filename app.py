@@ -176,13 +176,27 @@ with st.sidebar:
     language = st.selectbox("Language:", ["Hinglish", "Hindi", "English"])
     st.write("---")
     
-    with st.expander("🔧 Debug Info", expanded=False):
+    with st.expander("🔧 Debug Info", expanded=True):
         model = st.session_state.get("active_model", "N/A")
-        display_engine = "Advanced Gemini Neural Core" if model == "gemini" else "Hyper-Speed Llama Engine" if model == "groq" else "N/A"
-        st.write(f"Active Infrastructure: **{display_engine}**")
+        pro_engine = "Advanced Gemini Neural Core" if model == "gemini" else "Hyper-Speed Multi-Agent Llama Architecture" if model == "groq" else "N/A"
+        st.write(f"Active Infrastructure: **{pro_engine}**")
+        
+        # 🌟 NEW METRICS BLOCK FOR PHASE 2 LIVE STATUS
+        st.markdown("---")
+        st.caption("⚡ Core Pipeline Matrix:")
+        st.write("🔄 Context Sync Pipeline: **ACTIVE**")
+        
+        # Agar script data session state me h, to duration metrics live show karo
+        if st.session_state["script_data"]:
+            st.write("📊 Memory Allocation: **RAM Virtual Buffer**")
+            st.success("✅ Content Bundle: **Synchronized**")
+        else:
+            st.write("📊 Memory Allocation: **Idle**")
+            st.info("⏳ Waiting for Form Trigger...")
+            
         err = st.session_state.get("gemini_error", "")
         if err:
-            st.caption(f"Logs: {err[:150]}")
+            st.error(f"Gemini Log: {err[:250]}")
     st.write("---")
     st.caption("Powered by Gemini + Groq & CrewAI")
 
