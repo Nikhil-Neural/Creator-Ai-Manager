@@ -65,114 +65,104 @@ if "active_model"  not in st.session_state: st.session_state["active_model"]  = 
 if "gemini_error"  not in st.session_state: st.session_state["gemini_error"]  = ""
 
 # ── CrewAI Backend ─────────────────────────────────────
-def run_crew(niche_topic, social_platform, output_language, llm, target_words, target_seconds):
-    agent_tools = [search_tool] if search_tool else []
-    trend_researcher = Agent(
-        role="Senior Real-Time Content Trend Analyst",
-        goal=f"Google search and analyze what is currently trending RIGHT NOW regarding '{niche_topic}' on {social_platform}.",
-        backstory="""You are a live internet detective. You don't rely on old memory. 
-        You use Google Search to find live viral spikes, break-out keywords, and what audience 
-        is actively talking about today. You ignore outdated data completely.""",
-        tools=agent_tools,  # 🌟 NEW: Agent ko live internet access de diya!
-        llm=llm,
-        max_iter=2,
-        max_rpm=5,
-        allow_delegation=False,
+def run_crew(niche_topic, social_platform, output_language, llm, target_words, target_seconds, video_duration, app_mode, user_pasted_script):
+    
+    # 🌟 Internet Search Tool ko tabhi active karenge jab Complete Blueprint mode ho
+    agent_tools = [search_tool] if (search_tool and "Complete Blueprint" in app_mode) else []
+    
+    # Agents initialization (Wahi rahenge jo humne pehle set kiye the)
+    trend_researcher = Agent(...)
+    script_writer = Agent(...)
+    
+    # 📝 DYNAMIC TASKS ENGINE (Yahan asli logic execute hoga!)
+    
+    # MODE 1: Fresh Topic Se Full Blueprint
+    if "Complete Blueprint Mode" in app_mode:
+        research_task = Task(
+            description=f"Google search current trends for '{niche_topic}' on {social_platform}...",
+            expected_output="Live trends report.",
+            agent=trend_researcher
+        )
+        
+        write_script_task = Task(
+            description=f"Create a full Content Production Bundle based on the researcher's trends...",
+            expected_output="Full bundle output.",
+            agent=script_writer,
+            context=[research_task]  # Synchronization Engine Active!
+        )
+        crew_tasks = [research_task, write_script_task]
+        active_agents = [trend_researcher, script_writer]
+
+    # MODE 2: Repurpose Existing Script
+    elif "Repurpose My Script Mode" in app_mode:
+        write_script_task = Task(
+            description=f"""The user has provided their OWN raw script. Do not write a new script from scratch.
+            Read this user script carefully: 
+            ---
+            {user_pasted_script}
+            ---
+            
+            Your ONLY job is to properly format this exact script into SECTION 1 (ensuring time stamps are fixed) 
+            and then generate fresh SECTION 2 (Metadata Bundle), SECTION 3 (Reels Captions), and SECTION 4 (Threads) 
+            strictly in {output_language} based on this content.""",
+            expected_output="Repurposed content bundle from pasted script.",
+            agent=script_writer
+        )
+        # Search task bypass ho gaya, direct script processing chalegi!
+        crew_tasks = [write_script_task]
+        active_agents = [script_writer]
+        
+    # MODE 3: Ultimate Thumbnail Creator Mode
+    else:
+        write_script_task = Task(
+            description=f"""Generate 3 hyper-viral high-CTR thumbnail ideas for the topic '{niche_topic}'.
+            For each idea, provide:
+            1. Psychological Hook Text (to put on thumbnail image)
+            2. Background Color Theme Description (with hex codes if needed)
+            3. Main Visual Character/Object element details.""",
+            expected_output="3 high-CTR thumbnail design concepts.",
+            agent=script_writer
+        )
+        crew_tasks = [write_script_task]
+        active_agents = [script_writer]
+
+    # 🏁 Crew Launcher
+    my_crew = Crew(
+        agents=active_agents,
+        tasks=crew_tasks,
         verbose=True
     )
+    
+    return my_crew.kickoff()
 
-    script_writer = Agent(
-        role="Human-Centric Storyteller & Retention Expert",
-        goal=f"Create an emotionally resonance video blueprint in {output_language} that feels 100% written by a human creator, not an AI.",
-        backstory="""You are a world-class YouTube & Instagram creator with 10M+ subscribers. 
-        You despise robotic, generic AI content. You understand human psychology, FOMO, empathy, 
-        curiosity, and regional nuances (Hinglish/Hindi/English slang). 
-        
-        CRITICAL ANTI-AI RULES:
-        - NEVER use generic AI words like 'revolutionize', 'delve', 'moreover', 'testament', or 'furthermore'.
-        - Use natural conversation filler words that humans actually say (e.g., 'Yaar', 'Suno', 'Dekho', 'Honestly').
-        - Write with conversational pacing: short sentences, dramatic pauses, and direct 'you'/'tum' storytelling.
-        - Focus heavily on injecting human vulnerabilities, humor, or deep curiosity in every line.""",
-        llm=llm,
-        max_iter=2,
-        max_rpm=5,
-        allow_delegation=False,
-        verbose=True
-
-    )
-
-    research_task = Task(
-        description=f"Find 3 viral angles/hooks for: '{niche_topic}' on {social_platform}. Respond in {output_language}.",
-        expected_output=f"Top 3 viral hooks in {output_language} language.",
-        agent=trend_researcher
-    )
-
-    write_script_task = Task(
-        description=f"""Using the 3 viral angles, create a complete 'Content Production Bundle' for {social_platform}.
-        
-        STRICT RULE 1: The ENTIRE bundle must be written in {output_language} language only.
-        
-        STRICT RULE 2 (EXACT DURATION CONTROL): The SECTION 1 (Script Blueprint) must be perfectly paced for a video of exactly {video_duration} MINUTES ({target_seconds} SECONDS). To achieve this, write exactly around {target_words} words for the script section. Do not shortcut this!
-        STRICT RULE 3 (HUMAN NUANCE ENGINE): Every dialogue line must sound like a real human talking to their best friend. No textbook language. Use emotional triggers (shock, excitement, empathy, or relief) depending on the script's core topic. Break down complex concepts using simple daily-life analogies (ghar-parivar, dukan, dosto ki baatein), just like a real content creator does.
-        
-        You must format the output exactly into these 4 clear sections:
-        
-        ---
-        SECTION 1: 🎬 VIDEO SCRIPT BLUEPRINT
-        Write a complete high-retention script for {social_platform}. 
-        Format like this: [00:00-00:05] Hook, Visual Description, Dialogues.
-        
-        ---
-        SECTION 2: 🚀 VIRAL METADATA BUNDLE
-        - 3 High-CTR Clickable Titles
-        - SEO Description (2 lines)
-        - 10 High-Volume Target Keywords
-        
-        ---
-        SECTION 3: 📸 INSTAGRAM REELS / SHORTS EXTENSION
-        - Short Viral Caption for social feed
-        - 15 Trending & Niche Hashtags (#)
-        
-        ---
-        SECTION 4: 🐦 X (TWITTER) / LINKEDIN TEXT THREAD
-        - Convert the core summary of this script into a 3-part textual post/thread to post directly on X or LinkedIn.
-        """,
-        expected_output=f"A complete formatted production bundle including script, metadata, social captions, and text thread strictly in {output_language} language.",
-        agent=script_writer,
-        context=[research_task]
-    )
-
-    crew = Crew(
-        agents=[trend_researcher, script_writer],
-        tasks=[research_task, write_script_task],
-        verbose=True
-    )
-
-    return str(crew.kickoff())
-
-def run_my_crew_ai_agents(niche_topic, social_platform, output_language, video_duration):
+def run_my_crew_ai_agents(niche_topic, social_platform, output_language, video_duration, app_mode, user_pasted_script):
+    """Modes ke hisab se safe parameters pass karna."""
+    
     target_seconds = int(video_duration * 60)
     target_words = int(video_duration * 140)
     
     if GEMINI_KEY:
         try:
-            # 🛠️ DEVELOPER LOG: Sirf terminal me print hoga, web UI par nahi
-            print(f"[SYSTEM LOG] Attempting to launch Engine 1: Google Gemini...")
-            
+            print(f"[SYSTEM LOG] Mode Detected: {app_mode}")
             gemini_llm = get_gemini_llm()
-            result = run_crew(niche_topic, social_platform, output_language, gemini_llm, target_words, target_seconds, video_duration)
-            st.session_state["active_model"] = "gemini"
             
-            print(f"[SYSTEM LOG] Success! Script served via Gemini.")
+            # 🌟 Passing all parameters down to run_crew
+            result = run_crew(
+                niche_topic, social_platform, output_language, gemini_llm, 
+                target_words, target_seconds, video_duration, app_mode, user_pasted_script
+            )
+            st.session_state["active_model"] = "gemini"
             return result
         except Exception as e:
-            print(f"[CRITICAL WARNING] Gemini Failed! Error: {str(e)}")
-            print(f"[SYSTEM LOG] Triggering Silent Failover... Routing request to Meta Llama Infrastructure.")
-
+            print(f"[CRITICAL WARNING] Gemini Failed: {str(e)}")
+            
     if GROQ_KEY:
         st.session_state["active_model"] = "groq"
         groq_llm = get_groq_llm()
-        result = run_crew(niche_topic, social_platform, output_language, groq_llm, target_words, target_seconds, video_duration)
+        return run_crew(
+            niche_topic, social_platform, output_language, groq_llm, 
+            target_words, target_seconds, video_duration, app_mode, user_pasted_script
+        )
         
         print(f"[SYSTEM LOG] Success! Script served silently via Meta Llama Architecture.")
         return result
