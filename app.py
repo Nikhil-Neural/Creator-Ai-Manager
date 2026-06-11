@@ -106,8 +106,23 @@ def run_crew(niche_topic, social_platform, output_language, llm, target_words, t
     agent_tools = [search_tool] if (search_tool and "Complete Blueprint" in app_mode) else []
     
     # Agents initialization (Wahi rahenge jo humne pehle set kiye the)
-    trend_researcher = Agent(...)
-    script_writer = Agent(...)
+    trend_researcher = Agent(
+        role="Elite Social Media Trend Analyst",
+        goal=f"Identify viral video structures and breakout topics for {niche_topic} on {social_platform}.",
+        backstory="Expert at reverse-engineering internet algorithms and discovering what makes human beings click and watch.",
+        tools=agent_tools,
+        llm=llm,
+        verbose=True,
+        allow_delegation=False
+    )
+    script_writer = Agent(
+        role="Premium Retention Content Director",
+        goal=f"Create high-engagement script bundles in {output_language} that maximize watch-time.",
+        backstory="A veteran copywriter skilled at keeping viewers hooked with audio-visual cues and seamless platform repurposing.",
+        llm=llm,
+        verbose=True,
+        allow_delegation=False
+    )
     
     # 📝 DYNAMIC TASKS ENGINE (Yahan asli logic execute hoga!)
     
