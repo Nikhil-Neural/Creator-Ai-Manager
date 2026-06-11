@@ -57,6 +57,41 @@ def create_word_doc(script_text, platform_name, topic_name):
     doc.save(bio)
     bio.seek(0)  # Pointer ko shuruat me lana download ke liye
     return bio
+import requests
+import json
+
+def fetch_live_trends(niche_topic):
+    """Serper API ka use karke live internet trends aur titles nikalna."""
+    if not SERPER_KEY:
+        return ["⚠️ Serper API Key missing! Live trends nahi load ho paye."]
+    
+    url = "https://google.serper.dev/search"
+    # YouTube aur Google dono ke mix trends nikalne ke liye query optimization
+    payload = json.dumps({
+        "q": f"trending viral videos topics {niche_topic}",
+        "num": 4
+    })
+    headers = {
+        'X-API-KEY': SERPER_KEY,
+        'Content-Type': 'application/json'
+    }
+    
+    try:
+        response = requests.post(url, headers=headers, data=payload, timeout=10)
+        data = response.json()
+        
+        trends_list = []
+        # Organic search results me se top titles aur snippets nikalna
+        if "organic" in data:
+            for item in data["organic"][:3]:
+                trends_list.append(f"📺 **{item['title']}** — *{item.get('snippet', '')[:100]}...*")
+        
+        if not trends_list:
+            return ["🤷 No active breakout spikes found for this niche today. Safe to target evergreen content!"]
+            
+        return trends_list
+    except Exception as e:
+        return [f"⚠️ Live Radar Congested: Couldn't fetch links right now."]
 
 # ── Session State ──────────────────────────────────────
 if "niche_data"    not in st.session_state: st.session_state["niche_data"]    = ""
@@ -242,6 +277,18 @@ with tab1:
 
         st.write("---")
         submit_btn = st.form_submit_button("🚀 Launch AI Agents Grid", use_container_width=True)
+
+        # 🌟 NEW: THE REAL-TIME TREND RADAR INSIDE TAB 1!
+        if st.session_state["niche_data"]:
+            st.markdown("### 🔥 Live Internet Trend Radar (Your Niche)")
+            st.caption(f"Right now, content engines are tracking these massive spikes for **'{st.session_state['niche_data']}'**:")
+            
+            # Live data fetch karke screen par render karna
+            with st.spinner("Searching live satellite search index..."):
+                live_signals = fetch_live_trends(st.session_state["niche_data"])
+                for signal in live_signals:
+                    st.markdown(f"👉 {signal}")
+            st.write("---")
 
         if submit_btn:
             if user_niche:
