@@ -386,15 +386,15 @@ with tab2:
         with col1:
             st.download_button(
                 label="📥 Download as Notepad (.txt)",
-                data=st.session_state["script_data"],
+                data=str(st.session_state["script_data"]), # 🌟 FIXED: str() laga diya
                 file_name=f"{platform}_{st.session_state['niche_data'].replace(' ','_')}.txt",
                 mime="text/plain",
                 use_container_width=True
             )
             
         with col2:
-            # Word file memory object create karna button trigger hone par
-            word_file = create_word_doc(st.session_state["script_data"], platform, st.session_state["niche_data"])
+            # 🌟 FIXED: Yahan bhi str() lagakar Word Document generator ko bhejenge
+            word_file = create_word_doc(str(st.session_state["script_data"]), platform, st.session_state["niche_data"])
             st.download_button(
                 label="📥 Download Word Document (.docx)",
                 data=word_file,
