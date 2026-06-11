@@ -186,22 +186,25 @@ with tab1:
     st.markdown("### 🔥 AI Content Strategy Hub")
     st.caption("Topic daliye — Researcher + Writer agents kaam karenge.")
     st.write("---")
+    
+    # 🌟 STEP 1: Radio button ko FORM KE BAHAR nikala taaki clicks instantly reactive ho jayein!
+    app_mode = st.radio(
+        "🔮 Kis Mode me kaam karna hai?",
+        [
+            "🚀 Complete Blueprint Mode", 
+            "✍️ Repurpose My Script Mode", 
+            "🎨 Ultimate Thumbnail Creator Mode"
+        ],
+        horizontal=True,
+        help="Apna workflow chunein. Har mode ke hisab se niche ke options badal jayenge."
+    )
+    
+    st.write("---")
+    
+    # 🌟 STEP 2: Ab baki ke inputs ko hum form ke andar wrap karenge
     with st.form("trend_form"):
-        # 🌟 UI UPGRADE: Dropdown hata kar saare modes saamne horizontal buttons me dikhenge
-        app_mode = st.radio(
-            "🔮 Kis Mode me kaam karna hai?",
-            [
-                "🚀 Complete Blueprint Mode", 
-                "✍️ Repurpose My Script Mode", 
-                "🎨 Ultimate Thumbnail Creator Mode"
-            ],
-            horizontal=True, # Saare options ek hi line me samne dikhenge!
-            help="Apna workflow chunein. Har mode ke hisab se niche ke options badal jayenge."
-        )
         
-        st.write("---")
-        
-        # 🌟 DYNAMIC INPUT & SLIDER ENGINE
+        # 🌟 DYNAMIC INPUT & SLIDER ENGINE (Form ke andar makkhan chalega ab)
         if app_mode == "🚀 Complete Blueprint Mode":
             user_niche = st.text_input(
                 "🎯 Kis topic par video banani hai?",
@@ -226,7 +229,6 @@ with tab1:
                 height=250,
                 placeholder="Yahan apni poori script paste karo, CrewAI isse direct Titles, Captions aur Thread bana dega..."
             )
-            # Is mode me duration ki zaroorat nahi h, backend safe rakhne ke leye default 2 mins set kar dete h background me
             video_duration = 2.0
             
         elif app_mode == "🎨 Ultimate Thumbnail Creator Mode":
@@ -245,7 +247,6 @@ with tab1:
             if user_niche:
                 with st.spinner("🕵️ Multi-Agent System is orchestrating strategy..."):
                     try:
-                        # 🌟 Form se duration bhej rahe hain backend mein
                         ai_output = run_my_crew_ai_agents(user_niche, platform, language, video_duration, app_mode, user_pasted_script)
                         st.session_state["niche_data"]  = user_niche
                         st.session_state["script_data"] = ai_output
