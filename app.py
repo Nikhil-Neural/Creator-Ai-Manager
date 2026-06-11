@@ -68,7 +68,7 @@ def fetch_live_trends(niche_topic):
     url = "https://google.serper.dev/search"
     # YouTube aur Google dono ke mix trends nikalne ke liye query optimization
     payload = json.dumps({
-        "q": f"trending viral videos topics {niche_topic}",
+        "q": f"site:youtube.com viral trending video {niche_topic}", 
         "num": 4
     })
     headers = {
@@ -112,50 +112,94 @@ def run_crew(niche_topic, social_platform, output_language, llm, target_words, t
     # 📝 DYNAMIC TASKS ENGINE (Yahan asli logic execute hoga!)
     
     # MODE 1: Fresh Topic Se Full Blueprint
+    # MODE 1: Fresh Topic Se Full Blueprint
     if "Complete Blueprint Mode" in app_mode:
         research_task = Task(
-            description=f"Google search current trends for '{niche_topic}' on {social_platform}...",
-            expected_output="Live trends report.",
+            description=f"""Perform a deep-dive tactical search on YouTube and Google for the topic: '{niche_topic}'.
+            1. Find the top 3 most viewed or viral video titles related to this topic right now.
+            2. Extract the core psychological hook or emotional angle that made them go viral.
+            3. Identify high-volume breakout keywords that audience is actively searching for today.
+            
+            Format your final report cleanly with: 'VIRAL TITLES', 'CORE HOOKS', and 'TARGET KEYWORDS'.""",
+            expected_output="A precise, raw data intelligence report containing live viral spikes, video angles, and high-CTR hooks.",
             agent=trend_researcher
         )
         
         write_script_task = Task(
-            description=f"Create a full Content Production Bundle based on the researcher's trends...",
-            expected_output="Full bundle output.",
+            description=f"""You are a master retention scriptwriter. Using the live research report provided by the researcher, create a world-class, premium 'Content Production Bundle' for {social_platform} in {output_language} language.
+            
+            STRICT WORD & PACING RULE: The video duration must be exactly {video_duration} MINUTES ({target_seconds} SECONDS). To maintain high retention pacing, write exactly around {target_words} words for the script section.
+            
+            Structure the entire output into these 4 premium sections divided by '---':
+            ---
+            SECTION 1: 🎬 VIDEO SCRIPT BLUEPRINT (Paced for {video_duration} Mins / {target_seconds} Secs)
+            [Include a High-Retention Visual Hook in first 5 seconds, an engaging body, and a psychological CTA at the end. Use audio cues like (SFX: Whoosh) or (Visual: Text Pops Up) to make it highly professional.]
+            ---
+            SECTION 2: 🎯 METADATA & CTR OPTIMIZATION
+            [Give 3 Ultra High-CTR Titles, 1 SEO-optimized Description with timestamps, and 15 targeted Tags.]
+            ---
+            SECTION 3: 📱 SHORT-FORM REPURPOSING CAPTIONS
+            [Provide a viral caption with 5 high-reach hashtags optimized for Reels/Shorts/TikTok distribution.]
+            ---
+            SECTION 4: 🧵 PLATFORM X/LINUX MULTI-TEXT THREAD
+            [Convert this entire value bomb into a highly engaging 5-tweet micro-learning thread.]
+            """,
+            expected_output=f"A complete formatted production bundle written strictly in {output_language} including an engineered script, viral metadata, short-form captions, and a text thread.",
             agent=script_writer,
-            context=[research_task]  # Synchronization Engine Active!
+            context=[research_task]  # Synchronization engine active!
         )
         crew_tasks = [research_task, write_script_task]
         active_agents = [trend_researcher, script_writer]
 
     # MODE 2: Repurpose Existing Script
+    # MODE 2: Repurpose Existing Script
     elif "Repurpose My Script Mode" in app_mode:
         write_script_task = Task(
-            description=f"""The user has provided their OWN raw script. Do not write a new script from scratch.
-            Read this user script carefully: 
+            description=f"""The user has provided their OWN raw video script. Do not write a brand new narrative from scratch. 
+            Analyze the user's script carefully:
             ---
             {user_pasted_script}
             ---
             
-            Your ONLY job is to properly format this exact script into SECTION 1 (ensuring time stamps are fixed) 
-            and then generate fresh SECTION 2 (Metadata Bundle), SECTION 3 (Reels Captions), and SECTION 4 (Threads) 
-            strictly in {output_language} based on this content.""",
-            expected_output="Repurposed content bundle from pasted script.",
+            Your job is to act as an Elite Editor and Distribution Strategist. Generate a complete multi-platform bundle in {output_language} based ONLY on the script above.
+            
+            Format into these 4 pristine sections divided by '---':
+            ---
+            SECTION 1: 🎬 POLISHED SCRIPT & RETENTION AUDIT
+            [Re-write the user's script slightly to fix any awkward pacing, add camera directions, sound effects, and structure it cleanly while keeping the core message identical.]
+            ---
+            SECTION 2: 🎯 INSTANT VIRAL METADATA BUNDLE
+            [Provide 5 dynamic alternative titles designed for high Click-Through-Rate, and an optimized description wrapper.]
+            ---
+            SECTION 3: 📱 REELS & SHORTS DISTRIBUTION WIDGET
+            [A 15-second hook summary designed as a caption for short-form video distribution with viral tags.]
+            ---
+            SECTION 4: 🧵 VALUABLE MICRO-CONTENT THREAD
+            [Break down the core insights of this script into a 4-part value-packed thread for social text platforms.]
+            """,
+            expected_output="An expert-level distribution bundle repurposing the user's raw text into polished multi-platform assets.",
             agent=script_writer
         )
-        # Search task bypass ho gaya, direct script processing chalegi!
         crew_tasks = [write_script_task]
         active_agents = [script_writer]
         
     # MODE 3: Ultimate Thumbnail Creator Mode
+    # MODE 3: Ultimate Thumbnail Creator Mode
     else:
         write_script_task = Task(
-            description=f"""Generate 3 hyper-viral high-CTR thumbnail ideas for the topic '{niche_topic}'.
-            For each idea, provide:
-            1. Psychological Hook Text (to put on thumbnail image)
-            2. Background Color Theme Description (with hex codes if needed)
-            3. Main Visual Character/Object element details.""",
-            expected_output="3 high-CTR thumbnail design concepts.",
+            description=f"""You are a world-class Visual Strategist and Youtube CTR Consultant. 
+            Generate 3 hyper-viral, high-click-through-rate (CTR) thumbnail design concepts for the topic/niche: '{niche_topic}' strictly in {output_language} language.
+            
+            For each of the 3 distinct concepts, you must strictly provide:
+            
+            🔥 CONCEPT NUMBER: [Concept Name]
+            1. 🧠 PSYCHOLOGICAL HOOK TEXT: (What text should be written ON the thumbnail? Limit to 3-4 high-impact emotional words. E.g., 'DON'T DO THIS!')
+            2. 🎨 COLOR PALETTE & HEX SUGGESTIONS: (Detailed description of the background, foreground contrast, lighting style, and specific psychological colors like Cyberpunk Neon Red, Matte Black background, or High-Contrast Yellow shadows.)
+            3. 👁️ CENTRAL VISUAL ELEMENT: (What is the exact image or object? Describe the facial expression of the character, or the exact juxtaposition of elements. E.g., 'A shocking split-screen showing a broken laptop vs a glowing gold machine'.)
+            4. 🚀 COMPETING VALUE PROPOSITION: (Why will a user click this instead of other videos? Explain the visual curiosity loop.)
+            
+            Divide each concept clearly with '---'.""",
+            expected_output="3 deep-level behavioral thumbnail design frameworks built to weaponize psychological curiosity and double the average CTR.",
             agent=script_writer
         )
         crew_tasks = [write_script_task]
