@@ -14,30 +14,47 @@ from crewai import Agent, Task, Crew, LLM
 st.set_page_config(page_title="Creator AI OS", layout="wide")
 
 # ── API Keys ───────────────────────────────────────────
-GEMINI_KEY = st.secrets.get("GEMINI_API_KEY", "")
-GROQ_KEY   = st.secrets.get("GROQ_API_KEY", "")
-SERPER_KEY = st.secrets.get("SERPER_API_KEY", "")
+# ── STEP 1: TRIPLE-LAYER FAILPROOF LLM RESOLVER MATRIX ──
+G_KEY_1 = st.secrets.get("GEMINI_API_KEY_1", "")
+G_KEY_2 = st.secrets.get("GEMINI_API_KEY_2", "")
+GR_KEY_1 = st.secrets.get("GROQ_API_KEY_1", "")
+GR_KEY_2 = st.secrets.get("GROQ_API_KEY_2", "")
+S_KEY_1 = st.secrets.get("SERPER_API_KEY_1", "")
+S_KEY_2 = st.secrets.get("SERPER_API_KEY_2", "")
+
+# Fallback mechanism standard keys for old dependencies
+GEMINI_KEY = G_KEY_1 if G_KEY_1 else st.secrets.get("GEMINI_API_KEY", "")
+GROQ_KEY   = GR_KEY_1 if GR_KEY_1 else st.secrets.get("GROQ_API_KEY", "")
+SERPER_KEY = S_KEY_1 if S_KEY_1 else st.secrets.get("SERPER_API_KEY", "")
+
 from crewai_tools import SerperDevTool
 search_tool = SerperDevTool(api_key=SERPER_KEY) if SERPER_KEY else None
 
-if not GEMINI_KEY and not GROQ_KEY:
-    st.sidebar.error("⚠️ Koi bhi API key set nahi hai!")
+if not G_KEY_1 and not GR_KEY_1 and not GEMINI_KEY and not GROQ_KEY:
+    st.sidebar.error("⚠️ Control Panel Matrix Empty: Keys Missing!")
 
-# ── LLM Objects — LiteLLM Provider Fixed ───────────────
-def get_gemini_llm():
-    return LLM(
-        model="gemini/gemini-2.5-flash",
-        api_key=GEMINI_KEY,
-        timeout=45,
-        max_retries=2
-    )
-
-def get_groq_llm():
-    return LLM(
-        model="groq/llama-3.3-70b-versatile",
-        api_key=GROQ_KEY,
-        temperature=0.7
-    )
+def get_cluster_llm(provider="groq"):
+    """
+    Smart Fallback Rotation Router:
+    - Groq Cluster: Key 1 -> Key 2 (High Speed Matrix)
+    - Gemini Cluster: Key 1 -> Key 2 (Context Heavy Matrix)
+    """
+    if provider == "groq":
+        primary_key = GR_KEY_1 if GR_KEY_1 else GROQ_KEY
+        fallback_key = GR_KEY_2 if GR_KEY_2 else primary_key
+        try:
+            return LLM(model="groq/llama-3.3-70b-versatile", api_key=primary_key, timeout=30)
+        except Exception as e:
+            print(f"[ROUTING ALERT] Groq Key 1 failed. Swapping to Groq Key 2. Error: {e}")
+            return LLM(model="groq/llama-3.3-70b-versatile", api_key=fallback_key, timeout=30)
+    else:
+        primary_key = G_KEY_1 if G_KEY_1 else GEMINI_KEY
+        fallback_key = G_KEY_2 if G_KEY_2 else primary_key
+        try:
+            return LLM(model="gemini/gemini-2.5-flash", api_key=primary_key, timeout=30)
+        except Exception as e:
+            print(f"[ROUTING ALERT] Gemini Key 1 failed. Swapping to Gemini Key 2. Error: {e}")
+            return LLM(model="gemini/gemini-2.5-flash", api_key=fallback_key, timeout=30)
 
 # 🌟 NEW HELPER FUNCTION: Script ko Word File (.docx) me badalna RAM ke andar
 def create_word_doc(script_text, platform_name, topic_name):
@@ -105,166 +122,140 @@ if "active_model"  not in st.session_state: st.session_state["active_model"]  = 
 if "gemini_error"  not in st.session_state: st.session_state["gemini_error"]  = ""
 
 # ── CrewAI Backend ─────────────────────────────────────
-def run_crew(niche_topic, social_platform, output_language, llm, target_words, target_seconds, video_duration, app_mode, user_pasted_script):
-    
-    # 🌟 Internet Search Tool ko tabhi active karenge jab Complete Blueprint mode ho
-    agent_tools = [search_tool] if (search_tool and "Complete Blueprint" in app_mode) else []
-    
-    # Agents initialization (Wahi rahenge jo humne pehle set kiye the)
-    trend_researcher = Agent(
-        role="Elite Social Media Trend Analyst",
-        goal=f"Identify viral video structures and breakout topics for {niche_topic} on {social_platform}.",
-        backstory="Expert at reverse-engineering internet algorithms and discovering what makes human beings click and watch.",
-        tools=agent_tools,
-        llm=llm,
-        verbose=True,
-        allow_delegation=False
-    )
-    script_writer = Agent(
-        role="Premium Retention Content Director",
-        goal=f"Create high-engagement script bundles in {output_language} that maximize watch-time.",
-        backstory="A veteran copywriter skilled at keeping viewers hooked with audio-visual cues and seamless platform repurposing.",
-        llm=llm,
-        verbose=True,
-        allow_delegation=False
-    )
-    
-    # 📝 DYNAMIC TASKS ENGINE (Yahan asli logic execute hoga!)
-    
-    # MODE 1: Fresh Topic Se Full Blueprint
-    # MODE 1: Fresh Topic Se Full Blueprint
-    if "Complete Blueprint Mode" in app_mode:
-        research_task = Task(
-            description=f"""Perform a deep-dive tactical search on YouTube and Google for the topic: '{niche_topic}'.
-            1. Find the top 3 most viewed or viral video titles related to this topic right now.
-            2. Extract the core psychological hook or emotional angle that made them go viral.
-            3. Identify high-volume breakout keywords that audience is actively searching for today.
-            
-            Format your final report cleanly with: 'VIRAL TITLES', 'CORE HOOKS', and 'TARGET KEYWORDS'.""",
-            expected_output="A precise, raw data intelligence report containing live viral spikes, video angles, and high-CTR hooks.",
-            agent=trend_researcher
-        )
-        
-        write_script_task = Task(
-            description=f"""You are a master retention scriptwriter. Using the live research report provided by the researcher, create a world-class, premium 'Content Production Bundle' for {social_platform} in {output_language} language.
-            
-            STRICT WORD & PACING RULE: The video duration must be exactly {video_duration} MINUTES ({target_seconds} SECONDS). To maintain high retention pacing, write exactly around {target_words} words for the script section.
-            
-            Structure the entire output into these 4 premium sections divided by '---':
-            ---
-            SECTION 1: 🎬 VIDEO SCRIPT BLUEPRINT (Paced for {video_duration} Mins / {target_seconds} Secs)
-            [Include a High-Retention Visual Hook in first 5 seconds, an engaging body, and a psychological CTA at the end. Use audio cues like (SFX: Whoosh) or (Visual: Text Pops Up) to make it highly professional.]
-            ---
-            SECTION 2: 🎯 METADATA & CTR OPTIMIZATION
-            [Give 3 Ultra High-CTR Titles, 1 SEO-optimized Description with timestamps, and 15 targeted Tags.]
-            ---
-            SECTION 3: 📱 SHORT-FORM REPURPOSING CAPTIONS
-            [Provide a viral caption with 5 high-reach hashtags optimized for Reels/Shorts/TikTok distribution.]
-            ---
-            SECTION 4: 🧵 PLATFORM X/LINUX MULTI-TEXT THREAD
-            [Convert this entire value bomb into a highly engaging 5-tweet micro-learning thread.]
-            """,
-            expected_output=f"A complete formatted production bundle written strictly in {output_language} including an engineered script, viral metadata, short-form captions, and a text thread.",
-            agent=script_writer,
-            context=[research_task]  # Synchronization engine active!
-        )
-        crew_tasks = [research_task, write_script_task]
-        active_agents = [trend_researcher, script_writer]
-
-    # MODE 2: Repurpose Existing Script
-    # MODE 2: Repurpose Existing Script
-    elif "Repurpose My Script Mode" in app_mode:
-        write_script_task = Task(
-            description=f"""The user has provided their OWN raw video script. Do not write a brand new narrative from scratch. 
-            Analyze the user's script carefully:
-            ---
-            {user_pasted_script}
-            ---
-            
-            Your job is to act as an Elite Editor and Distribution Strategist. Generate a complete multi-platform bundle in {output_language} based ONLY on the script above.
-            
-            Format into these 4 pristine sections divided by '---':
-            ---
-            SECTION 1: 🎬 POLISHED SCRIPT & RETENTION AUDIT
-            [Re-write the user's script slightly to fix any awkward pacing, add camera directions, sound effects, and structure it cleanly while keeping the core message identical.]
-            ---
-            SECTION 2: 🎯 INSTANT VIRAL METADATA BUNDLE
-            [Provide 5 dynamic alternative titles designed for high Click-Through-Rate, and an optimized description wrapper.]
-            ---
-            SECTION 3: 📱 REELS & SHORTS DISTRIBUTION WIDGET
-            [A 15-second hook summary designed as a caption for short-form video distribution with viral tags.]
-            ---
-            SECTION 4: 🧵 VALUABLE MICRO-CONTENT THREAD
-            [Break down the core insights of this script into a 4-part value-packed thread for social text platforms.]
-            """,
-            expected_output="An expert-level distribution bundle repurposing the user's raw text into polished multi-platform assets.",
-            agent=script_writer
-        )
-        crew_tasks = [write_script_task]
-        active_agents = [script_writer]
-        
-    # MODE 3: Ultimate Thumbnail Creator Mode
-    # MODE 3: Ultimate Thumbnail Creator Mode
-    else:
-        write_script_task = Task(
-            description=f"""You are a world-class Visual Strategist and Youtube CTR Consultant. 
-            Generate 3 hyper-viral, high-click-through-rate (CTR) thumbnail design concepts for the topic/niche: '{niche_topic}' strictly in {output_language} language.
-            
-            For each of the 3 distinct concepts, you must strictly provide:
-            
-            🔥 CONCEPT NUMBER: [Concept Name]
-            1. 🧠 PSYCHOLOGICAL HOOK TEXT: (What text should be written ON the thumbnail? Limit to 3-4 high-impact emotional words. E.g., 'DON'T DO THIS!')
-            2. 🎨 COLOR PALETTE & HEX SUGGESTIONS: (Detailed description of the background, foreground contrast, lighting style, and specific psychological colors like Cyberpunk Neon Red, Matte Black background, or High-Contrast Yellow shadows.)
-            3. 👁️ CENTRAL VISUAL ELEMENT: (What is the exact image or object? Describe the facial expression of the character, or the exact juxtaposition of elements. E.g., 'A shocking split-screen showing a broken laptop vs a glowing gold machine'.)
-            4. 🚀 COMPETING VALUE PROPOSITION: (Why will a user click this instead of other videos? Explain the visual curiosity loop.)
-            
-            Divide each concept clearly with '---'.""",
-            expected_output="3 deep-level behavioral thumbnail design frameworks built to weaponize psychological curiosity and double the average CTR.",
-            agent=script_writer
-        )
-        crew_tasks = [write_script_task]
-        active_agents = [script_writer]
-
-    # 🏁 Crew Launcher
-    my_crew = Crew(
-        agents=active_agents,
-        tasks=crew_tasks,
-        verbose=True
-    )
-    
-    return my_crew.kickoff()
-
-def run_my_crew_ai_agents(niche_topic, social_platform, output_language, video_duration, app_mode, user_pasted_script):
-    """Modes ke hisab se safe parameters pass karna."""
-    
+# =====================================================================
+# ── STEP 2: THE ULTIMATE DYNAMIC MASTER CREW BACKEND ENGINE ──
+# =====================================================================
+def run_my_crew_ai_agents(niche_topic, social_platform, output_language, video_duration, app_mode, user_pasted_script, selected_bundle_options):
+    """
+    Failproof Dynamic Master Crew Architecture (PDF v1.3 Upgraded).
+    Orchestrates multiple agents and routes tasks conditionally based on UI inputs.
+    """
+    # Mathematical word limits based on precise content video pacing rules
     target_seconds = int(video_duration * 60)
     target_words = int(video_duration * 140)
     
-    if GEMINI_KEY:
-        try:
-            print(f"[SYSTEM LOG] Mode Detected: {app_mode}")
-            gemini_llm = get_gemini_llm()
+    # Core Clusters Resolvers (Step 1 Dynamic Mapping Router)
+    groq_cluster_llm = get_cluster_llm(provider="groq")
+    gemini_cluster_llm = get_cluster_llm(provider="gemini")
+    
+    # TRIPLE FAILPROOF FIREWALL MATRIX FOR HEAVY SCRIPTING
+    script_writing_llm = gemini_cluster_llm
+    try:
+        if not G_KEY_1 and not G_KEY_2 and not GEMINI_KEY:
+            raise Exception("Gemini keys cluster fully depleted")
+    except:
+        print("[CRITICAL PIVOT] Gemini Cluster unresponsive. Script task routed to Groq Core Backup!")
+        script_writing_llm = groq_cluster_llm
+
+    # 🕵️ SPECIALIZED VIRTUAL WORKERS (AGENTS CLUSTER DEFINITION)
+    trend_analyst = Agent(
+        role="Elite Digital Trend & Pattern Analyst",
+        goal=f"Analyze high-retention structural psychological anchors for '{niche_topic}' on {social_platform}.",
+        backstory="Human attention mapping genius. Decodes viral structures and structural signals for creative systems.",
+        llm=groq_cluster_llm,  # Ultra-fast operations execution
+        verbose=True,
+        allow_delegation=False
+    )
+
+    script_writer = Agent(
+        role="Premium Humanized Script Writer & Director",
+        goal="Craft video blueprints that flow seamlessly like a deep conversation with a best friend.",
+        backstory=(
+            "You absolutely hate robotic words or clichés ('delve', 'moreover', 'testament', 'in conclusion'). "
+            "Your writing relies heavily on raw human cadence, smooth transitional linkages, and deep conversational warmth."
+        ),
+        llm=script_writing_llm,  # Assuring maximum nuance tier protection
+        verbose=True,
+        allow_delegation=False
+    )
+
+    copy_maestro = Agent(
+        role="Viral Copywriting Maestro",
+        goal="Deconstruct core structural ideas into hyper-optimized distribution micro-assets.",
+        backstory="Master of click-triggers, cognitive curiosity gaps, platform formatting, and conversion architecture.",
+        llm=groq_cluster_llm,  # Token saver cost efficiency allocation
+        verbose=True,
+        allow_delegation=False
+    )
+
+    # 🔗 CONDITIONAL TASK PIPELINE INJECTION MATRIX (Saves Tokens & Costs)
+    tasks_pipeline = []
+    
+    # Ground Zero Base Task: Trend Context Builder
+    research_task = Task(
+        description=f"Analyze high-alpha viral hooks and retention anomalies on social media for the topic: '{niche_topic}'.",
+        expected_output="A list of core emotional angles, viewer retention vectors, and high-retention themes.",
+        agent=trend_analyst
+    )
+    tasks_pipeline.append(research_task)
+
+    # Deliverable Tier 1: Audio/Visual Content Script Setup
+    if any("Script" in opt for opt in selected_bundle_options):
+        script_prompt = f"Write a full high-retention video script for '{niche_topic}' targeting around {target_words} words ({target_seconds} seconds duration)."
+        if app_mode == "✍️ Repurpose My Script Mode":
+            script_prompt = f"Analyze this raw user script: '{user_pasted_script}'. Re-engineer and polish it for ultimate human cadence, flow, and structural linkage."
             
-            # 🌟 Passing all parameters down to run_crew
-            result = run_crew(
-                niche_topic, social_platform, output_language, gemini_llm, 
-                target_words, target_seconds, video_duration, app_mode, user_pasted_script
-            )
-            st.session_state["active_model"] = "gemini"
-            return result
-        except Exception as e:
-            print(f"[CRITICAL WARNING] Gemini Failed: {str(e)}")
-            
-    if GROQ_KEY:
-        st.session_state["active_model"] = "groq"
-        groq_llm = get_groq_llm()
-        return run_crew(
-            niche_topic, social_platform, output_language, groq_llm, 
-            target_words, target_seconds, video_duration, app_mode, user_pasted_script
+        script_task = Task(
+            description=(
+                f"{script_prompt} Flawlessly match language and cultural rhythm to '{output_language}'. "
+                "Output ONLY in a professional 2-Column Audio/Visual markdown table layout (Left Column: visual cues & sound directions, Right Column: spoken script). "
+                "Ensure zero AI-watermark words. Every sentence must create a psychological chain pulling the listener to the next line."
+            ),
+            expected_output="Conversational high-retention script mapped inside an Audio/Visual 2-column table grid.",
+            agent=script_writer,
+            context=[research_task]
         )
-        
-        print(f"[SYSTEM LOG] Success! Script served silently via Meta Llama Architecture.")
-        return result
+        tasks_pipeline.append(script_task)
+
+    # Deliverable Tier 2: Meta Distribution Headlines & Overlays
+    if any("Titles" in opt for opt in selected_bundle_options):
+        title_task = Task(
+            description=f"Create 5 explosive High-CTR Titles using extreme curiosity gap formulas, an SEO-optimized description text, and target meta tags cluster for '{niche_topic}'.",
+            expected_output="5 high-CTR alternative titles with an optimized search description package.",
+            agent=copy_maestro,
+            context=[research_task]
+        )
+        tasks_pipeline.append(title_task)
+
+    # Deliverable Tier 3: High-Click Thumbnail Concept Schematics
+    if any("Thumbnail" in opt for opt in selected_bundle_options):
+        thumbnail_task = Task(
+            description=f"Design 3 distinct psychological thumbnail frameworks for '{niche_topic}'. Explicitly specify: 1. Visual Focal Point, 2. Text Overlay Hook (max 3 words), 3. High-Contrast Neural Colors, 4. Target behavioral trigger.",
+            expected_output="3 detailed conceptual thumbnail architecture blueprints.",
+            agent=copy_maestro,
+            context=[research_task]
+        )
+        tasks_pipeline.append(thumbnail_task)
+
+    # Deliverable Tier 4: Feed Vertical Captions
+    if any("Captions" in opt for opt in selected_bundle_options):
+        captions_task = Task(
+            description=f"Generate 3 highly click-driven micro-captions and structured algorithmic hashtag nodes tailored for short-form feed distribution based on the asset concept.",
+            expected_output="3 platform-ready viral short caption templates with integrated retention loops.",
+            agent=copy_maestro,
+            context=[research_task]
+        )
+        tasks_pipeline.append(captions_task)
+
+    # Deliverable Tier 5: Authority Storytelling Threads
+    if any("Threads" in opt for opt in selected_bundle_options):
+        threads_task = Task(
+            description=f"Deconstruct core values of '{niche_topic}' and re-engineer them into a vertical 5-part engagement X Thread and an authoritative vertical storytelling LinkedIn article post using wide line spaces.",
+            expected_output="Platform-ready vertical X thread formatting and an authoritative LinkedIn post.",
+            agent=copy_maestro,
+            context=[research_task]
+        )
+        tasks_pipeline.append(threads_task)
+
+    # 🏁 BACKEND LAUNCHER EXECUTION
+    master_crew = Crew(
+        agents=[trend_analyst, script_writer, copy_maestro],
+        tasks=tasks_pipeline,
+        verbose=True
+    )
+    
+    # CrewAI safety compatibility checks
+    return master_crew.get_output() if hasattr(master_crew, 'get_output') else master_crew.kickoff()
 
 # ── Sidebar ────────────────────────────────────────────
 with st.sidebar:
@@ -312,70 +303,113 @@ def fetch_radar_data(niche, show_videos, show_thumbnails):
     return results
 
 # ── tab1 DEFINITION ────────────────────────────────────
+# =====================================================================
+# ── STEP 3: THE STATE-LOCKED DYNAMIC TAB 1 INTERACTION HUB ──
+# =====================================================================
 with tab1:
     st.markdown("### 🔥 AI Content Strategy Hub")
     st.caption("Topic/Script daliye — Specialized multi-agent network kaam karega.")
     st.write("---")
     
-    app_mode = st.radio("🔮 Kis Mode me kaam karna hai?", ["🚀 Complete Blueprint Mode", "✍️ Repurpose My Script Mode"], horizontal=True)
+    # Radio buttons form ke bahar hain taaki UI click karte hi responsive rahe
+    app_mode = st.radio(
+        "🔮 Kis Mode me kaam karna hai?", 
+        ["🚀 Complete Blueprint Mode", "✍️ Repurpose My Script Mode"], 
+        horizontal=True
+    )
     st.write("---")
     
+    # Initial empty variables backup setup
+    bundle_options = []
+    user_niche = ""
+    user_pasted_script = ""
+    video_duration = 2.0
+    
     with st.form("trend_form"):
-        bundle_options = []
-        user_niche = ""
-        user_pasted_script = ""
-        video_duration = 2.0
-        
-        # 🟢 MODE 1: COMPLETE BLUEPRINT
+        # 🟢 CONFIGURATION FOR MODE 1: COMPLETE BLUEPRINT
         if app_mode == "🚀 Complete Blueprint Mode":
-            bundle_options = st.multiselect("🎁 Kya generate karna hai?", 
-                ["🎬 Retention Script & Visual Cues", "🎯 High-CTR Viral Titles & Descriptions", "🎨 High-CTR Thumbnail Design Concepts", "📱 Shorts/Reels Viral Captions & Tags", "🧵 LinkedIn & X (Twitter) Threads"]),
+            bundle_options = st.multiselect(
+                "🎁 Is Content Production Bundle me kya-kya generate karna hai?", 
+                ["🎬 Retention Script & Visual Cues", "🎯 High-CTR Viral Titles & Descriptions", "🎨 High-CTR Thumbnail Design Concepts", "📱 Shorts/Reels Viral Captions & Tags", "🧵 LinkedIn & X (Twitter) Threads"],
+                default=["🎬 Retention Script & Visual Cues", "🎯 High-CTR Viral Titles & Descriptions"],
+                key="blueprint_opts"
+            )
             user_niche = st.text_input("🎯 Kis topic par video banani hai?", value=st.session_state.get("niche_data", ""))
-            video_duration = st.slider("⏱️ Video duration (Minutes):", 0.5, 20.0, 2.0, 0.5)
+            video_duration = st.slider("⏱ Video ki duration kitni honi chahiye? (In Minutes)", 0.5, 20.0, 2.0, 0.5)
             
-        # 🟠 MODE 2: REPURPOSE
+        # 🟠 CONFIGURATION FOR MODE 2: REPURPOSE EXISTING SCRIPT
         else:
-            bundle_options = st.multiselect("🎁 Kya generate karna hai?", 
-                ["🎯 High-CTR Viral Titles & Descriptions", "🎨 High-CTR Thumbnail Design Concept", "📱 Shorts/Reels Viral Captions & Tags", "🧵 LinkedIn & X (Twitter) Threads"]),
+            bundle_options = st.multiselect(
+                "🎁 Apni Paste ki hui Script se kya-kya extract/generate karna hai?", 
+                ["🎯 High-CTR Viral Titles & Descriptions", "🎨 High-CTR Thumbnail Design Concepts", "📱 Shorts/Reels Viral Captions & Tags", "🧵 LinkedIn & X (Twitter) Threads"],
+                default=["🎯 High-CTR Viral Titles & Descriptions"],
+                key="repurpose_opts"
+            )
             user_niche = st.text_input("🎯 Video ka Main Topic/Title:", value=st.session_state.get("niche_data", ""))
-            user_pasted_script = st.text_area("📝 Script Paste karein:", height=200)
+            user_pasted_script = st.text_area("📝 Apni pehle se likhi hui Script yahan Paste karein:", height=200)
 
         submit_btn = st.form_submit_button("🚀 Launch Specialized Agents Grid", use_container_width=True)
 
-        if submit_btn and user_niche:
-            st.session_state["niche_data"] = user_niche
-            # Trigger backend...
-            st.rerun()
+        # Jab user button dabayega, data direct crash-proof session state mein lock hoga
+        if submit_btn:
+            if user_niche:
+                st.session_state["niche_data"] = user_niche
+                st.session_state["form_submitted"] = True
+                st.session_state["selected_options"] = bundle_options
+                st.session_state["current_mode"] = app_mode
+                st.session_state["pasted_script"] = user_pasted_script
+                st.session_state["duration"] = video_duration
+            else:
+                st.error("⚠️ Topic box mein kuch likho pehle!")
 
-    # 📡 THE SMART RADAR (Conditional Rendering)
-    # Sirf tabhi dikhega agar script ya thumbnail chuna hai
-    is_script_req = any("Script" in b for b in bundle_options)
-    is_thumb_req = any("Thumbnail" in b for b in bundle_options)
+    # 📡 THE REAL-TIME SMART MARKET RADAR LOGIC
+    current_opts = st.session_state.get("selected_options", bundle_options)
+    target_niche = st.session_state.get("niche_data", "")
     
-    if st.session_state.get("niche_data") and (is_script_req or is_thumb_req):
+    # Check variables strings mapping for condition extraction logic
+    is_script_req = any("Script" in b for b in current_opts)
+    is_thumb_req = any("Thumbnail" in b for b in current_opts)
+    
+    if target_niche and (is_script_req or is_thumb_req):
         st.write("---")
         st.markdown("### 📡 Real-Time Market Intelligence Radar")
-        with st.spinner("Scanning for high-retention assets..."):
-            data = fetch_radar_data(st.session_state["niche_data"], is_script_req, is_thumb_req)
         
-        # Display Logic
-        if data["videos"] or data["thumbnails"]:
-            if data["videos"]:
-                st.markdown("##### 📈 Trending Videos")
-                cols = st.columns(len(data["videos"]))
-                for i, v in enumerate(data["videos"]):
-                    with cols[i]:
-                        st.video(v['link'])
-            
-            if data["thumbnails"]:
-                st.markdown("##### 🎨 Thumbnail Inspiration")
-                cols = st.columns(len(data["thumbnails"]))
-                for i, t in enumerate(data["thumbnails"]):
-                    with cols[i]:
-                        st.image(t['imageUrl'], use_column_width=True)
+        with st.spinner("Scanning viral distribution layers..."):
+            # Purana helper fetch_live_trends engine trigger integration
+            live_trends_data = fetch_live_trends(target_niche)
+        
+        # Displaying YouTube video structures matching the query link logs
+        if live_trends_data:
+            st.markdown("##### 📈 Trending YouTube Structures Found")
+            cols_layout = st.columns(len(live_trends_data))
+            for idx, item in enumerate(live_trends_data):
+                with cols_layout[idx]:
+                    st.write(f"🔗 **[{item['title']}]({item['url']})**")
+                    st.video(item['url'])
         else:
-            # Motivation Message (Blue Ocean)
-            st.info("🚀 **High-Alpha Opportunity Detected!** Zero direct competition found for this angle—this is a Blue Ocean opportunity. Proceed with maximum optimization!")
+            st.info("🚀 **High-Alpha Opportunity Detected!** Zero direct identical competition discovered for this exact angle—this is a pure Blue Ocean play.")
+
+    # ⚡ AUTOMATED BACKEND PIPELINE GENERATION TRIGGER GATE
+    if st.session_state.get("form_submitted"):
+        with st.spinner("🕵️ Orchestrating failproof master crew network..."):
+            try:
+                # Passing state-locked variables safely down to the new engine
+                ai_output = run_my_crew_ai_agents(
+                    st.session_state["niche_data"],
+                    platform if 'platform' in globals() else "YouTube",
+                    language if 'language' in globals() else "Hindi",
+                    st.session_state.get("duration", 2.0),
+                    st.session_state["current_mode"],
+                    st.session_state.get("pasted_script", ""),
+                    st.session_state["selected_options"]
+                )
+                # Storing results safely inside memory storage
+                st.session_state["script_data"] = ai_output
+                st.session_state["form_submitted"] = False  # Resetting trigger gate to open loop
+                st.rerun()  # Flawless instant jump to Tab 2 layout renderer
+            except Exception as e:
+                st.error(f"❌ Core Engine Error: {e}")
+                st.session_state["form_submitted"] = False
 
 with tab2:
     st.header("📝 Production-Ready Content Bundle")
