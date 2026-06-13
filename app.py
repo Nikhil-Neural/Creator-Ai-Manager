@@ -281,137 +281,103 @@ st.write("---")
 
 tab1, tab2, tab3 = st.tabs(["🔥 Trend & Script", "📝 Generated Script", "📊 Analytics"])
 
+# ── HELPER: Radar Data Fetcher (Isse app.py ke top level ya functions ke saath rakho)
+def fetch_radar_data(niche, show_videos, show_thumbnails):
+    """Conditional data fetching to save API tokens."""
+    results = {"videos": [], "thumbnails": []}
+    if not SERPER_KEY: return results
+    
+    # 1. Fetch Videos if requested
+    if show_videos:
+        url = "https://google.serper.dev/search"
+        payload = json.dumps({"q": f"site:youtube.com watch viral video {niche}", "num": 3})
+        try:
+            response = requests.post(url, headers={'X-API-KEY': SERPER_KEY, 'Content-Type': 'application/json'}, data=payload, timeout=5)
+            data = response.json()
+            if "organic" in data:
+                results["videos"] = [v for v in data["organic"] if "youtube.com" in v.get("link", "")]
+        except: pass
+
+    # 2. Fetch Thumbnails if requested (Specific query for visual research)
+    if show_thumbnails:
+        url = "https://google.serper.dev/images"
+        payload = json.dumps({"q": f"youtube thumbnail {niche} viral design", "num": 3})
+        try:
+            response = requests.post(url, headers={'X-API-KEY': SERPER_KEY, 'Content-Type': 'application/json'}, data=payload, timeout=5)
+            data = response.json()
+            if "images" in data:
+                results["thumbnails"] = data["images"][:3]
+        except: pass
+    
+    return results
+
+# ── tab1 DEFINITION ────────────────────────────────────
 with tab1:
     st.markdown("### 🔥 AI Content Strategy Hub")
-    st.caption("Topic daliye — Specialized multi-agent network kaam karega.")
+    st.caption("Topic/Script daliye — Specialized multi-agent network kaam karega.")
+    st.write("---")
+    
+    app_mode = st.radio("🔮 Kis Mode me kaam karna hai?", ["🚀 Complete Blueprint Mode", "✍️ Repurpose My Script Mode"], horizontal=True)
     st.write("---")
     
     with st.form("trend_form"):
-        # 🔮 CHUNAO: SIRF 2 MAIN POWERFUL MODES RAKHENGE
-        app_mode = st.radio(
-            "🔮 Kis Mode me kaam karna hai?",
-            [
-                "🚀 Complete Blueprint Mode", 
-                "✍️ Repurpose My Script Mode"
-            ],
-            horizontal=True,
-            help="Apna workflow chunein. Har mode ke hisab se niche ke options aur deliverables badal jayenge."
-        )
-        
-        st.write("---")
-        
-        # 🌟 DYNAMIC MULTI-SELECT SUBS-OPTIONS MATRIX (🌟 FIXED & DYNAMICALLY LOCKED)
         bundle_options = []
+        user_niche = ""
+        user_pasted_script = ""
+        video_duration = 2.0
         
+        # 🟢 MODE 1: COMPLETE BLUEPRINT
         if app_mode == "🚀 Complete Blueprint Mode":
-            bundle_options = st.multiselect(
-                "🎁 Is Content Production Bundle me kya-kya generate karna hai?",
-                [
-                    "🎬 Retention Script & Visual Cues",
-                    "🎯 High-CTR Viral Titles & Descriptions",
-                    "🎨 High-CTR Thumbnail Design Concepts",  # 🌟 INTEGRATED HERE!
-                    "📱 Shorts/Reels Viral Captions & Tags",
-                    "🧵 LinkedIn & X (Twitter) Threads"
-                ],
-                default=["🎬 Retention Script & Visual Cues", "🎯 High-CTR Viral Titles & Descriptions", "🎨 High-CTR Thumbnail Design Concepts"],
-                help="Select deliverables. Our master crew will dynamically inject tasks based on this checklist."
-            )
-            st.write("---")
+            bundle_options = st.multiselect("🎁 Kya generate karna hai?", 
+                ["🎬 Retention Script & Visual Cues", "🎯 High-CTR Viral Titles & Descriptions", "🎨 High-CTR Thumbnail Design Concepts", "📱 Shorts/Reels Viral Captions & Tags", "🧵 LinkedIn & X (Twitter) Threads"],
+                default=["🎬 Retention Script & Visual Cues", "🎯 High-CTR Viral Titles & Descriptions", "🎨 High-CTR Thumbnail Design Concepts"])
+            user_niche = st.text_input("🎯 Kis topic par video banani hai?", value=st.session_state.get("niche_data", ""))
+            video_duration = st.slider("⏱️ Video duration (Minutes):", 0.5, 20.0, 2.0, 0.5)
             
-        elif app_mode == "✍️ Repurpose My Script Mode":
-            # 🌟 FIXED: Repurpose mode me bhi user ko multi-select de diya!
-            bundle_options = st.multiselect(
-                "🎁 Apni Paste ki hui Script se kya-kya extract/generate karna hai?",
-                [
-                    "🎨 High-CTR Thumbnail Design Concept",
-                    "🎯 High-CTR Viral Titles & Descriptions",
-                    "📱 Shorts/Reels Viral Captions & Tags",
-                    "🧵 LinkedIn & X (Twitter) Threads"
-                ],
-                default=["🎯 High-CTR Viral Titles & Descriptions", "📱 Shorts/Reels Viral Captions & Tags"],
-                help="Chunein ki aapko apni existing script se kaun-kaun se assets generate karne hain."
-            )
-            st.write("---")
-        
-        # 🎯 DYNAMIC INPUT FIELDS
-        if app_mode == "🚀 Complete Blueprint Mode":
-            user_niche = st.text_input(
-                "🎯 Kis topic par video banani hai?",
-                value=st.session_state["niche_data"],
-                placeholder="E.g., What is AGI, Stoicism Guide, Python for Beginners..."
-            )
-            video_duration = st.slider(
-                "⏱️ Video ki duration kitni honi chahiye? (In Minutes)",
-                min_value=0.5, max_value=20.0, value=2.0, step=0.5
-            )
-            user_pasted_script = ""
-            
-        elif app_mode == "✍️ Repurpose My Script Mode":
-            user_niche = st.text_input(
-                "🎯 Video ka Main Topic/Title kya hai?",
-                value=st.session_state["niche_data"],
-                placeholder="E.g., Claude AI in 1 Minute..."
-            )
-            user_pasted_script = st.text_area(
-                "📝 Apni pehle se likhi hui Script yahan Paste karein:",
-                height=250,
-                placeholder="Yahan apni poori script paste karo, specialized copywriting agents isse selected assets nikaal denge..."
-            )
-            video_duration = 2.0  # Default background value for safety
+        # 🟠 MODE 2: REPURPOSE
+        else:
+            bundle_options = st.multiselect("🎁 Kya generate karna hai?", 
+                ["🎯 High-CTR Viral Titles & Descriptions", "🎨 High-CTR Thumbnail Design Concept", "📱 Shorts/Reels Viral Captions & Tags", "🧵 LinkedIn & X (Twitter) Threads"],
+                default=["🎯 High-CTR Viral Titles & Descriptions"])
+            user_niche = st.text_input("🎯 Video ka Main Topic/Title:", value=st.session_state.get("niche_data", ""))
+            user_pasted_script = st.text_area("📝 Script Paste karein:", height=200)
 
-        st.write("---")
         submit_btn = st.form_submit_button("🚀 Launch Specialized Agents Grid", use_container_width=True)
 
-        # 🌟 THE ULTRA-PREMIUM LIVE VIDEO RADAR INSIDE TAB 1!
-        if st.session_state["niche_data"]:
-            st.write("---")
-            st.markdown("### 📡 Real-Time Market Intelligence Radar")
-            
-            with st.spinner("Scanning high-retention video distribution networks..."):
-                discovered_videos = fetch_live_trends(st.session_state["niche_data"])
-            
-            # CASE 1: Jab hotspots/videos milgayin
-            if discovered_videos:
-                st.markdown("##### 📈 Market Signals Detected in Your Niche")
-                st.caption("Analyze these high-performing visual anchors to reverse-engineer their retention mechanics:")
-                
-                # Videos ko professional columns grid me dikhana
-                cols = st.columns(len(discovered_videos))
-                for idx, video in enumerate(discovered_videos):
-                    with cols[idx]:
-                        # Saaf, chota aur professional title display
-                        clean_title = video['title'].split("- YouTube")[0][:45] + "..."
-                        st.markdown(f"🎥 **{clean_title}**")
-                        # Live YouTube Video Player embed karna
-                        st.video(video['url'])
-            
-            # CASE 2: Jab data zero mila (The Motivation Booster Engine!)
-            else:
-                st.markdown("""
-                <div style="background-color: #1E293B; border-left: 5px solid #10B981; padding: 20px; border-radius: 8px; margin-top: 15px;">
-                    <h4 style="color: #10B981; margin-0;">🚀 High-Alpha Content Opportunity Detected!</h4>
-                    <p style="color: #94A3B8; font-size: 14px; margin-top: 8px; margin-bottom: 0;">
-                        Our real-time neural radar scanned the current distribution networks and found <b>zero direct competition</b> for this specific topic angle. 
-                        This indicates a highly lucrative <b>Unique or Evergreen Niche</b> opportunity. You are stepping into blue ocean territory—proceed with maximum optimization!
-                    </p>
-                </div>
-                """, unsafe_allow_allowed=True)
-                
-            st.write("---")
+        if submit_btn and user_niche:
+            st.session_state["niche_data"] = user_niche
+            # Trigger backend...
+            st.rerun()
 
-        if submit_btn:
-            if user_niche:
-                with st.spinner("🕵️ Orchestrating master crew and injecting dynamic task parameters..."):
-                    try:
-                        # Pushing data to backend
-                        ai_output = run_my_crew_ai_agents(user_niche, platform, language, video_duration, app_mode, user_pasted_script)
-                        st.session_state["niche_data"]  = user_niche
-                        st.session_state["script_data"] = ai_output
-                        st.rerun() 
-                    except Exception as e:
-                        st.error(f"❌ Error: {e}")
-            else:
-                st.error("⚠️ Topic box mein kuch likho pehle!")
+    # 📡 THE SMART RADAR (Conditional Rendering)
+    # Sirf tabhi dikhega agar script ya thumbnail chuna hai
+    is_script_req = any("Script" in b for b in bundle_options)
+    is_thumb_req = any("Thumbnail" in b for b in bundle_options)
+    
+    if st.session_state.get("niche_data") and (is_script_req or is_thumb_req):
+        st.write("---")
+        st.markdown("### 📡 Real-Time Market Intelligence Radar")
+        with st.spinner("Scanning for high-retention assets..."):
+            data = fetch_radar_data(st.session_state["niche_data"], is_script_req, is_thumb_req)
+        
+        # Display Logic
+        if data["videos"] or data["thumbnails"]:
+            if data["videos"]:
+                st.markdown("##### 📈 Trending Videos")
+                cols = st.columns(len(data["videos"]))
+                for i, v in enumerate(data["videos"]):
+                    with cols[i]:
+                        st.video(v['link'])
+            
+            if data["thumbnails"]:
+                st.markdown("##### 🎨 Thumbnail Inspiration")
+                cols = st.columns(len(data["thumbnails"]))
+                for i, t in enumerate(data["thumbnails"]):
+                    with cols[i]:
+                        st.image(t['imageUrl'], use_column_width=True)
+        else:
+            # Motivation Message (Blue Ocean)
+            st.info("🚀 **High-Alpha Opportunity Detected!** Zero direct competition found for this angle—this is a Blue Ocean opportunity. Proceed with maximum optimization!")
 
 with tab2:
     st.header("📝 Production-Ready Content Bundle")
