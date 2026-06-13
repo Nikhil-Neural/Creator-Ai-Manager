@@ -329,16 +329,14 @@ with tab1:
         # 🟢 MODE 1: COMPLETE BLUEPRINT
         if app_mode == "🚀 Complete Blueprint Mode":
             bundle_options = st.multiselect("🎁 Kya generate karna hai?", 
-                ["🎬 Retention Script & Visual Cues", "🎯 High-CTR Viral Titles & Descriptions", "🎨 High-CTR Thumbnail Design Concepts", "📱 Shorts/Reels Viral Captions & Tags", "🧵 LinkedIn & X (Twitter) Threads"],
-                default=["🎬 Retention Script & Visual Cues", "🎯 High-CTR Viral Titles & Descriptions", "🎨 High-CTR Thumbnail Design Concepts"])
+                ["🎬 Retention Script & Visual Cues", "🎯 High-CTR Viral Titles & Descriptions", "🎨 High-CTR Thumbnail Design Concepts", "📱 Shorts/Reels Viral Captions & Tags", "🧵 LinkedIn & X (Twitter) Threads"]),
             user_niche = st.text_input("🎯 Kis topic par video banani hai?", value=st.session_state.get("niche_data", ""))
             video_duration = st.slider("⏱️ Video duration (Minutes):", 0.5, 20.0, 2.0, 0.5)
             
         # 🟠 MODE 2: REPURPOSE
         else:
             bundle_options = st.multiselect("🎁 Kya generate karna hai?", 
-                ["🎯 High-CTR Viral Titles & Descriptions", "🎨 High-CTR Thumbnail Design Concept", "📱 Shorts/Reels Viral Captions & Tags", "🧵 LinkedIn & X (Twitter) Threads"],
-                default=["🎯 High-CTR Viral Titles & Descriptions"])
+                ["🎯 High-CTR Viral Titles & Descriptions", "🎨 High-CTR Thumbnail Design Concept", "📱 Shorts/Reels Viral Captions & Tags", "🧵 LinkedIn & X (Twitter) Threads"]),
             user_niche = st.text_input("🎯 Video ka Main Topic/Title:", value=st.session_state.get("niche_data", ""))
             user_pasted_script = st.text_area("📝 Script Paste karein:", height=200)
 
