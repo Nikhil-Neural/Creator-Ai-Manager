@@ -125,136 +125,128 @@ if "gemini_error"  not in st.session_state: st.session_state["gemini_error"]  = 
 # =====================================================================
 # ── STEP 2: THE ULTIMATE DYNAMIC MASTER CREW BACKEND ENGINE ──
 # =====================================================================
+# =====================================================================
+# ── STEP 2: CLAUDE-APPROVED DEBUGGER ENGINE (VERBOSE ACTIVE) ──
+# =====================================================================
 def run_my_crew_ai_agents(niche_topic, social_platform, output_language, video_duration, app_mode, user_pasted_script, selected_bundle_options):
     """
-    Failproof Dynamic Master Crew Architecture (PDF v1.3 Upgraded).
-    Orchestrates multiple agents and routes tasks conditionally based on UI inputs.
+    Lean Architecture Matrix with Active Verbose.
+    Enforces single-shot processing to save tokens while keeping logs visible.
     """
-    # Mathematical word limits based on precise content video pacing rules
     target_seconds = int(video_duration * 60)
     target_words = int(video_duration * 140)
     
-    # Core Clusters Resolvers (Step 1 Dynamic Mapping Router)
+    # Core Fast Clusters Routing From Step 1
     groq_cluster_llm = get_cluster_llm(provider="groq")
     gemini_cluster_llm = get_cluster_llm(provider="gemini")
     
-    # TRIPLE FAILPROOF FIREWALL MATRIX FOR HEAVY SCRIPTING
     script_writing_llm = gemini_cluster_llm
-    try:
-        if not G_KEY_1 and not G_KEY_2 and not GEMINI_KEY:
-            raise Exception("Gemini keys cluster fully depleted")
-    except:
-        print("[CRITICAL PIVOT] Gemini Cluster unresponsive. Script task routed to Groq Core Backup!")
+    if not G_KEY_1 and not G_KEY_2 and not GEMINI_KEY:
         script_writing_llm = groq_cluster_llm
 
-    # 🕵️ SPECIALIZED VIRTUAL WORKERS (AGENTS CLUSTER DEFINITION)
+    # 🕵️ SPECIALIZED AGENTS - SINGLE CALL LOGS ENABLED
     trend_analyst = Agent(
-        role="Elite Digital Trend & Pattern Analyst",
-        goal=f"Analyze high-retention structural psychological anchors for '{niche_topic}' on {social_platform}.",
-        backstory="Human attention mapping genius. Decodes viral structures and structural signals for creative systems.",
-        llm=groq_cluster_llm,  # Ultra-fast operations execution
-        verbose=True,
-        allow_delegation=False
+        role="Fast Trend Spotter",
+        goal=f"Extract minimal psychological hooks for '{niche_topic}' on {social_platform}.",
+        backstory="You are a data-saving trend analyst. Give only raw data points.",
+        llm=groq_cluster_llm,
+        max_iter=1,              # 🌟 CLAUDE FIX: Loop control active
+        max_rpm=5,               # 🌟 CLAUDE FIX: Rate protection
+        verbose=True,            # 🌟 USER DEMAND: Terminal logs print honge!
+        allow_delegation=False,
+        memory=False             # 🌟 TOKEN SAVER: Disables internal memory overhead
     )
 
     script_writer = Agent(
-        role="Premium Humanized Script Writer & Director",
-        goal="Craft video blueprints that flow seamlessly like a deep conversation with a best friend.",
-        backstory=(
-            "You absolutely hate robotic words or clichés ('delve', 'moreover', 'testament', 'in conclusion'). "
-            "Your writing relies heavily on raw human cadence, smooth transitional linkages, and deep conversational warmth."
-        ),
-        llm=script_writing_llm,  # Assuring maximum nuance tier protection
-        verbose=True,
-        allow_delegation=False
+        role="Humanized Script Writer",
+        goal="Write a 2-column video script blueprint.",
+        backstory="You write high-retention humanized content without any fluffy or robotic AI words.",
+        llm=script_writing_llm,
+        max_iter=1,              # 🌟 CLAUDE FIX: Loop control active
+        max_rpm=5,
+        verbose=True,            # 🌟 USER DEMAND: Terminal logs print honge!
+        allow_delegation=False,
+        memory=False
     )
 
     copy_maestro = Agent(
-        role="Viral Copywriting Maestro",
-        goal="Deconstruct core structural ideas into hyper-optimized distribution micro-assets.",
-        backstory="Master of click-triggers, cognitive curiosity gaps, platform formatting, and conversion architecture.",
-        llm=groq_cluster_llm,  # Token saver cost efficiency allocation
-        verbose=True,
-        allow_delegation=False
+        role="Micro Copywriter",
+        goal="Convert concepts into short social media assets.",
+        backstory="You create titles, captions, layouts and threads instantly with extreme token efficiency.",
+        llm=groq_cluster_llm,
+        max_iter=1,              # 🌟 CLAUDE FIX: Loop control active
+        max_rpm=5,
+        verbose=True,            # 🌟 USER DEMAND: Terminal logs print honge!
+        allow_delegation=False,
+        memory=False
     )
 
-    # 🔗 CONDITIONAL TASK PIPELINE INJECTION MATRIX (Saves Tokens & Costs)
     tasks_pipeline = []
     
-    # Ground Zero Base Task: Trend Context Builder
+    # 🌟 CLAUDE CHANGE 3: Research response format is strictly limited inside prompt
     research_task = Task(
-        description=f"Analyze high-alpha viral hooks and retention anomalies on social media for the topic: '{niche_topic}'.",
-        expected_output="A list of core emotional angles, viewer retention vectors, and high-retention themes.",
+        description=f"""Analyze viral hooks for '{niche_topic}' on {social_platform}.
+        STRICT LIMIT: Response must be under 200 words only.
+        Give ONLY 3 bullet points. No explanation, no intro.""",
+        expected_output="3 bullet points under 200 words total.",
         agent=trend_analyst
     )
     tasks_pipeline.append(research_task)
 
-    # Deliverable Tier 1: Audio/Visual Content Script Setup
+    # Deliverable Tier 1: Audio/Visual Content Script Layout
     if any("Script" in opt for opt in selected_bundle_options):
         script_prompt = f"Write a full high-retention video script for '{niche_topic}' targeting around {target_words} words ({target_seconds} seconds duration)."
         if app_mode == "✍️ Repurpose My Script Mode":
-            script_prompt = f"Analyze this raw user script: '{user_pasted_script}'. Re-engineer and polish it for ultimate human cadence, flow, and structural linkage."
+            script_prompt = f"Analyze this raw user script: '{user_pasted_script}'. Re-engineer and polish it for ultimate human cadence."
             
         script_task = Task(
-            description=(
-                f"{script_prompt} Flawlessly match language and cultural rhythm to '{output_language}'. "
-                "Output ONLY in a professional 2-Column Audio/Visual markdown table layout (Left Column: visual cues & sound directions, Right Column: spoken script). "
-                "Ensure zero AI-watermark words. Every sentence must create a psychological chain pulling the listener to the next line."
-            ),
-            expected_output="Conversational high-retention script mapped inside an Audio/Visual 2-column table grid.",
+            description=f"""{script_prompt} Flawlessly match language and cultural rhythm to '{output_language}'.
+            Output ONLY in a professional 2-Column Audio/Visual markdown table layout.
+            Ensure zero AI-watermark words. Avoid: delve, moreover, testament, in conclusion.
+            
+            🌟 EXAMPLE SHOT-PROMPTING FORMAT:
+            | [00:00-00:05] | Camera zooms in sharply | Kya tumhe pata hai AI kya sochta hai? |
+            | [00:05-00:15] | Cut to diagram layout | Context window woh jagah hai jahan... |""",
+            expected_output="Conversational script inside an Audio/Visual 2-column table grid.",
             agent=script_writer,
-            context=[research_task]
+            context=[research_task]  # Light short context passed
         )
         tasks_pipeline.append(script_task)
 
-    # Deliverable Tier 2: Meta Distribution Headlines & Overlays
-    if any("Titles" in opt for opt in selected_bundle_options):
-        title_task = Task(
-            description=f"Create 5 explosive High-CTR Titles using extreme curiosity gap formulas, an SEO-optimized description text, and target meta tags cluster for '{niche_topic}'.",
-            expected_output="5 high-CTR alternative titles with an optimized search description package.",
-            agent=copy_maestro,
-            context=[research_task]
-        )
-        tasks_pipeline.append(title_task)
+    # 🌟 CLAUDE CHANGE 1: Independent Distribution Task (Context completely removed to save 4000 tokens)
+    dist_requirements = []
+    if any("Titles" in opt for opt in selected_bundle_options): dist_requirements.append("- 5 High-CTR Titles & Search-Engine Descriptions")
+    if any("Thumbnail" in opt for opt in selected_bundle_options): dist_requirements.append("- 3 distinct thumbnail frameworks (Focal point, Text overlay hook max 3 words, Contrast colors)")
+    if any("Captions" in opt for opt in selected_bundle_options): dist_requirements.append("- 3 click-driven micro-captions and hashtag nodes for Shorts feed")
+    if any("Threads" in opt for opt in selected_bundle_options): dist_requirements.append("- 5-part vertical engagement X Thread and authoritative LinkedIn post")
 
-    # Deliverable Tier 3: High-Click Thumbnail Concept Schematics
-    if any("Thumbnail" in opt for opt in selected_bundle_options):
-        thumbnail_task = Task(
-            description=f"Design 3 distinct psychological thumbnail frameworks for '{niche_topic}'. Explicitly specify: 1. Visual Focal Point, 2. Text Overlay Hook (max 3 words), 3. High-Contrast Neural Colors, 4. Target behavioral trigger.",
-            expected_output="3 detailed conceptual thumbnail architecture blueprints.",
-            agent=copy_maestro,
-            context=[research_task]
+    if dist_requirements:
+        distribution_task = Task(
+            description=f"""You are an independent expert copywriter working directly from the primary topic details.
+            Topic: '{niche_topic}' | Platform: {social_platform} | Language: {output_language}
+            
+            Generate ONLY the required structural assets below:
+            {chr(10).join(dist_requirements)}
+            
+            Rules:
+            - NO robotic words: delve, moreover, testament, in conclusion, furthermore
+            - Be direct, highly human, conversational, and punchy
+            - Each individual component item output must be concise and max 150 words
+            - Zero explanation, zero preamble chitchat, output raw ready-to-copy content only.""",
+            expected_output="Requested distribution assets package, no extra commentary.",
+            agent=copy_maestro
+            # Context intentionally removed here to instantly optimize prompt size!
         )
-        tasks_pipeline.append(thumbnail_task)
+        tasks_pipeline.append(distribution_task)
 
-    # Deliverable Tier 4: Feed Vertical Captions
-    if any("Captions" in opt for opt in selected_bundle_options):
-        captions_task = Task(
-            description=f"Generate 3 highly click-driven micro-captions and structured algorithmic hashtag nodes tailored for short-form feed distribution based on the asset concept.",
-            expected_output="3 platform-ready viral short caption templates with integrated retention loops.",
-            agent=copy_maestro,
-            context=[research_task]
-        )
-        tasks_pipeline.append(captions_task)
-
-    # Deliverable Tier 5: Authority Storytelling Threads
-    if any("Threads" in opt for opt in selected_bundle_options):
-        threads_task = Task(
-            description=f"Deconstruct core values of '{niche_topic}' and re-engineer them into a vertical 5-part engagement X Thread and an authoritative vertical storytelling LinkedIn article post using wide line spaces.",
-            expected_output="Platform-ready vertical X thread formatting and an authoritative LinkedIn post.",
-            agent=copy_maestro,
-            context=[research_task]
-        )
-        tasks_pipeline.append(threads_task)
-
-    # 🏁 BACKEND LAUNCHER EXECUTION
+    # 🏁 LEAN PRODUCTION LAUNCHER
     master_crew = Crew(
         agents=[trend_analyst, script_writer, copy_maestro],
         tasks=tasks_pipeline,
-        verbose=True
+        verbose=True,            # 🌟 USER DEMAND: Terminal logs visible
+        process=None
     )
     
-    # CrewAI safety compatibility checks
     return master_crew.get_output() if hasattr(master_crew, 'get_output') else master_crew.kickoff()
 
 # ── Sidebar ────────────────────────────────────────────
