@@ -283,34 +283,63 @@ tab1, tab2, tab3 = st.tabs(["🔥 Trend & Script", "📝 Generated Script", "�
 
 with tab1:
     st.markdown("### 🔥 AI Content Strategy Hub")
-    st.caption("Topic daliye — Researcher + Writer agents kaam karenge.")
+    st.caption("Topic daliye — Specialized multi-agent network kaam karega.")
     st.write("---")
     
-    # 🌟 STEP 1: Radio button ko FORM KE BAHAR nikala taaki clicks instantly reactive ho jayein!
-    app_mode = st.radio(
-        "🔮 Kis Mode me kaam karna hai?",
-        [
-            "🚀 Complete Blueprint Mode", 
-            "✍️ Repurpose My Script Mode", 
-            "🎨 Ultimate Thumbnail Creator Mode"
-        ],
-        horizontal=True,
-        help="Apna workflow chunein. Har mode ke hisab se niche ke options badal jayenge."
-    )
-    
-    st.write("---")
-    
-    # 🌟 STEP 2: Ab baki ke inputs ko hum form ke andar wrap karenge
     with st.form("trend_form"):
+        # 🔮 CHUNAO: SIRF 2 MAIN POWERFUL MODES RAKHENGE
+        app_mode = st.radio(
+            "🔮 Kis Mode me kaam karna hai?",
+            [
+                "🚀 Complete Blueprint Mode", 
+                "✍️ Repurpose My Script Mode"
+            ],
+            horizontal=True,
+            help="Apna workflow chunein. Har mode ke hisab se niche ke options aur deliverables badal jayenge."
+        )
         
-        # 🌟 DYNAMIC INPUT & SLIDER ENGINE (Form ke andar makkhan chalega ab)
+        st.write("---")
+        
+        # 🌟 DYNAMIC MULTI-SELECT SUBS-OPTIONS MATRIX (🌟 FIXED & DYNAMICALLY LOCKED)
+        bundle_options = []
+        
+        if app_mode == "🚀 Complete Blueprint Mode":
+            bundle_options = st.multiselect(
+                "🎁 Is Content Production Bundle me kya-kya generate karna hai?",
+                [
+                    "🎬 Retention Script & Visual Cues",
+                    "🎯 High-CTR Viral Titles & Descriptions",
+                    "🎨 High-CTR Thumbnail Design Concepts",  # 🌟 INTEGRATED HERE!
+                    "📱 Shorts/Reels Viral Captions & Tags",
+                    "🧵 LinkedIn & X (Twitter) Threads"
+                ],
+                default=["🎬 Retention Script & Visual Cues", "🎯 High-CTR Viral Titles & Descriptions", "🎨 High-CTR Thumbnail Design Concepts"],
+                help="Select deliverables. Our master crew will dynamically inject tasks based on this checklist."
+            )
+            st.write("---")
+            
+        elif app_mode == "✍️ Repurpose My Script Mode":
+            # 🌟 FIXED: Repurpose mode me bhi user ko multi-select de diya!
+            bundle_options = st.multiselect(
+                "🎁 Apni Paste ki hui Script se kya-kya extract/generate karna hai?",
+                [
+                    "🎨 High-CTR Thumbnail Design Concept",
+                    "🎯 High-CTR Viral Titles & Descriptions",
+                    "📱 Shorts/Reels Viral Captions & Tags",
+                    "🧵 LinkedIn & X (Twitter) Threads"
+                ],
+                default=["🎯 High-CTR Viral Titles & Descriptions", "📱 Shorts/Reels Viral Captions & Tags"],
+                help="Chunein ki aapko apni existing script se kaun-kaun se assets generate karne hain."
+            )
+            st.write("---")
+        
+        # 🎯 DYNAMIC INPUT FIELDS
         if app_mode == "🚀 Complete Blueprint Mode":
             user_niche = st.text_input(
                 "🎯 Kis topic par video banani hai?",
                 value=st.session_state["niche_data"],
                 placeholder="E.g., What is AGI, Stoicism Guide, Python for Beginners..."
             )
-            # Slider sirf isi mode me dikhega!
             video_duration = st.slider(
                 "⏱️ Video ki duration kitni honi chahiye? (In Minutes)",
                 min_value=0.5, max_value=20.0, value=2.0, step=0.5
@@ -326,21 +355,12 @@ with tab1:
             user_pasted_script = st.text_area(
                 "📝 Apni pehle se likhi hui Script yahan Paste karein:",
                 height=250,
-                placeholder="Yahan apni poori script paste karo, CrewAI isse direct Titles, Captions aur Thread bana dega..."
+                placeholder="Yahan apni poori script paste karo, specialized copywriting agents isse selected assets nikaal denge..."
             )
-            video_duration = 2.0
-            
-        elif app_mode == "🎨 Ultimate Thumbnail Creator Mode":
-            user_niche = st.text_input(
-                "🎯 Kis topic ya script ke liye Thumbnail Ideas chahiye?",
-                value=st.session_state["niche_data"],
-                placeholder="E.g., AI Tools for Marketing..."
-            )
-            video_duration = 2.0
-            user_pasted_script = ""
+            video_duration = 2.0  # Default background value for safety
 
         st.write("---")
-        submit_btn = st.form_submit_button("🚀 Launch AI Agents Grid", use_container_width=True)
+        submit_btn = st.form_submit_button("🚀 Launch Specialized Agents Grid", use_container_width=True)
 
         # 🌟 THE ULTRA-PREMIUM LIVE VIDEO RADAR INSIDE TAB 1!
         if st.session_state["niche_data"]:
@@ -381,8 +401,9 @@ with tab1:
 
         if submit_btn:
             if user_niche:
-                with st.spinner("🕵️ Multi-Agent System is orchestrating strategy..."):
+                with st.spinner("🕵️ Orchestrating master crew and injecting dynamic task parameters..."):
                     try:
+                        # Pushing data to backend
                         ai_output = run_my_crew_ai_agents(user_niche, platform, language, video_duration, app_mode, user_pasted_script)
                         st.session_state["niche_data"]  = user_niche
                         st.session_state["script_data"] = ai_output
