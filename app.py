@@ -331,18 +331,19 @@ with tab1:
             bundle_options = st.multiselect(
                 "🎁 Is Content Production Bundle me kya-kya generate karna hai?", 
                 ["🎬 Retention Script & Visual Cues", "🎯 High-CTR Viral Titles & Descriptions", "🎨 High-CTR Thumbnail Design Concepts", "📱 Shorts/Reels Viral Captions & Tags", "🧵 LinkedIn & X (Twitter) Threads"],
-                default=["🎬 Retention Script & Visual Cues", "🎯 High-CTR Viral Titles & Descriptions"],
+                default=[],  # 🌟 FIXED: Ab default me kuch bhi pre-selected nahi rahega!
                 key="blueprint_opts"
             )
             user_niche = st.text_input("🎯 Kis topic par video banani hai?", value=st.session_state.get("niche_data", ""))
-            video_duration = st.slider("⏱ Video ki duration kitni honi chahiye? (In Minutes)", 0.5, 20.0, 2.0, 0.5)
+            # 🌟 GUARDRAIL FIXED: Slider max limit ab 20.0 se घटकर 3.0 mins ho gayi hai (Token Protection Active)
+            video_duration = st.slider("⏱ Video ki duration kitni honi chahiye? (In Minutes)", 0.5, 3.0, 1.0, 0.5)
             
         # 🟠 CONFIGURATION FOR MODE 2: REPURPOSE EXISTING SCRIPT
         else:
             bundle_options = st.multiselect(
                 "🎁 Apni Paste ki hui Script se kya-kya extract/generate karna hai?", 
                 ["🎯 High-CTR Viral Titles & Descriptions", "🎨 High-CTR Thumbnail Design Concepts", "📱 Shorts/Reels Viral Captions & Tags", "🧵 LinkedIn & X (Twitter) Threads"],
-                default=["🎯 High-CTR Viral Titles & Descriptions"],
+                default=[],  # 🌟 FIXED: Ab default me kuch bhi pre-selected nahi rahega!
                 key="repurpose_opts"
             )
             user_niche = st.text_input("🎯 Video ka Main Topic/Title:", value=st.session_state.get("niche_data", ""))
@@ -350,9 +351,11 @@ with tab1:
 
         submit_btn = st.form_submit_button("🚀 Launch Specialized Agents Grid", use_container_width=True)
 
-        # Jab user button dabayega, data direct crash-proof session state mein lock hoga
+        # New Verification: Check if bundle_options is empty
         if submit_btn:
-            if user_niche:
+            if not bundle_options:
+                st.error("⚠️ Oye Founder! Pehle niche bundle options me se kam se kam ek cheez toh select karo!")
+            elif user_niche:
                 st.session_state["niche_data"] = user_niche
                 st.session_state["form_submitted"] = True
                 st.session_state["selected_options"] = bundle_options
