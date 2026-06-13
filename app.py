@@ -327,11 +327,13 @@ with tab1:
     
     with st.form("trend_form"):
         # 🟢 CONFIGURATION FOR MODE 1: COMPLETE BLUEPRINT
+        # Purana st.multiselect hata kar ye premium pills laga do:
         if app_mode == "🚀 Complete Blueprint Mode":
-            bundle_options = st.multiselect(
-                "🎁 Is Content Production Bundle me kya-kya generate karna hai?", 
+            bundle_options = st.pills(
+                "🎁 Is Content Production Bundle me kya-kya generate karna hai? (Multi-Select Available)", 
                 ["🎬 Retention Script & Visual Cues", "🎯 High-CTR Viral Titles & Descriptions", "🎨 High-CTR Thumbnail Design Concepts", "📱 Shorts/Reels Viral Captions & Tags", "🧵 LinkedIn & X (Twitter) Threads"],
-                default=[],  # 🌟 FIXED: Ab default me kuch bhi pre-selected nahi rahega!
+                default=[],
+                selection_mode="multi",
                 key="blueprint_opts"
             )
             user_niche = st.text_input("🎯 Kis topic par video banani hai?", value=st.session_state.get("niche_data", ""))
@@ -339,11 +341,13 @@ with tab1:
             video_duration = st.slider("⏱ Video ki duration kitni honi chahiye? (In Minutes)", 0.5, 3.0, 1.0, 0.5)
             
         # 🟠 CONFIGURATION FOR MODE 2: REPURPOSE EXISTING SCRIPT
+        # Purana st.multiselect yahan se bhi hata kar pills laga do:
         else:
-            bundle_options = st.multiselect(
-                "🎁 Apni Paste ki hui Script se kya-kya extract/generate karna hai?", 
+            bundle_options = st.pills(
+                "🎁 Apni Paste ki hui Script se kya-kya extract/generate karna hai? (Multi-Select Available)", 
                 ["🎯 High-CTR Viral Titles & Descriptions", "🎨 High-CTR Thumbnail Design Concepts", "📱 Shorts/Reels Viral Captions & Tags", "🧵 LinkedIn & X (Twitter) Threads"],
-                default=[],  # 🌟 FIXED: Ab default me kuch bhi pre-selected nahi rahega!
+                default=[],
+                selection_mode="multi",
                 key="repurpose_opts"
             )
             user_niche = st.text_input("🎯 Video ka Main Topic/Title:", value=st.session_state.get("niche_data", ""))
