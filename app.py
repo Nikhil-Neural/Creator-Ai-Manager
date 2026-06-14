@@ -389,10 +389,10 @@ with tab1:
             st.info("🚀 **High-Alpha Opportunity Detected!** Zero direct identical competition discovered for this exact angle—this is a pure Blue Ocean play.")
 
     # ⚡ AUTOMATED BACKEND PIPELINE GENERATION TRIGGER GATE
+    # ⚡ AUTOMATED BACKEND PIPELINE GENERATION TRIGGER GATE (FIXED STORAGE)
     if st.session_state.get("form_submitted"):
         with st.spinner("🕵️ Orchestrating failproof master crew network..."):
             try:
-                # Passing state-locked variables safely down to the new engine
                 ai_output = run_my_crew_ai_agents(
                     st.session_state["niche_data"],
                     platform if 'platform' in globals() else "YouTube",
@@ -402,56 +402,64 @@ with tab1:
                     st.session_state.get("pasted_script", ""),
                     st.session_state["selected_options"]
                 )
-                # Storing results safely inside memory storage
-                st.session_state["script_data"] = ai_output
-                st.session_state["form_submitted"] = False  # Resetting trigger gate to open loop
-                st.rerun()  # Flawless instant jump to Tab 2 layout renderer
-            except Exception as e:
-                st.error(f"❌ Core Engine Error: {e}")
+                
+                # 🌟 FIXED: Ab dono options ka data alag variables me save hoga taaki data lose na ho!
+                st.session_state["script_data"] = ai_output  # Universal backup
+                
+                if st.session_state["current_mode"] == "🚀 Complete Blueprint Mode":
+                    st.session_state["blueprint_final_output"] = ai_output
+                else:
+                    st.session_state["repurpose_final_output"] = ai_output
+                    
                 st.session_state["form_submitted"] = False
+                st.success("🎉 Crew Execution Successful! Check Tab 2 for your optimized script & assets.")
+                st.rerun()
+            except Exception as e:
+                st.session_state["form_submitted"] = False
+                st.error(f"🤖 Engine Error: {str(e)}")
 
 with tab2:
-    st.header("📝 Production-Ready Content Bundle")
+    st.header("📥 Download Generated Content")
     st.write("---")
     
-    if st.session_state["script_data"]:
-        # 🌟 SILENT ENGINE: User ko ab koi model name nahi dikhega, sirf product quality dikhega
-        st.success("🎉 Your Viral Content Production Bundle is Successfully Generated!")
+    # 🌟 FIXED: Dynamic data fetcher logic
+    display_content = ""
+    if "blueprint_final_output" in st.session_state and st.session_state.get("current_mode") == "🚀 Complete Blueprint Mode":
+        display_content = st.session_state["blueprint_final_output"]
+    elif "repurpose_final_output" in st.session_state:
+        display_content = st.session_state["repurpose_final_output"]
+    elif "script_data" in st.session_state:
+        display_content = st.session_state["script_data"]
+
+    if display_content:
+        # Markdown visualization preview box
+        st.subheader("📝 Live Content Preview")
+        st.markdown(display_content)
+        st.write("---")
         
-        raw_content = st.session_state["script_data"]
-        
-        # 🌟 SMART DIVISION: Content ko alag-alag expanders me saaf dikhane ke liye
-        # Hum user ko poora content block bhi dikhayenge aur niche clean segregation bhi denge
-        with st.expander("🎬 1. Complete Video Script Blueprint", expanded=True):
-            st.text_area("Script Copy Zone:", value=raw_content, height=350, key="script_box_view")
-            
-        st.markdown("### 📥 Save Your Content Bundle")
-        st.caption("Apne pure production bundle ko ek click mein download karein:")
-        
-        # 🌟 TWO DOWNLOAD BUTTONS SIDE-BY-SIDE USING COLUMNS
+        # DOWNLOADING BUTTONS PIPELINE USING COLUMNS
         col1, col2 = st.columns(2)
         
         with col1:
             st.download_button(
                 label="📥 Download as Notepad (.txt)",
-                data=str(st.session_state["script_data"]), # 🌟 FIXED: str() laga diya
-                file_name=f"{platform}_{st.session_state['niche_data'].replace(' ','_')}.txt",
+                data=str(display_content),
+                file_name=f"Script_{st.session_state.get('niche_data', 'content').replace(' ','_')}.txt",
                 mime="text/plain",
                 use_container_width=True
             )
             
         with col2:
-            # 🌟 FIXED: Yahan bhi str() lagakar Word Document generator ko bhejenge
-            word_file = create_word_doc(str(st.session_state["script_data"]), platform, st.session_state["niche_data"])
+            word_file = create_word_doc(str(display_content), "Social_Media", st.session_state.get("niche_data", "Content"))
             st.download_button(
                 label="📥 Download Word Document (.docx)",
                 data=word_file,
-                file_name=f"{platform}_{st.session_state['niche_data'].replace(' ','_')}.docx",
+                file_name=f"Script_{st.session_state.get('niche_data', 'content').replace(' ','_')}.docx",
                 mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
                 use_container_width=True
             )
     else:
-        st.warning("⚠️ Pehle Tab 1 mein topic dalo aur agents run karo.")
+        st.warning("⚠️ Pehle Tab 1 mein topic dalo aur agents run karo. Agar pehle run kiya tha, toh current mode switch karne par naya trigger click karein!")
 
 with tab3:
     st.header("📊 Multi-Platform Report")
