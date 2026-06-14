@@ -244,7 +244,7 @@ def run_my_crew_ai_agents(niche_topic, social_platform, output_language, video_d
         agents=[trend_analyst, script_writer, copy_maestro],
         tasks=tasks_pipeline,
         verbose=True,            # 🌟 USER DEMAND: Terminal logs visible
-        process=None
+        process='sequential'
     )
     
     return master_crew.get_output() if hasattr(master_crew, 'get_output') else master_crew.kickoff()
