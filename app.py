@@ -86,7 +86,6 @@ def fetch_live_trends(niche_topic):
         return []
     
     url = "https://google.serper.dev/search"
-    # Pure YouTube video data filter karne ke liye specific query vector
     payload = json.dumps({
         "q": f"site:youtube.com watch viral video {niche_topic}",
         "num": 5
@@ -104,13 +103,11 @@ def fetch_live_trends(niche_topic):
         if "organic" in data:
             for item in data["organic"]:
                 link = item.get("link", "")
-                # Sirf wahi links lenge jo direct valid YouTube video ke hain
                 if "youtube.com/watch" in link or "youtu.be" in link:
                     video_trends.append({
                         "title": item.get("title", "Trending Video Blueprint"),
                         "url": link
                     })
-                # Max 3 high-retention videos ka bracket lock karenge
                 if len(video_trends) >= 3:
                     break
         return video_trends
@@ -119,8 +116,6 @@ def fetch_live_trends(niche_topic):
         return []
 
 # ── Session State ──────────────────────────────────────
-if "niche_data"    not in st.session_state: st.session_state["niche_data"]    = ""
-if "script_data"   not in st.session_state: st.session_state["script_data"]   = ""
 if "active_model"  not in st.session_state: st.session_state["active_model"]  = ""
 if "gemini_error"  not in st.session_state: st.session_state["gemini_error"]  = ""
 
@@ -137,7 +132,8 @@ def run_my_crew_ai_agents(niche_topic, social_platform, output_language, video_d
     groq_cluster_llm = get_cluster_llm(provider="groq")
     gemini_cluster_llm = get_cluster_llm(provider="gemini")
     
-    script_writing_llm = gemini_cluster_llm
+    # 🌟 FIXED VIA CLAUDE AUDIT: Clean line execution, no fake try-except loops
+    script_writing_llm = gemini_cluster_llm if (G_KEY_1 or G_KEY_2 or GEMINI_KEY) else groq_cluster_llm
     if not G_KEY_1 and not G_KEY_2 and not GEMINI_KEY:
         script_writing_llm = groq_cluster_llm
 
@@ -179,18 +175,28 @@ def run_my_crew_ai_agents(niche_topic, social_platform, output_language, video_d
     )
 
     tasks_pipeline = []
-    
-    # 🌟 CORE MV FIX: PURE STRUCTURAL RESEARCH (SerperDevTool Completely Removed!)
-    tasks_pipeline = []
-    
     # =====================================================================
     # ── FIXED: LINE 80-116 HIGH-EFFICIENCY VALUE PIPELINE ──
     # =====================================================================
     
     # 🌟 CORE FIX: Pure psychological insight generation, no external tool overhead
+    # 🏁 Fetch Real-Time Data from Serper BEFORE running the crew
+    live_scanned_context = ""
+    if niche_topic:
+        raw_trends = fetch_live_trends(niche_topic)
+        if raw_trends:
+            live_scanned_context = "\n".join([f"- Title: {item['title']} (URL: {item['url']})" for item in raw_trends])
+
+    tasks_pipeline = []
+    
+    # 🌟 CORE FIX: Passing real-time data strictly into the prompt text
     research_task = Task(
-        description=f"""Analyze the target niche topic: '{niche_topic}' specifically optimized for {social_platform}.
-        Identify exactly 3 psychological breakout hooks and 3 viewer retention anomalies that trigger user actions.
+        description=f"""Analyze the target niche topic: '{niche_topic}' optimized for {social_platform}.
+        
+        CRITICAL REAL-TIME INTERNET CONTEXT FOUND:
+        {live_scanned_context if live_scanned_context else 'No direct video links found, use niche analysis.'}
+        
+        Using the real-time titles and data above, identify exactly 3 psychological breakout hooks and 3 viewer retention anomalies that trigger user actions.
         STRICT LIMIT: Response must be under 150 words total. Do NOT output video URLs, links, titles or introductory chitchat.""",
         expected_output="3 breakout hooks and 3 retention nodes in clean text bullet points.",
         agent=trend_analyst
@@ -281,37 +287,6 @@ st.write(f"**{platform}** manager active | Language: **{language}**")
 st.write("---")
 
 tab1, tab2, tab3 = st.tabs(["🔥 Trend & Script", "📝 Generated Script", "📊 Analytics"])
-
-# ── HELPER: Radar Data Fetcher (Isse app.py ke top level ya functions ke saath rakho)
-def fetch_radar_data(niche, show_videos, show_thumbnails):
-    """Conditional data fetching to save API tokens."""
-    results = {"videos": [], "thumbnails": []}
-    if not SERPER_KEY: return results
-    
-    # 1. Fetch Videos if requested
-    if show_videos:
-        url = "https://google.serper.dev/search"
-        payload = json.dumps({"q": f"site:youtube.com watch viral video {niche}", "num": 3})
-        try:
-            response = requests.post(url, headers={'X-API-KEY': SERPER_KEY, 'Content-Type': 'application/json'}, data=payload, timeout=5)
-            data = response.json()
-            if "organic" in data:
-                results["videos"] = [v for v in data["organic"] if "youtube.com" in v.get("link", "")]
-        except: pass
-
-    # 2. Fetch Thumbnails if requested (Specific query for visual research)
-    if show_thumbnails:
-        url = "https://google.serper.dev/images"
-        payload = json.dumps({"q": f"youtube thumbnail {niche} viral design", "num": 3})
-        try:
-            response = requests.post(url, headers={'X-API-KEY': SERPER_KEY, 'Content-Type': 'application/json'}, data=payload, timeout=5)
-            data = response.json()
-            if "images" in data:
-                results["thumbnails"] = data["images"][:3]
-        except: pass
-    
-    return results
-
 # ── tab1 DEFINITION ────────────────────────────────────
 # =====================================================================
 # ── STEP 3: THE STATE-LOCKED DYNAMIC TAB 1 INTERACTION HUB ──
@@ -379,37 +354,12 @@ with tab1:
             else:
                 st.error("⚠️ Topic box mein kuch likho pehle!")
 
-    # 📡 THE REAL-TIME SMART MARKET RADAR LOGIC
-    current_opts = st.session_state.get("selected_options", bundle_options)
-    target_niche = st.session_state.get("niche_data", "")
-    
-    # Check variables strings mapping for condition extraction logic
-    is_script_req = any("Script" in b for b in current_opts)
-    is_thumb_req = any("Thumbnail" in b for b in current_opts)
-    
-    if target_niche and (is_script_req or is_thumb_req):
+    # ── ROOP 1 REMOVED COMPLETELY ──
+    # No background live network token leaks on frontend type layout.
+    if st.session_state.get("niche_data"):
         st.write("---")
-        st.markdown("### 📡 Real-Time Market Intelligence Radar")
-        
-        with st.spinner("Scanning viral distribution layers..."):
-            # Purana helper fetch_live_trends engine trigger integration
-            live_trends_data = fetch_live_trends(target_niche)
-        
-        # Displaying YouTube video structures matching the query link logs
-        if live_trends_data:
-            st.markdown("##### 📈 Trending YouTube Structures Found")
-            cols_layout = st.columns(len(live_trends_data))
-            for idx, item in enumerate(live_trends_data):
-                with cols_layout[idx]:
-                    st.write(f"🔗 **[{item['title']}]({item['url']})**")
-                    st.video(item['url'])
-        else:
-            st.info("🚀 **High-Alpha Opportunity Detected!** Zero direct identical competition discovered for this exact angle—this is a pure Blue Ocean play.")
-
+        st.info("🤖 **Engine Ready:** Real-time search parameters locked. Launch the agents grid above to inject fresh live context dynamically into your production blueprints.")
     # ⚡ AUTOMATED BACKEND PIPELINE GENERATION TRIGGER GATE
-    # ⚡ AUTOMATED BACKEND PIPELINE GENERATION TRIGGER GATE (FIXED STORAGE)
-    # ⚡ AUTOMATED BACKEND PIPELINE GENERATION TRIGGER GATE
-    # ⚡ AUTOMATED BACKEND PIPELINE GENERATION TRIGGER GATE (FIXED STORAGE & RE-RUN)
     if st.session_state.get("form_submitted"):
         with st.spinner("🕵️ Orchestrating failproof master crew network..."):
             try:
@@ -469,7 +419,6 @@ with tab2:
             )
     else:
         st.warning("⚠️ Pehle Tab 1 mein topic dalo aur agents run karo. Output abhi ready nahi hai.")
-
 with tab3:
     st.header("📊 Multi-Platform Report")
     st.write("---")
