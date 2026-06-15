@@ -10,6 +10,7 @@ import os
 import io  # 🌟 NEW: Virtual Memory (RAM) ke liye
 from docx import Document  # 🌟 NEW: Word Document Blueprint ke liye
 from crewai import Agent, Task, Crew, LLM
+import time # 🌟 Runtime backoff delays ke liye
 
 st.set_page_config(page_title="Creator AI OS", layout="wide")
 
@@ -74,6 +75,7 @@ def create_word_doc(script_text, platform_name, topic_name):
     doc.save(bio)
     bio.seek(0)  # Pointer ko shuruat me lana download ke liye
     return bio
+
 import requests
 import json
 
@@ -122,7 +124,7 @@ if "gemini_error"  not in st.session_state: st.session_state["gemini_error"]  = 
 # ── CrewAI Backend ─────────────────────────────────────
 def run_my_crew_ai_agents(niche_topic, social_platform, output_language, video_duration, app_mode, user_pasted_script, selected_bundle_options):
     """
-    Pure Value Matrix Engine.
+    Pure Value Matrix Engine with Runtime Live Key Failover Matrix.
     Removes internet scraping tools entirely to deliver 100% focused structural value.
     """
     target_seconds = int(video_duration * 60)
@@ -130,12 +132,50 @@ def run_my_crew_ai_agents(niche_topic, social_platform, output_language, video_d
     
     # Core Fast Clusters Routing From Step 1
     groq_cluster_llm = get_cluster_llm(provider="groq")
-    gemini_cluster_llm = get_cluster_llm(provider="gemini")
     
-    # 🌟 FIXED VIA CLAUDE AUDIT: Clean line execution, no fake try-except loops
-    script_writing_llm = gemini_cluster_llm if (G_KEY_1 or G_KEY_2 or GEMINI_KEY) else groq_cluster_llm
-    if not G_KEY_1 and not G_KEY_2 and not GEMINI_KEY:
-        script_writing_llm = groq_cluster_llm
+    # 🌟 RUNTIME INTELLIGENT ROUTER GATE FOR SCRIPT WRITER
+    # Pehle test karenge Gemini Key 1 aur Key 2 ko max 2 retries ke sath.
+    # Agar dono fail ho gaye, toh script_writing_llm ko direct Groq Key 2 allot kar denge.
+    
+    script_writing_llm = None
+    gemini_resolved = False
+    
+    # --- Try Gemini Key 1 (Max 2 Attempts) ---
+    if G_KEY_1 or GEMINI_KEY:
+        k1 = G_KEY_1 if G_KEY_1 else GEMINI_KEY
+        for attempt in range(1, 3):
+            try:
+                test_llm = LLM(model="gemini/gemini-2.5-flash", api_key=k1, timeout=15)
+                # Chhota ping test system verification ke liye
+                test_llm.call(messages=[{"role": "user", "content": "ping"}])
+                script_writing_llm = test_llm
+                gemini_resolved = True
+                print(f"[MATRIX SUCCESS] Gemini Key 1 working flawlessly on attempt {attempt}.")
+                break
+            except Exception as e:
+                print(f"[MATRIX WARNING] Gemini Key 1 attempt {attempt} failed with error: {e}. Retrying...")
+                time.sleep(15) # Rate limit cooling window
+                
+    # --- Try Gemini Key 2 (Max 2 Attempts) if Key 1 Failed ---
+    if not gemini_resolved and G_KEY_2:
+        print("[MATRIX SWITCH] Gemini Key 1 completely exhausted. Routing to Gemini Key 2...")
+        for attempt in range(1, 3):
+            try:
+                test_llm = LLM(model="gemini/gemini-2.5-flash", api_key=G_KEY_2, timeout=15)
+                test_llm.call(messages=[{"role": "user", "content": "ping"}])
+                script_writing_llm = test_llm
+                gemini_resolved = True
+                print(f"[MATRIX SUCCESS] Gemini Key 2 working flawlessly on attempt {attempt}.")
+                break
+            except Exception as e:
+                print(f"[MATRIX WARNING] Gemini Key 2 attempt {attempt} failed with error: {e}. Retrying...")
+                time.sleep(15)
+
+    # --- Final Safeguard: Route directly to Groq Key 2 to avoid load on Groq Key 1 ---
+    if not gemini_resolved:
+        target_groq_key = GR_KEY_2 if GR_KEY_2 else (GR_KEY_1 if GR_KEY_1 else GROQ_KEY)
+        print(f"[MATRIX CRITICAL] All Gemini Keys failed. Direct routing locked to Groq Key 2.")
+        script_writing_llm = LLM(model="groq/llama-3.3-70b-versatile", api_key=target_groq_key, timeout=30)
 
     # 🕵️ AGENTS DESIGNED FOR PURE CRITICAL THINKING (NO EXTERNAL TOOLS USED)
     trend_analyst = Agent(
@@ -155,7 +195,7 @@ def run_my_crew_ai_agents(niche_topic, social_platform, output_language, video_d
         goal="Write a 2-column video script blueprint.",
         backstory="You write high-retention humanized content without any fluffy or robotic AI words.",
         llm=script_writing_llm,
-        max_iter=1,              
+        max_iter=1,              # Guardrail attached: prevents local agent retry loop duplication
         max_rpm=5,
         verbose=True,
         allow_delegation=False,
@@ -175,11 +215,7 @@ def run_my_crew_ai_agents(niche_topic, social_platform, output_language, video_d
     )
 
     tasks_pipeline = []
-    # =====================================================================
-    # ── FIXED: LINE 80-116 HIGH-EFFICIENCY VALUE PIPELINE ──
-    # =====================================================================
     
-    # 🌟 CORE FIX: Pure psychological insight generation, no external tool overhead
     # 🏁 Fetch Real-Time Data from Serper BEFORE running the crew
     live_scanned_context = ""
     if niche_topic:
@@ -287,16 +323,13 @@ st.write(f"**{platform}** manager active | Language: **{language}**")
 st.write("---")
 
 tab1, tab2, tab3 = st.tabs(["🔥 Trend & Script", "📝 Generated Script", "📊 Analytics"])
+
 # ── tab1 DEFINITION ────────────────────────────────────
-# =====================================================================
-# ── STEP 3: THE STATE-LOCKED DYNAMIC TAB 1 INTERACTION HUB ──
-# =====================================================================
 with tab1:
     st.markdown("### 🔥 AI Content Strategy Hub")
     st.caption("Topic/Script daliye — Specialized multi-agent network kaam karega.")
     st.write("---")
     
-    # Radio buttons form ke bahar hain taaki UI click karte hi responsive rahe
     app_mode = st.radio(
         "🔮 Kis Mode me kaam karna hai?", 
         ["🚀 Complete Blueprint Mode", "✍️ Repurpose My Script Mode"], 
@@ -304,15 +337,12 @@ with tab1:
     )
     st.write("---")
     
-    # Initial empty variables backup setup
     bundle_options = []
     user_niche = ""
     user_pasted_script = ""
     video_duration = 2.0
     
     with st.form("trend_form"):
-        # 🟢 CONFIGURATION FOR MODE 1: COMPLETE BLUEPRINT
-        # Purana st.multiselect hata kar ye premium pills laga do:
         if app_mode == "🚀 Complete Blueprint Mode":
             bundle_options = st.pills(
                 "🎁 Is Content Production Bundle me kya-kya generate karna hai? (Multi-Select Available)", 
@@ -322,11 +352,8 @@ with tab1:
                 key="blueprint_opts"
             )
             user_niche = st.text_input("🎯 Kis topic par video banani hai?", value=st.session_state.get("niche_data", ""))
-            # 🌟 GUARDRAIL FIXED: Slider max limit ab 20.0 se घटकर 3.0 mins ho gayi hai (Token Protection Active)
             video_duration = st.slider("⏱ Video ki duration kitni honi chahiye? (In Minutes)", 0.5, 3.0, 1.0, 0.5)
             
-        # 🟠 CONFIGURATION FOR MODE 2: REPURPOSE EXISTING SCRIPT
-        # Purana st.multiselect yahan se bhi hata kar pills laga do:
         else:
             bundle_options = st.pills(
                 "🎁 Apni Paste ki hui Script se kya-kya extract/generate karna hai? (Multi-Select Available)", 
@@ -340,7 +367,6 @@ with tab1:
 
         submit_btn = st.form_submit_button("🚀 Launch Specialized Agents Grid", use_container_width=True)
 
-        # New Verification: Check if bundle_options is empty
         if submit_btn:
             if not bundle_options:
                 st.error("⚠️ Oye Founder! Pehle niche bundle options me se kam se kam ek cheez toh select karo!")
@@ -354,12 +380,10 @@ with tab1:
             else:
                 st.error("⚠️ Topic box mein kuch likho pehle!")
 
-    # ── ROOP 1 REMOVED COMPLETELY ──
-    # No background live network token leaks on frontend type layout.
     if st.session_state.get("niche_data"):
         st.write("---")
         st.info("🤖 **Engine Ready:** Real-time search parameters locked. Launch the agents grid above to inject fresh live context dynamically into your production blueprints.")
-    # ⚡ AUTOMATED BACKEND PIPELINE GENERATION TRIGGER GATE
+
     if st.session_state.get("form_submitted"):
         with st.spinner("🕵️ Orchestrating failproof master crew network..."):
             try:
@@ -373,11 +397,8 @@ with tab1:
                     st.session_state["selected_options"]
                 )
                 
-                # Double track storage matrix save
                 st.session_state["script_data"] = ai_output
                 st.session_state["form_submitted"] = False
-                
-                # 🌟 FIXED: Success box permanent screen par hold rahega!
                 st.success("🎉 **Crew Execution Successful!** All compiled structural blueprints are ready. Please switch to **Tab 2: Download/Generated Content** from the top menu to view your blueprint layout!")
             except Exception as e:
                 st.session_state["form_submitted"] = False
@@ -390,15 +411,12 @@ with tab2:
     if "script_data" in st.session_state and st.session_state["script_data"]:
         final_content = st.session_state["script_data"]
         
-        # 🌟 ORIGINAL EXPANDER COMFORTABLE FRAMEWORK ACTIVE
         with st.expander("📝 VIEW FULL COMPLETE BLUEPRINT OUTPUT", expanded=True):
             st.markdown(final_content)
             
         st.write("---")
         
-        # DOWNLOADING BUTTONS PIPELINE USING COLUMNS
         col1, col2 = st.columns(2)
-        
         with col1:
             st.download_button(
                 label="📥 Download as Notepad (.txt)",
@@ -419,10 +437,10 @@ with tab2:
             )
     else:
         st.warning("⚠️ Pehle Tab 1 mein topic dalo aur agents run karo. Output abhi ready nahi hai.")
+
 with tab3:
     st.header("📊 Multi-Platform Report")
     st.write("---")
-    # Columns setup code unchanged for data display placeholder
     c1, c2, c3 = st.columns(3)
     with c1: st.metric("YouTube Subs", "15,400", "+1,200")
     with c2: st.metric("Instagram Followers", "8,900", "+850")
