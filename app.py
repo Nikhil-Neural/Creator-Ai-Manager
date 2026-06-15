@@ -129,14 +129,9 @@ if "gemini_error"  not in st.session_state: st.session_state["gemini_error"]  = 
 # ── STEP 2: CLAUDE-APPROVED DEBUGGER ENGINE (VERBOSE ACTIVE) ──
 # =====================================================================
 def run_my_crew_ai_agents(niche_topic, social_platform, output_language, video_duration, app_mode, user_pasted_script, selected_bundle_options):
-    """
-    Lean Architecture Matrix with Active Verbose.
-    Enforces single-shot processing to save tokens while keeping logs visible.
-    """
     target_seconds = int(video_duration * 60)
     target_words = int(video_duration * 140)
     
-    # Core Fast Clusters Routing From Step 1
     groq_cluster_llm = get_cluster_llm(provider="groq")
     gemini_cluster_llm = get_cluster_llm(provider="gemini")
     
@@ -144,17 +139,16 @@ def run_my_crew_ai_agents(niche_topic, social_platform, output_language, video_d
     if not G_KEY_1 and not G_KEY_2 and not GEMINI_KEY:
         script_writing_llm = groq_cluster_llm
 
-    # 🕵️ SPECIALIZED AGENTS - SINGLE CALL LOGS ENABLED
     trend_analyst = Agent(
         role="Fast Trend Spotter",
         goal=f"Extract minimal psychological hooks for '{niche_topic}' on {social_platform}.",
         backstory="You are a data-saving trend analyst. Give only raw data points.",
         llm=groq_cluster_llm,
-        max_iter=1,              # 🌟 CLAUDE FIX: Loop control active
-        max_rpm=5,               # 🌟 CLAUDE FIX: Rate protection
-        verbose=True,            # 🌟 USER DEMAND: Terminal logs print honge!
+        max_iter=1,
+        max_rpm=5,
+        verbose=True,            # 🌟 Active as requested
         allow_delegation=False,
-        memory=False             # 🌟 TOKEN SAVER: Disables internal memory overhead
+        memory=False
     )
 
     script_writer = Agent(
@@ -162,9 +156,9 @@ def run_my_crew_ai_agents(niche_topic, social_platform, output_language, video_d
         goal="Write a 2-column video script blueprint.",
         backstory="You write high-retention humanized content without any fluffy or robotic AI words.",
         llm=script_writing_llm,
-        max_iter=1,              # 🌟 CLAUDE FIX: Loop control active
+        max_iter=1,
         max_rpm=5,
-        verbose=True,            # 🌟 USER DEMAND: Terminal logs print honge!
+        verbose=True,
         allow_delegation=False,
         memory=False
     )
@@ -174,16 +168,15 @@ def run_my_crew_ai_agents(niche_topic, social_platform, output_language, video_d
         goal="Convert concepts into short social media assets.",
         backstory="You create titles, captions, layouts and threads instantly with extreme token efficiency.",
         llm=groq_cluster_llm,
-        max_iter=1,              # 🌟 CLAUDE FIX: Loop control active
+        max_iter=1,
         max_rpm=5,
-        verbose=True,            # 🌟 USER DEMAND: Terminal logs print honge!
+        verbose=True,
         allow_delegation=False,
         memory=False
     )
 
     tasks_pipeline = []
     
-    # 🌟 CLAUDE CHANGE 3: Research response format is strictly limited inside prompt
     research_task = Task(
         description=f"""Analyze viral hooks for '{niche_topic}' on {social_platform}.
         STRICT LIMIT: Response must be under 200 words only.
@@ -193,7 +186,7 @@ def run_my_crew_ai_agents(niche_topic, social_platform, output_language, video_d
     )
     tasks_pipeline.append(research_task)
 
-    # Deliverable Tier 1: Audio/Visual Content Script Layout
+    script_task = None
     if any("Script" in opt for opt in selected_bundle_options):
         script_prompt = f"Write a full high-retention video script for '{niche_topic}' targeting around {target_words} words ({target_seconds} seconds duration)."
         if app_mode == "✍️ Repurpose My Script Mode":
@@ -209,11 +202,11 @@ def run_my_crew_ai_agents(niche_topic, social_platform, output_language, video_d
             | [00:05-00:15] | Cut to diagram layout | Context window woh jagah hai jahan... |""",
             expected_output="Conversational script inside an Audio/Visual 2-column table grid.",
             agent=script_writer,
-            context=[research_task]  # Light short context passed
+            context=[research_task]
         )
         tasks_pipeline.append(script_task)
 
-    # 🌟 CLAUDE CHANGE 1: Independent Distribution Task (Context completely removed to save 4000 tokens)
+    distribution_task = None
     dist_requirements = []
     if any("Titles" in opt for opt in selected_bundle_options): dist_requirements.append("- 5 High-CTR Titles & Search-Engine Descriptions")
     if any("Thumbnail" in opt for opt in selected_bundle_options): dist_requirements.append("- 3 distinct thumbnail frameworks (Focal point, Text overlay hook max 3 words, Contrast colors)")
@@ -224,10 +217,8 @@ def run_my_crew_ai_agents(niche_topic, social_platform, output_language, video_d
         distribution_task = Task(
             description=f"""You are an independent expert copywriter working directly from the primary topic details.
             Topic: '{niche_topic}' | Platform: {social_platform} | Language: {output_language}
-            
             Generate ONLY the required structural assets below:
             {chr(10).join(dist_requirements)}
-            
             Rules:
             - NO robotic words: delve, moreover, testament, in conclusion, furthermore
             - Be direct, highly human, conversational, and punchy
@@ -235,19 +226,34 @@ def run_my_crew_ai_agents(niche_topic, social_platform, output_language, video_d
             - Zero explanation, zero preamble chitchat, output raw ready-to-copy content only.""",
             expected_output="Requested distribution assets package, no extra commentary.",
             agent=copy_maestro
-            # Context intentionally removed here to instantly optimize prompt size!
         )
         tasks_pipeline.append(distribution_task)
 
-    # 🏁 LEAN PRODUCTION LAUNCHER
+    # 🏁 PRODUCTION KICKOFF
     master_crew = Crew(
         agents=[trend_analyst, script_writer, copy_maestro],
         tasks=tasks_pipeline,
-        verbose=True,            # 🌟 USER DEMAND: Terminal logs visible
+        verbose=True,
         process='sequential'
     )
     
-    return master_crew.get_output() if hasattr(master_crew, 'get_output') else master_crew.kickoff()
+    master_crew.kickoff()
+    
+    # 🌟 CORE MATRIX FIX: Dono tasks ka output complete merge karke bheja jayega!
+    compiled_final_output = ""
+    
+    compiled_final_output += "### 🕵️ EXPERT TREND RESEARCH ANALYSIS\n"
+    compiled_final_output += str(research_task.output.raw if hasattr(research_task, 'output') and research_task.output else "Research analysis completed.") + "\n\n"
+    
+    if script_task and script_task.output:
+        compiled_final_output += "### 🎬 PREMIUM AUDIO/VISUAL RETENTION SCRIPT\n"
+        compiled_final_output += str(script_task.output.raw) + "\n\n"
+        
+    if distribution_task and distribution_task.output:
+        compiled_final_output += "### 📱 DISTRIBUTION MICRO-ASSETS PACKAGE\n"
+        compiled_final_output += str(distribution_task.output.raw) + "\n\n"
+        
+    return compiled_final_output
 
 # ── Sidebar ────────────────────────────────────────────
 with st.sidebar:
@@ -390,6 +396,7 @@ with tab1:
 
     # ⚡ AUTOMATED BACKEND PIPELINE GENERATION TRIGGER GATE
     # ⚡ AUTOMATED BACKEND PIPELINE GENERATION TRIGGER GATE (FIXED STORAGE)
+    # ⚡ AUTOMATED BACKEND PIPELINE GENERATION TRIGGER GATE
     if st.session_state.get("form_submitted"):
         with st.spinner("🕵️ Orchestrating failproof master crew network..."):
             try:
@@ -403,17 +410,12 @@ with tab1:
                     st.session_state["selected_options"]
                 )
                 
-                # 🌟 FIXED: Ab dono options ka data alag variables me save hoga taaki data lose na ho!
-                st.session_state["script_data"] = ai_output  # Universal backup
-                
-                if st.session_state["current_mode"] == "🚀 Complete Blueprint Mode":
-                    st.session_state["blueprint_final_output"] = ai_output
-                else:
-                    st.session_state["repurpose_final_output"] = ai_output
-                    
+                # Double track variables backup
+                st.session_state["script_data"] = ai_output
                 st.session_state["form_submitted"] = False
-                st.success("🎉 Crew Execution Successful! Check Tab 2 for your optimized script & assets.")
-                st.rerun()
+                
+                # 🌟 FIXED: Success block screen par permanent ruka rahega! No st.rerun() here
+                st.success("🎉 **Crew Execution Successful!** All assets compiled seamlessly. Please switch to **Tab 2: Download/Generated Content** from the top menu to view and download your blueprint!")
             except Exception as e:
                 st.session_state["form_submitted"] = False
                 st.error(f"🤖 Engine Error: {str(e)}")
@@ -422,19 +424,13 @@ with tab2:
     st.header("📥 Download Generated Content")
     st.write("---")
     
-    # 🌟 FIXED: Dynamic data fetcher logic
-    display_content = ""
-    if "blueprint_final_output" in st.session_state and st.session_state.get("current_mode") == "🚀 Complete Blueprint Mode":
-        display_content = st.session_state["blueprint_final_output"]
-    elif "repurpose_final_output" in st.session_state:
-        display_content = st.session_state["repurpose_final_output"]
-    elif "script_data" in st.session_state:
-        display_content = st.session_state["script_data"]
-
-    if display_content:
-        # Markdown visualization preview box
-        st.subheader("📝 Live Content Preview")
-        st.markdown(display_content)
+    if "script_data" in st.session_state and st.session_state["script_data"]:
+        final_content = st.session_state["script_data"]
+        
+        # 🌟 ORIGINAL EXPANDER RESTORED FOR COMFORTABLE RENDERING
+        with st.expander("📝 VIEW FULL COMPLETE BLUEPRINT OUTPUT", expanded=True):
+            st.markdown(final_content)
+            
         st.write("---")
         
         # DOWNLOADING BUTTONS PIPELINE USING COLUMNS
@@ -443,23 +439,23 @@ with tab2:
         with col1:
             st.download_button(
                 label="📥 Download as Notepad (.txt)",
-                data=str(display_content),
-                file_name=f"Script_{st.session_state.get('niche_data', 'content').replace(' ','_')}.txt",
+                data=str(final_content),
+                file_name=f"Blueprint_{st.session_state.get('niche_data', 'content').replace(' ','_')}.txt",
                 mime="text/plain",
                 use_container_width=True
             )
             
         with col2:
-            word_file = create_word_doc(str(display_content), "Social_Media", st.session_state.get("niche_data", "Content"))
+            word_file = create_word_doc(str(final_content), platform if 'platform' in globals() else "Social_Media", st.session_state.get("niche_data", "Content"))
             st.download_button(
                 label="📥 Download Word Document (.docx)",
                 data=word_file,
-                file_name=f"Script_{st.session_state.get('niche_data', 'content').replace(' ','_')}.docx",
+                file_name=f"Blueprint_{st.session_state.get('niche_data', 'content').replace(' ','_')}.docx",
                 mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
                 use_container_width=True
             )
     else:
-        st.warning("⚠️ Pehle Tab 1 mein topic dalo aur agents run karo. Agar pehle run kiya tha, toh current mode switch karne par naya trigger click karein!")
+        st.warning("⚠️ Pehle Tab 1 mein topic dalo aur agents run karo. Output abhi ready nahi hai.")
 
 with tab3:
     st.header("📊 Multi-Platform Report")
