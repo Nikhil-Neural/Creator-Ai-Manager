@@ -122,9 +122,10 @@ if "active_model"  not in st.session_state: st.session_state["active_model"]  = 
 if "gemini_error"  not in st.session_state: st.session_state["gemini_error"]  = ""
 
 # ── CrewAI Backend ─────────────────────────────────────
+# ── CrewAI Backend ─────────────────────────────────────
 def run_my_crew_ai_agents(niche_topic, social_platform, output_language, video_duration, app_mode, user_pasted_script, selected_bundle_options):
     """
-    Pure Value Matrix Engine with Runtime Live Key Failover Matrix.
+    Pure Value Matrix Engine with Runtime Live Key Failover Matrix & Strict RPM Cooling Delays.
     Removes internet scraping tools entirely to deliver 100% focused structural value.
     """
     target_seconds = int(video_duration * 60)
@@ -133,30 +134,31 @@ def run_my_crew_ai_agents(niche_topic, social_platform, output_language, video_d
     # Core Fast Clusters Routing From Step 1
     groq_cluster_llm = get_cluster_llm(provider="groq")
     
-    # 🌟 RUNTIME INTELLIGENT ROUTER GATE FOR SCRIPT WRITER
-    # Pehle test karenge Gemini Key 1 aur Key 2 ko max 2 retries ke sath.
-    # Agar dono fail ho gaye, toh script_writing_llm ko direct Groq Key 2 allot kar denge.
-    
+    # 🌟 RUNTIME INTELLIGENT ROUTER GATE FOR SCRIPT WRITER WITH STRICT SLEEP DELAYS
     script_writing_llm = None
     gemini_resolved = False
     
-    # --- Try Gemini Key 1 (Max 2 Attempts) ---
+    # --- Try Gemini Key 1 (Max 2 Attempts with 15s Cooling) ---
     if G_KEY_1 or GEMINI_KEY:
         k1 = G_KEY_1 if G_KEY_1 else GEMINI_KEY
         for attempt in range(1, 3):
             try:
                 test_llm = LLM(model="gemini/gemini-2.5-flash", api_key=k1, timeout=15)
-                # Chhota ping test system verification ke liye
+                # Pre-Flight Ping Test
                 test_llm.call(messages=[{"role": "user", "content": "ping"}])
                 script_writing_llm = test_llm
                 gemini_resolved = True
                 print(f"[MATRIX SUCCESS] Gemini Key 1 working flawlessly on attempt {attempt}.")
+                
+                # ⏱️ COOLING DELAY: Ping test pass hone ke baad 15s wait taaki CrewAI ka pehla task safe rahe
+                print("[RPM GUARD] Cooling system for 15 seconds before launching CrewAI...")
+                time.sleep(15)
                 break
             except Exception as e:
-                print(f"[MATRIX WARNING] Gemini Key 1 attempt {attempt} failed with error: {e}. Retrying...")
-                time.sleep(15) # Rate limit cooling window
+                print(f"[MATRIX WARNING] Gemini Key 1 attempt {attempt} failed with error: {e}. Cooling down...")
+                time.sleep(15) # Rate limit protection during failure
                 
-    # --- Try Gemini Key 2 (Max 2 Attempts) if Key 1 Failed ---
+    # --- Try Gemini Key 2 (Max 2 Attempts with 15s Cooling) if Key 1 Failed ---
     if not gemini_resolved and G_KEY_2:
         print("[MATRIX SWITCH] Gemini Key 1 completely exhausted. Routing to Gemini Key 2...")
         for attempt in range(1, 3):
@@ -166,9 +168,13 @@ def run_my_crew_ai_agents(niche_topic, social_platform, output_language, video_d
                 script_writing_llm = test_llm
                 gemini_resolved = True
                 print(f"[MATRIX SUCCESS] Gemini Key 2 working flawlessly on attempt {attempt}.")
+                
+                # ⏱️ COOLING DELAY: Key 2 pass hone ke baad pipeline hit karne se pehle wait
+                print("[RPM GUARD] Cooling system for 15 seconds before launching CrewAI...")
+                time.sleep(15)
                 break
             except Exception as e:
-                print(f"[MATRIX WARNING] Gemini Key 2 attempt {attempt} failed with error: {e}. Retrying...")
+                print(f"[MATRIX WARNING] Gemini Key 2 attempt {attempt} failed with error: {e}. Cooling down...")
                 time.sleep(15)
 
     # --- Final Safeguard: Route directly to Groq Key 2 to avoid load on Groq Key 1 ---
@@ -225,7 +231,7 @@ def run_my_crew_ai_agents(niche_topic, social_platform, output_language, video_d
 
     tasks_pipeline = []
     
-    # 🌟 CORE FIX: Passing real-time data strictly into the prompt text
+    # Task 1: Research (Runs on Groq - No Gemini RPM Used Here)
     research_task = Task(
         description=f"""Analyze the target niche topic: '{niche_topic}' optimized for {social_platform}.
         
@@ -239,7 +245,7 @@ def run_my_crew_ai_agents(niche_topic, social_platform, output_language, video_d
     )
     tasks_pipeline.append(research_task)
 
-    # Deliverable Tier 1: Audio/Visual Content Script Layout Setup
+    # Task 2: Script Writing (Runs on Gemini with strict table guidelines)
     script_task = None
     if any("Script" in opt for opt in selected_bundle_options):
         script_prompt = f"Write a full high-retention video script for '{niche_topic}' targeting around {target_words} words ({target_seconds} seconds duration)."
@@ -248,13 +254,17 @@ def run_my_crew_ai_agents(niche_topic, social_platform, output_language, video_d
             
         script_task = Task(
             description=f"""{script_prompt} Flawlessly match language and cultural rhythm to '{output_language}'.
-            Output ONLY in a professional 2-Column Audio/Visual markdown table layout.
+            
+            CRITICAL CRITERIA: You MUST output the script strictly using a standard markdown table framework with 3 columns. 
+            Do NOT forget the vertical pipes (|) and the divider line. If you skip them, the frontend rendering completely breaks.
             Ensure zero AI-watermark words. Avoid: delve, moreover, testament, in conclusion, furthermore.
             
-            🌟 EXAMPLE SHOT-PROMPTING FORMAT:
+            🌟 YOU MUST FOLLOW THIS EXACT MARKDOWN TABLE STRUCTURE (DO NOT ALTER):
+            | Timestamp | Visuals | Audio ({output_language}) |
+            | :--- | :--- | :--- |
             | [00:00-00:05] | Camera zooms in sharply | Kya tumhe pata hai AI kya sochta hai? |
             | [00:05-00:15] | Cut to diagram layout | Context window woh jagah hai jahan... |""",
-            expected_output="Conversational script inside an Audio/Visual 2-column table grid framework.",
+            expected_output="A perfectly formatted Markdown Audio/Visual table with exact columns layout.",
             agent=script_writer,
             context=[research_task]
         )
