@@ -78,7 +78,10 @@ import requests
 import json
 
 def fetch_live_trends(niche_topic):
-    """Serper API se direct live YouTube video links aur titles nikalna."""
+    """
+    Serper API se direct live YouTube video links aur titles nikalna.
+    Core API integration strictly preserved to feed clean real-time data to CrewAI.
+    """
     if not SERPER_KEY:
         return []
     
@@ -122,16 +125,15 @@ if "active_model"  not in st.session_state: st.session_state["active_model"]  = 
 if "gemini_error"  not in st.session_state: st.session_state["gemini_error"]  = ""
 
 # ── CrewAI Backend ─────────────────────────────────────
-# =====================================================================
-# ── STEP 2: THE ULTIMATE DYNAMIC MASTER CREW BACKEND ENGINE ──
-# =====================================================================
-# =====================================================================
-# ── STEP 2: CLAUDE-APPROVED DEBUGGER ENGINE (VERBOSE ACTIVE) ──
-# =====================================================================
 def run_my_crew_ai_agents(niche_topic, social_platform, output_language, video_duration, app_mode, user_pasted_script, selected_bundle_options):
+    """
+    Pure Value Matrix Engine.
+    Removes internet scraping tools entirely to deliver 100% focused structural value.
+    """
     target_seconds = int(video_duration * 60)
     target_words = int(video_duration * 140)
     
+    # Core Fast Clusters Routing From Step 1
     groq_cluster_llm = get_cluster_llm(provider="groq")
     gemini_cluster_llm = get_cluster_llm(provider="gemini")
     
@@ -139,16 +141,17 @@ def run_my_crew_ai_agents(niche_topic, social_platform, output_language, video_d
     if not G_KEY_1 and not G_KEY_2 and not GEMINI_KEY:
         script_writing_llm = groq_cluster_llm
 
+    # 🕵️ AGENTS DESIGNED FOR PURE CRITICAL THINKING (NO EXTERNAL TOOLS USED)
     trend_analyst = Agent(
         role="Fast Trend Spotter",
-        goal=f"Extract minimal psychological hooks for '{niche_topic}' on {social_platform}.",
-        backstory="You are a data-saving trend analyst. Give only raw data points.",
+        goal=f"Extract minimal psychological hooks and viewer retention triggers for '{niche_topic}' on {social_platform}.",
+        backstory="You are a data-saving trend analyst. Give only raw psychological retention data points.",
         llm=groq_cluster_llm,
-        max_iter=1,
-        max_rpm=5,
-        verbose=True,            # 🌟 Active as requested
+        max_iter=1,              # Strict single-shot constraint
+        max_rpm=5,               
+        verbose=True,            # Terminal logs enabled as requested
         allow_delegation=False,
-        memory=False
+        memory=False             
     )
 
     script_writer = Agent(
@@ -156,7 +159,7 @@ def run_my_crew_ai_agents(niche_topic, social_platform, output_language, video_d
         goal="Write a 2-column video script blueprint.",
         backstory="You write high-retention humanized content without any fluffy or robotic AI words.",
         llm=script_writing_llm,
-        max_iter=1,
+        max_iter=1,              
         max_rpm=5,
         verbose=True,
         allow_delegation=False,
@@ -168,7 +171,7 @@ def run_my_crew_ai_agents(niche_topic, social_platform, output_language, video_d
         goal="Convert concepts into short social media assets.",
         backstory="You create titles, captions, layouts and threads instantly with extreme token efficiency.",
         llm=groq_cluster_llm,
-        max_iter=1,
+        max_iter=1,              
         max_rpm=5,
         verbose=True,
         allow_delegation=False,
@@ -177,15 +180,24 @@ def run_my_crew_ai_agents(niche_topic, social_platform, output_language, video_d
 
     tasks_pipeline = []
     
+    # 🌟 CORE MV FIX: PURE STRUCTURAL RESEARCH (SerperDevTool Completely Removed!)
+    tasks_pipeline = []
+    
+    # =====================================================================
+    # ── FIXED: LINE 80-116 HIGH-EFFICIENCY VALUE PIPELINE ──
+    # =====================================================================
+    
+    # 🌟 CORE FIX: Pure psychological insight generation, no external tool overhead
     research_task = Task(
-        description=f"""Analyze viral hooks for '{niche_topic}' on {social_platform}.
-        STRICT LIMIT: Response must be under 200 words only.
-        Give ONLY 3 bullet points. No explanation, no intro.""",
-        expected_output="3 bullet points under 200 words total.",
+        description=f"""Analyze the target niche topic: '{niche_topic}' specifically optimized for {social_platform}.
+        Identify exactly 3 psychological breakout hooks and 3 viewer retention anomalies that trigger user actions.
+        STRICT LIMIT: Response must be under 150 words total. Do NOT output video URLs, links, titles or introductory chitchat.""",
+        expected_output="3 breakout hooks and 3 retention nodes in clean text bullet points.",
         agent=trend_analyst
     )
     tasks_pipeline.append(research_task)
 
+    # Deliverable Tier 1: Audio/Visual Content Script Layout Setup
     script_task = None
     if any("Script" in opt for opt in selected_bundle_options):
         script_prompt = f"Write a full high-retention video script for '{niche_topic}' targeting around {target_words} words ({target_seconds} seconds duration)."
@@ -195,17 +207,18 @@ def run_my_crew_ai_agents(niche_topic, social_platform, output_language, video_d
         script_task = Task(
             description=f"""{script_prompt} Flawlessly match language and cultural rhythm to '{output_language}'.
             Output ONLY in a professional 2-Column Audio/Visual markdown table layout.
-            Ensure zero AI-watermark words. Avoid: delve, moreover, testament, in conclusion.
+            Ensure zero AI-watermark words. Avoid: delve, moreover, testament, in conclusion, furthermore.
             
             🌟 EXAMPLE SHOT-PROMPTING FORMAT:
             | [00:00-00:05] | Camera zooms in sharply | Kya tumhe pata hai AI kya sochta hai? |
             | [00:05-00:15] | Cut to diagram layout | Context window woh jagah hai jahan... |""",
-            expected_output="Conversational script inside an Audio/Visual 2-column table grid.",
+            expected_output="Conversational script inside an Audio/Visual 2-column table grid framework.",
             agent=script_writer,
             context=[research_task]
         )
         tasks_pipeline.append(script_task)
 
+    # Deliverable Tier 2: Distribution Package Setup
     distribution_task = None
     dist_requirements = []
     if any("Titles" in opt for opt in selected_bundle_options): dist_requirements.append("- 5 High-CTR Titles & Search-Engine Descriptions")
@@ -229,7 +242,7 @@ def run_my_crew_ai_agents(niche_topic, social_platform, output_language, video_d
         )
         tasks_pipeline.append(distribution_task)
 
-    # 🏁 PRODUCTION KICKOFF
+    # 🏁 LEAN ENGINE KICKOFF
     master_crew = Crew(
         agents=[trend_analyst, script_writer, copy_maestro],
         tasks=tasks_pipeline,
@@ -239,9 +252,8 @@ def run_my_crew_ai_agents(niche_topic, social_platform, output_language, video_d
     
     master_crew.kickoff()
     
-    # 🌟 CORE MATRIX FIX: Dono tasks ka output complete merge karke bheja jayega!
+    # 🌟 DATA WRAPPER: Compile everything into a seamless premium payload
     compiled_final_output = ""
-    
     compiled_final_output += "### 🕵️ EXPERT TREND RESEARCH ANALYSIS\n"
     compiled_final_output += str(research_task.output.raw if hasattr(research_task, 'output') and research_task.output else "Research analysis completed.") + "\n\n"
     
@@ -397,6 +409,7 @@ with tab1:
     # ⚡ AUTOMATED BACKEND PIPELINE GENERATION TRIGGER GATE
     # ⚡ AUTOMATED BACKEND PIPELINE GENERATION TRIGGER GATE (FIXED STORAGE)
     # ⚡ AUTOMATED BACKEND PIPELINE GENERATION TRIGGER GATE
+    # ⚡ AUTOMATED BACKEND PIPELINE GENERATION TRIGGER GATE (FIXED STORAGE & RE-RUN)
     if st.session_state.get("form_submitted"):
         with st.spinner("🕵️ Orchestrating failproof master crew network..."):
             try:
@@ -410,12 +423,12 @@ with tab1:
                     st.session_state["selected_options"]
                 )
                 
-                # Double track variables backup
+                # Double track storage matrix save
                 st.session_state["script_data"] = ai_output
                 st.session_state["form_submitted"] = False
                 
-                # 🌟 FIXED: Success block screen par permanent ruka rahega! No st.rerun() here
-                st.success("🎉 **Crew Execution Successful!** All assets compiled seamlessly. Please switch to **Tab 2: Download/Generated Content** from the top menu to view and download your blueprint!")
+                # 🌟 FIXED: Success box permanent screen par hold rahega!
+                st.success("🎉 **Crew Execution Successful!** All compiled structural blueprints are ready. Please switch to **Tab 2: Download/Generated Content** from the top menu to view your blueprint layout!")
             except Exception as e:
                 st.session_state["form_submitted"] = False
                 st.error(f"🤖 Engine Error: {str(e)}")
@@ -427,7 +440,7 @@ with tab2:
     if "script_data" in st.session_state and st.session_state["script_data"]:
         final_content = st.session_state["script_data"]
         
-        # 🌟 ORIGINAL EXPANDER RESTORED FOR COMFORTABLE RENDERING
+        # 🌟 ORIGINAL EXPANDER COMFORTABLE FRAMEWORK ACTIVE
         with st.expander("📝 VIEW FULL COMPLETE BLUEPRINT OUTPUT", expanded=True):
             st.markdown(final_content)
             
