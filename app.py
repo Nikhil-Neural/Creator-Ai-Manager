@@ -295,34 +295,44 @@ else:
     st.write("---")
     
     # PILL SECTION A: THE PREMIUM SYNC DASHBOARD (Pill 2 - Bold UI Setup)
-    if selected_auditor_section == "🔗 1. Secure Social Account Hub":
-        st.markdown("## 🛡️ PREMIUM ACCOUNT GATEWAY VAULT")
-        st.write("Connect and synchronize your secure channel data streams instantly using automated high-grade API gateways.")
+    # ── SUDHAR CODE: Clean & Simple UI For Social Connection ──
+if selected_auditor_section == "🔗 1. Secure Social Account Hub":
+    st.markdown("## 🔐 Connect Your Social Accounts")
+    st.write("Apne platforms ko ek click mein connect karein aur real-time analytics reports paayein.")
+    st.write(" ")
+    
+    # 2 Columns for ultra-clean layout
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.subheader("📺 YouTube")
+        if st.button("❤️ Connect YouTube Channel", use_container_width=True):
+            st.success("Redirecting to secure Google Login...")
+            time.sleep(1)
+            st.session_state["channels_synced"] = True
+            st.session_state["audit_data_ready"] = True
+            st.rerun()
+            
         st.write(" ")
-        
-        # Big Premium Layout Framework Structure
-        box_col1, box_col2 = st.columns(2)
-        with box_col1:
-            st.markdown("### 🌐 GOOGLE INTEGRATION HUB")
-            yt_sync = st.toggle("**YouTube Studio Analytics Gateway (ReadOnly Access Node)**", value=st.session_state["channels_synced"])
-            st.caption("🔒 Status: Secured with `yt-analytics.readonly` token credentials blueprint configuration.")
-            
-            st.write(" ")
-            st.markdown("### 🕊️ AUTHORITATIVE X NETWORK NODE")
-            x_sync = st.toggle("**X (Twitter) Developer Ecosystem Platform Suite**")
-            st.caption("🔒 Status: Mapping standard metadata trends parsing variables pipelines.")
+        st.subheader("🐦 X (Twitter)")
+        st.button("🩵 Connect X Account", use_container_width=True)
 
-        with box_col2:
-            st.markdown("### 🪐 META DEVELOPER GRAPH PLATFORM")
-            insta_sync = st.toggle("**Instagram Business Profile Core Feed Data Scopes**", value=st.session_state["channels_synced"])
-            st.caption("🔒 Status: Tracking verified Graph API structural profiles metrics tokens.")
+    with col2:
+        st.subheader("📸 Instagram")
+        if st.button("🩷 Connect Instagram Business", use_container_width=True):
+            st.success("Redirecting to secure Meta Login...")
+            time.sleep(1)
+            st.session_state["channels_synced"] = True
+            st.session_state["audit_data_ready"] = True
+            st.rerun()
             
-            st.write(" ")
-            st.markdown("### 👥 FACEBOOK PAGES CLUSTER CORE")
-            fb_sync = st.toggle("**Facebook Author Fanpage Insight Sync Systems**")
-            st.caption("🔒 Status: ReadOnly metadata extraction nodes active framework.")
+        st.write(" ")
+        st.subheader("🔵 Facebook")
+        st.button("💙 Connect Facebook Page", use_container_width=True)
 
-        st.write("---")
+    st.write("---")
+    if st.session_state["channels_synced"]:
+        st.button("⚠️ Disconnect All Accounts", use_container_width=True, type="secondary")
         
         # Premium Execution Control Hub Rows Layout
         action_col1, action_col2 = st.columns([2, 1])
