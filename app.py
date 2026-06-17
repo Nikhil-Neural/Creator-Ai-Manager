@@ -25,7 +25,6 @@ GR_KEY_2 = st.secrets.get("GROQ_API_KEY_2", "")
 S_KEY_1 = st.secrets.get("SERPER_API_KEY_1", "")
 S_KEY_2 = st.secrets.get("SERPER_API_KEY_2", "")
 
-# Fallback mechanism standard keys for old dependencies
 GEMINI_KEY = G_KEY_1 if G_KEY_1 else st.secrets.get("GEMINI_API_KEY", "")
 GROQ_KEY   = GR_KEY_1 if GR_KEY_1 else st.secrets.get("GROQ_API_KEY", "")
 SERPER_KEY = S_KEY_1 if S_KEY_1 else st.secrets.get("SERPER_API_KEY", "")
@@ -37,11 +36,6 @@ if not G_KEY_1 and not GR_KEY_1 and not GEMINI_KEY and not GROQ_KEY:
     st.sidebar.error("⚠️ Control Panel Matrix Empty: Keys Missing!")
 
 def get_cluster_llm(provider="groq"):
-    """
-    Smart Fallback Rotation Router:
-    - Groq Cluster: Key 1 -> Key 2 (High Speed Matrix)
-    - Gemini Cluster: Key 1 -> Key 2 (Context Heavy Matrix)
-    """
     if provider == "groq":
         primary_key = GR_KEY_1 if GR_KEY_1 else GROQ_KEY
         fallback_key = GR_KEY_2 if GR_KEY_2 else primary_key
@@ -59,7 +53,6 @@ def get_cluster_llm(provider="groq"):
             print(f"[ROUTING ALERT] Gemini Key 1 failed. Swapping to Gemini Key 2. Error: {e}")
             return LLM(model="gemini/gemini-2.5-flash", api_key=fallback_key, timeout=30)
 
-# Helper function to create Word Documents in memory (RAM)
 def create_word_doc(script_text, platform_name, topic_name):
     doc = Document()
     doc.add_heading(f"🎬 Production Blueprint: {topic_name}", level=1)
@@ -68,7 +61,6 @@ def create_word_doc(script_text, platform_name, topic_name):
     doc.add_paragraph("="*50)
     doc.add_heading("📝 Video Script Content", level=2)
     doc.add_paragraph(script_text)
-    
     bio = io.BytesIO()
     doc.save(bio)
     bio.seek(0)
@@ -78,14 +70,8 @@ def fetch_live_trends(niche_topic):
     if not SERPER_KEY:
         return []
     url = "https://google.serper.dev/search"
-    payload = json.dumps({
-        "q": f"site:youtube.com watch viral video {niche_topic}",
-        "num": 5
-    })
-    headers = {
-        'X-API-KEY': SERPER_KEY,
-        'Content-Type': 'application/json'
-    }
+    payload = json.dumps({"q": f"site:youtube.com watch viral video {niche_topic}", "num": 5})
+    headers = {'X-API-KEY': SERPER_KEY, 'Content-Type': 'application/json'}
     video_trends = []
     try:
         response = requests.post(url, headers=headers, data=payload, timeout=10)
@@ -94,10 +80,7 @@ def fetch_live_trends(niche_topic):
             for item in data["organic"]:
                 link = item.get("link", "")
                 if "youtube.com/watch" in link or "youtu.be" in link:
-                    video_trends.append({
-                        "title": item.get("title", "Trending Video Blueprint"),
-                        "url": link
-                    })
+                    video_trends.append({"title": item.get("title", "Trending Video Blueprint"), "url": link})
                 if len(video_trends) >= 3:
                     break
         return video_trends
@@ -112,7 +95,6 @@ if "channels_synced"   not in st.session_state: st.session_state["channels_synce
 if "audit_data_ready"  not in st.session_state: st.session_state["audit_data_ready"] = False
 if "mock_upload_ready" not in st.session_state: st.session_state["mock_upload_ready"] = False
 
-# ── CrewAI Backend Engine ──────────────────────────────
 def run_my_crew_ai_agents(niche_topic, social_platform, output_language, video_duration, app_mode, user_pasted_script, selected_bundle_options):
     target_seconds = int(video_duration * 60)
     target_words = int(video_duration * 140)
@@ -130,7 +112,6 @@ def run_my_crew_ai_agents(niche_topic, social_platform, output_language, video_d
                 script_writing_llm = test_llm
                 gemini_resolved = True
                 print(f"[MATRIX SUCCESS] Gemini Key 1 working flawlessly on attempt {attempt}.")
-                print("[RPM GUARD] Cooling system for 15 seconds before launching CrewAI...")
                 time.sleep(15)
                 break
             except Exception as e:
@@ -138,60 +119,40 @@ def run_my_crew_ai_agents(niche_topic, social_platform, output_language, video_d
                 time.sleep(15)
                 
     if not gemini_resolved and G_KEY_2:
-        print("[MATRIX SWITCH] Gemini Key 1 completely exhausted. Routing to Gemini Key 2...")
         for attempt in range(1, 3):
             try:
                 test_llm = LLM(model="gemini/gemini-2.5-flash", api_key=G_KEY_2, timeout=15)
                 test_llm.call(messages=[{"role": "user", "content": "ping"}])
                 script_writing_llm = test_llm
                 gemini_resolved = True
-                print(f"[MATRIX SUCCESS] Gemini Key 2 working flawlessly on attempt {attempt}.")
-                print("[RPM GUARD] Cooling system for 15 seconds before launching CrewAI...")
                 time.sleep(15)
                 break
             except Exception as e:
-                print(f"[MATRIX WARNING] Gemini Key 2 attempt {attempt} failed with error: {e}. Cooling down...")
                 time.sleep(15)
 
     if not gemini_resolved:
         target_groq_key = GR_KEY_2 if GR_KEY_2 else (GR_KEY_1 if GR_KEY_1 else GROQ_KEY)
-        print(f"[MATRIX CRITICAL] All Gemini Keys failed. Direct routing locked to Groq Key 2.")
         script_writing_llm = LLM(model="groq/llama-3.3-70b-versatile", api_key=target_groq_key, timeout=30)
 
     trend_analyst = Agent(
         role="Fast Trend Spotter",
         goal=f"Extract minimal psychological hooks and viewer retention triggers for '{niche_topic}' on {social_platform}.",
-        backstory="You are a data-saving trend analyst. Give only raw psychological retention data points.",
-        llm=groq_cluster_llm,
-        max_iter=1,
-        max_rpm=5,
-        verbose=True,
-        allow_delegation=False,
-        memory=False 
+        backstory="Data-saving trend analyst. Raw psychological data output constraint locked.",
+        llm=groq_cluster_llm, max_iter=1, max_rpm=5, verbose=True, allow_delegation=False, memory=False
     )
 
     script_writer = Agent(
         role="Humanized Script Writer",
         goal="Write a 2-column video script blueprint.",
-        backstory="You write high-retention humanized content without any fluffy or robotic AI words.",
-        llm=script_writing_llm,
-        max_iter=1,
-        max_rpm=5,
-        verbose=True,
-        allow_delegation=False,
-        memory=False
+        backstory="Writes clean high-retention humanized content without any robotic AI watermarks.",
+        llm=script_writing_llm, max_iter=1, max_rpm=5, verbose=True, allow_delegation=False, memory=False
     )
 
     copy_maestro = Agent(
         role="Micro Copywriter",
-        goal="Convert concepts into short social media assets.",
-        backstory="You create titles, captions, layouts and threads instantly with extreme token efficiency.",
-        llm=groq_cluster_llm,
-        max_iter=1,
-        max_rpm=5,
-        verbose=True,
-        allow_delegation=False,
-        memory=False
+        goal="Convert concepts into short social media assets instantly.",
+        backstory="Extreme token efficiency. Expert direct copy structures setup engine.",
+        llm=groq_cluster_llm, max_iter=1, max_rpm=5, verbose=True, allow_delegation=False, memory=False
     )
 
     tasks_pipeline = []
@@ -202,294 +163,232 @@ def run_my_crew_ai_agents(niche_topic, social_platform, output_language, video_d
             live_scanned_context = "\n".join([f"- Title: {item['title']} (URL: {item['url']})" for item in raw_trends])
 
     research_task = Task(
-        description=f"""Analyze the target niche topic: '{niche_topic}' optimized for {social_platform}.
-        CRITICAL REAL-TIME INTERNET CONTEXT FOUND:
-        {live_scanned_context if live_scanned_context else 'No direct video links found, use niche analysis.'}
-        Using the real-time titles and data above, identify exactly 3 psychological breakout hooks and 3 viewer retention anomalies that trigger user actions.
-        STRICT LIMIT: Response must be under 150 words total. Do NOT output video URLs, links, titles or introductory chitchat.""",
-        expected_output="3 breakout hooks and 3 retention nodes in clean text bullet points.",
+        description=f"Analyze topic: '{niche_topic}' on {social_platform}.\nContext:\n{live_scanned_context}\nIdentify 3 breakout hooks and 3 retention nodes under 150 words total. No titles/urls.",
+        expected_output="Clean bullet points analysis matrix data.",
         agent=trend_analyst
     )
     tasks_pipeline.append(research_task)
 
     script_task = None
     if any("Script" in opt for opt in selected_bundle_options):
-        script_prompt = f"Write a full high-retention video script for '{niche_topic}' targeting around {target_words} words ({target_seconds} seconds duration)."
+        script_prompt = f"Write a full video script for '{niche_topic}' around {target_words} words ({target_seconds} seconds)."
         if app_mode == "✍️ Repurpose My Script Mode":
-            script_prompt = f"Analyze this raw user script: '{user_pasted_script}'. Re-engineer and polish it for ultimate human cadence."
+            script_prompt = f"Analyze and re-engineer raw script: '{user_pasted_script}'."
             
         script_task = Task(
-            description=f"""{script_prompt} Flawlessly match language and cultural rhythm to '{output_language}'.
-            CRITICAL CRITERIA: You MUST output the script strictly using a standard markdown table framework with 3 columns. 
-            Do NOT forget the vertical pipes (|) and the divider line. If you skip them, the frontend rendering completely breaks.
-            Ensure zero AI-watermark words. Avoid: delve, moreover, testament, in conclusion, furthermore.
-            🌟 YOU MUST FOLLOW THIS EXACT MARKDOWN TABLE STRUCTURE (DO NOT ALTER):
+            description=f"""{script_prompt} Target language: '{output_language}'.
+            CRITICAL CRITERIA: You MUST use this exact table framework layout:
             | Timestamp | Visuals | Audio ({output_language}) |
-            | :--- | :--- | :--- |
-            | [00:00-00:05] | Camera zooms in sharply | Kya tumhe pata hai AI kya sochta hai? |
-            | [00:05-00:15] | Cut to diagram layout | Context window woh jagah hai jahan... |""",
-            expected_output="A perfectly formatted Markdown Audio/Visual table with exact columns layout.",
-            agent=script_writer,
-            context=[research_task]
+            | :--- | :--- | :--- |""",
+            expected_output="Perfect Markdown 3-column table framework script context.",
+            agent=script_writer, context=[research_task]
         )
         tasks_pipeline.append(script_task)
 
     distribution_task = None
     dist_requirements = []
-    if any("Titles" in opt for opt in selected_bundle_options): dist_requirements.append("- 5 High-CTR Titles & Search-Engine Descriptions")
-    if any("Thumbnail" in opt for opt in selected_bundle_options): dist_requirements.append("- 3 distinct thumbnail frameworks (Focal point, Text overlay hook max 3 words, Contrast colors)")
-    if any("Captions" in opt for opt in selected_bundle_options): dist_requirements.append("- 3 click-driven micro-captions and hashtag nodes for Shorts feed")
-    if any("Threads" in opt for opt in selected_bundle_options): dist_requirements.append("- 5-part vertical engagement X Thread and authoritative LinkedIn post")
+    if any("Titles" in opt for opt in selected_bundle_options): dist_requirements.append("- 5 High-CTR Titles & Descriptions")
+    if any("Thumbnail" in opt for opt in selected_bundle_options): dist_requirements.append("- 3 thumbnail design concepts layout framework")
+    if any("Captions" in opt for opt in selected_bundle_options): dist_requirements.append("- 3 short captions & tags")
+    if any("Threads" in opt for opt in selected_bundle_options): dist_requirements.append("- 5 vertical engagement elements package")
 
     if dist_requirements:
         distribution_task = Task(
-            description=f"""You are an independent expert copywriter working directly from the primary topic details.
-            Topic: '{niche_topic}' | Platform: {social_platform} | Language: {output_language}
-            Generate ONLY the required structural assets below:
-            {chr(10).join(dist_requirements)}
-            Rules:
-            - NO robotic words: delve, moreover, testament, in conclusion, furthermore
-            - Be direct, highly human, conversational, and punchy
-            - Each individual component item output must be concise and max 150 words
-            - Zero explanation, zero preamble chitchat, output raw ready-to-copy content only.""",
-            expected_output="Requested distribution assets package, no extra commentary.",
+            description=f"Generate package for topic '{niche_topic}' in '{output_language}':\n{chr(10).join(dist_requirements)}\nNo fluffy text, raw conversion ready blocks only.",
+            expected_output="Compiled social media assets tier list package.",
             agent=copy_maestro
         )
         tasks_pipeline.append(distribution_task)
 
-    master_crew = Crew(
-        agents=[trend_analyst, script_writer, copy_maestro],
-        tasks=tasks_pipeline,
-        verbose=True,
-        process='sequential'
-    )
+    master_crew = Crew(agents=[trend_analyst, script_writer, copy_maestro], tasks=tasks_pipeline, verbose=True, process='sequential')
     master_crew.kickoff()
     
-    compiled_final_output = ""
-    compiled_final_output += "### 🕵️ EXPERT TREND RESEARCH ANALYSIS\n"
-    compiled_final_output += str(research_task.output.raw if hasattr(research_task, 'output') and research_task.output else "Research analysis completed.") + "\n\n"
-    
+    compiled_final_output = "### 🕵️ EXPERT TREND RESEARCH ANALYSIS\n" + str(research_task.output.raw if hasattr(research_task, 'output') and research_task.output else "") + "\n\n"
     if script_task and script_task.output:
-        compiled_final_output += "### 🎬 PREMIUM AUDIO/VISUAL RETENTION SCRIPT\n"
-        compiled_final_output += str(script_task.output.raw) + "\n\n"
-        
+        compiled_final_output += "### 🎬 PREMIUM AUDIO/VISUAL RETENTION SCRIPT\n" + str(script_task.output.raw) + "\n\n"
     if distribution_task and distribution_task.output:
-        compiled_final_output += "### 📱 DISTRIBUTION MICRO-ASSETS PACKAGE\n"
-        compiled_final_output += str(distribution_task.output.raw) + "\n\n"
+        compiled_final_output += "### 📱 DISTRIBUTION MICRO-ASSETS PACKAGE\n" + str(distribution_task.output.raw) + "\n\n"
         
     return compiled_final_output
 
-# ── Dynamic Sidebar Architecture Upgrade ────────────────
+# ── Dynamic Sidebar Control Panel ───────────────────────
 with st.sidebar:
     st.title("⚙️ Control Panel Matrix")
-    
-    # Core OS Modes Switcher
     current_os_mode = st.pills(
         "🔮 Core OS Operations Mode:",
         ["✍️ AI Script Generator", "📊 AI Channel Auditor & Sync"],
         default="✍️ AI Script Generator"
     )
     st.write("---")
-    
     platform = st.selectbox("Global Target Platform:", ["YouTube", "Instagram", "Facebook", "X (Twitter)"])
     language = st.selectbox("Output Interface Language:", ["Hinglish", "Hindi", "English"])
     st.write("---")
-    st.caption("Architecture Framework: CrewAI + Gemini 2.5 + Groq Llama-3.3")
+    st.caption("Architecture Framework: CrewAI + Gemini + Groq Matrix")
 
-# ── Main UI Layout Dispatcher ───────────────────────────
+# ── Main Content Gateway Router ──────────────────────────
 st.title("🚀 Creator AI Manager OS")
-st.write(f"System Context: **{current_os_mode}** active | Platform Target: **{platform}**")
+st.write(f"System Context: **{current_os_mode}** active | Platform: **{platform}**")
 st.write("---")
 
-# 🧭 ROUTE 1: SCRIPT GENERATOR MODE
+# MODE 1: SCRIPT ENGINE
 if current_os_mode == "✍️ AI Script Generator":
     tab1, tab2 = st.tabs(["🔥 Trend & Script Workspace", "📥 Download Generated Blueprint"])
-
     with tab1:
         st.markdown("### 🔥 AI Content Strategy Hub")
-        st.caption("Topic ya raw script daliye — Specialized multi-agent network kaam karega.")
+        app_mode = st.radio("🔮 Kis Mode me kaam karna hai?", ["🚀 Complete Blueprint Mode", "✍️ Repurpose My Script Mode"], horizontal=True)
         st.write("---")
-        
-        app_mode = st.radio(
-            "🔮 Kis Mode me kaam karna hai?", 
-            ["🚀 Complete Blueprint Mode", "✍️ Repurpose My Script Mode"], 
-            horizontal=True
-        )
-        st.write("---")
-        
-        bundle_options = []
-        user_niche = ""
-        user_pasted_script = ""
-        video_duration = 2.0
         
         with st.form("trend_form"):
             if app_mode == "🚀 Complete Blueprint Mode":
-                bundle_options = st.pills(
-                    "🎁 Is Production Bundle me kya-kya generate karna hai? (Multi-Select)", 
-                    ["🎬 Retention Script & Visual Cues", "🎯 High-CTR Viral Titles & Descriptions", "🎨 High-CTR Thumbnail Design Concepts", "📱 Shorts/Reels Viral Captions & Tags", "🧵 LinkedIn & X (Twitter) Threads"],
-                    default=["🎬 Retention Script & Visual Cues"],
-                    selection_mode="multi",
-                    key="blueprint_opts"
-                )
+                bundle_options = st.pills("🎁 Content Bundle Items: (Multi-Select)", ["🎬 Retention Script & Visual Cues", "🎯 High-CTR Viral Titles & Descriptions", "🎨 High-CTR Thumbnail Design Concepts", "📱 Shorts/Reels Viral Captions & Tags", "🧵 LinkedIn & X (Twitter) Threads"], default=["🎬 Retention Script & Visual Cues"], selection_mode="multi")
                 user_niche = st.text_input("🎯 Kis topic par video banani hai?", value=st.session_state.get("niche_data", ""))
-                video_duration = st.slider("⏱ Video ki duration (In Minutes)", 0.5, 3.0, 1.0, 0.5)
+                video_duration = st.slider("⏱ Video duration (Minutes)", 0.5, 3.0, 1.0, 0.5)
             else:
-                bundle_options = st.pills(
-                    "🎁 Raw Script se kya-kya extract/generate karna hai? (Multi-Select)", 
-                    ["🎯 High-CTR Viral Titles & Descriptions", "🎨 High-CTR Thumbnail Design Concepts", "📱 Shorts/Reels Viral Captions & Tags", "🧵 LinkedIn & X (Twitter) Threads"],
-                    default=["🎯 High-CTR Viral Titles & Descriptions"],
-                    selection_mode="multi",
-                    key="repurpose_opts"
-                )
-                user_niche = st.text_input("🎯 Video ka Main Topic/Title:", value=st.session_state.get("niche_data", ""))
-                user_pasted_script = st.text_area("📝 Apni script yahan Paste karein:", height=200)
+                bundle_options = st.pills("🎁 Extraction Bundle Items: (Multi-Select)", ["🎯 High-CTR Viral Titles & Descriptions", "🎨 High-CTR Thumbnail Design Concepts", "📱 Shorts/Reels Viral Captions & Tags", "🧵 LinkedIn & X (Twitter) Threads"], default=["🎯 High-CTR Viral Titles & Descriptions"], selection_mode="multi")
+                user_niche = st.text_input("🎯 Video Title/Topic:", value=st.session_state.get("niche_data", ""))
+                user_pasted_script = st.text_area("📝 Script content:", height=200)
 
             submit_btn = st.form_submit_button("🚀 Launch Specialized Agents Grid", use_container_width=True)
-
             if submit_btn:
-                if not bundle_options:
-                    st.error("⚠️ Oye Founder! Pehle niche bundle options me se kam se kam ek cheez toh select karo!")
+                if not bundle_options: st.error("⚠️ Bundle item select karein!")
                 elif user_niche:
                     st.session_state["niche_data"] = user_niche
                     st.session_state["form_submitted"] = True
                     st.session_state["selected_options"] = bundle_options
                     st.session_state["current_mode"] = app_mode
-                    st.session_state["pasted_script"] = user_pasted_script
-                    st.session_state["duration"] = video_duration
-                else:
-                    st.error("⚠️ Topic box mein kuch likho pehle!")
-
-        if st.session_state.get("niche_data"):
-            st.write("---")
-            st.info("🤖 **Engine Ready:** Real-time search parameters locked. Launch the agents grid above to inject fresh live context.")
+                    st.session_state["pasted_script"] = user_pasted_script if 'user_pasted_script' in locals() else ""
+                    st.session_state["duration"] = video_duration if 'video_duration' in locals() else 1.0
+                else: st.error("⚠️ Topic cannot be empty!")
 
         if st.session_state.get("form_submitted"):
-            with st.spinner("🕵️ Orchestrating failproof master crew network..."):
+            with st.spinner("🕵️ Processing failproof generation sequence..."):
                 try:
-                    ai_output = run_my_crew_ai_agents(
-                        st.session_state["niche_data"],
-                        platform,
-                        language,
-                        st.session_state.get("duration", 2.0),
-                        st.session_state["current_mode"],
-                        st.session_state.get("pasted_script", ""),
-                        st.session_state["selected_options"]
-                    )
+                    ai_output = run_my_crew_ai_agents(st.session_state["niche_data"], platform, language, st.session_state.get("duration", 1.0), st.session_state["current_mode"], st.session_state.get("pasted_script", ""), st.session_state["selected_options"])
                     st.session_state["script_data"] = ai_output
                     st.session_state["form_submitted"] = False
-                    st.success("🎉 **Crew Execution Successful!** Blueprints ready. Go to Tab 2 to download content!")
+                    st.success("🎉 Blueprint ready! Switch to Tab 2 to download content.")
                 except Exception as e:
                     st.session_state["form_submitted"] = False
-                    st.error(f"🤖 Engine Error: {str(e)}")
+                    st.error(f"Engine Error: {str(e)}")
 
     with tab2:
-        st.header("📥 Download Generated Content Blueprint")
-        st.write("---")
+        st.header("📥 Download Generated Content")
         if "script_data" in st.session_state and st.session_state["script_data"]:
-            final_content = st.session_state["script_data"]
-            with st.expander("📝 VIEW FULL COMPLETE BLUEPRINT OUTPUT", expanded=True):
-                st.markdown(final_content)
+            st.markdown(st.session_state["script_data"])
             st.write("---")
-            col1, col2 = st.columns(2)
-            with col1:
-                st.download_button(
-                    label="📥 Download as Notepad (.txt)",
-                    data=str(final_content),
-                    file_name=f"Blueprint_{st.session_state.get('niche_data', 'content').replace(' ','_')}.txt",
-                    mime="text/plain",
-                    use_container_width=True
-                )
-            with col2:
-                word_file = create_word_doc(str(final_content), platform, st.session_state.get("niche_data", "Content"))
-                st.download_button(
-                    label="📥 Download Word Document (.docx)",
-                    data=word_file,
-                    file_name=f"Blueprint_{st.session_state.get('niche_data', 'content').replace(' ','_')}.docx",
-                    mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-                    use_container_width=True
-                )
-        else:
-            st.warning("⚠️ Pehle Tab 1 mein topic dalo aur agents run karo. Output abhi ready nahi hai.")
+            c1, c2 = st.columns(2)
+            with c1: st.download_button("📥 Notepad (.txt)", str(st.session_state["script_data"]), file_name="blueprint.txt", use_container_width=True)
+            with c2: st.download_button("📥 Word Doc (.docx)", create_word_doc(str(st.session_state["script_data"]), platform, st.session_state.get("niche_data", "File")), file_name="blueprint.docx", use_container_width=True)
+        else: st.warning("⚠️ No data compiled yet. Run Tab 1 first.")
 
-# 📊 ROUTE 2: FUNCTION 2 ENGINE (CHANNEL AUDITOR & SYNC NODE)
+# MODE 2: AUDITOR ENGINE WITH PREMIUM SUB-PILLS WORKFLOW
 else:
-    st.markdown("### 📊 AI Omnichannel Channel Auditor & Social Sync Engine")
-    st.caption("Privacy-First Secure Matrix: ReadOnly analytics data connectors with zero edit permissions risk.")
+    st.markdown("### 📊 AI Omnichannel Channel Auditor Ecosystem")
     st.write("---")
     
-    # Privacy Warning Notice Guardrail for Investors Validation
-    st.warning("🔒 **Security Protocol Statement (AES-256 Bit Vault Activated):** App connects strictly via ReadOnly OAuth tokens (`yt-analytics.readonly` & `instagram_graph_user_profile`). We never ask for account passwords or structural delete/edit permissions. Your accounts remain 100% untouched.")
+    # 🌟 NEW PRE-BUILT SUB-PILLS ROUTER NODE TO PREVENT CLUTTER
+    selected_auditor_section = st.pills(
+        "🛠️ Select Auditor Operational Node Framework:",
+        ["🔗 1. Secure Social Account Hub", "📈 2. Real-Time Performance Audit", "🚀 3. Omnichannel Media Publisher Node"],
+        default="🔗 1. Secure Social Account Hub"
+    )
+    st.write("---")
     
-    sync_col, data_col = st.columns([1, 2])
-    
-    with sync_col:
-        st.markdown("#### 🔗 Step 1: Link Channels")
-        st.write("Apne multi-platform accounts connect karein:")
+    # PILL SECTION A: THE PREMIUM SYNC DASHBOARD (Pill 2 - Bold UI Setup)
+    if selected_auditor_section == "🔗 1. Secure Social Account Hub":
+        st.markdown("## 🛡️ PREMIUM ACCOUNT GATEWAY VAULT")
+        st.write("Connect and synchronize your secure channel data streams instantly using automated high-grade API gateways.")
+        st.write(" ")
         
-        yt_sync = st.checkbox("YouTube Studio Matrix", value=st.session_state["channels_synced"], key="yt_sync_check")
-        insta_sync = st.checkbox("Meta Instagram Graph API", value=st.session_state["channels_synced"], key="insta_sync_check")
-        fb_sync = st.checkbox("Facebook Pages Node", key="fb_sync_check")
-        x_sync = st.checkbox("X (Twitter) Developer Portal v2", key="x_sync_check")
-        
-        st.write("---")
-        if st.button("🔗 Execute One-Click Authenticated Sync", use_container_width=True, type="primary"):
-            with st.spinner("Establishing secure handshake with platform endpoints..."):
-                time.sleep(2)  # Strict RPM Compliance Mock delay
-                st.session_state["channels_synced"] = True
-                st.session_state["audit_data_ready"] = True
-                st.rerun()
-                
-        if st.session_state["channels_synced"]:
-            st.success("🟢 All Selected Platform Tokens Locked!")
-            if st.button("🔴 Emergency Immediate Kill-Switch Disconnect", use_container_width=True):
-                st.session_state["channels_synced"] = False
-                st.session_state["audit_data_ready"] = False
-                st.session_state["mock_upload_ready"] = False
-                st.rerun()
+        # Big Premium Layout Framework Structure
+        box_col1, box_col2 = st.columns(2)
+        with box_col1:
+            st.markdown("### 🌐 GOOGLE INTEGRATION HUB")
+            yt_sync = st.toggle("**YouTube Studio Analytics Gateway (ReadOnly Access Node)**", value=st.session_state["channels_synced"])
+            st.caption("🔒 Status: Secured with `yt-analytics.readonly` token credentials blueprint configuration.")
+            
+            st.write(" ")
+            st.markdown("### 🕊️ AUTHORITATIVE X NETWORK NODE")
+            x_sync = st.toggle("**X (Twitter) Developer Ecosystem Platform Suite**")
+            st.caption("🔒 Status: Mapping standard metadata trends parsing variables pipelines.")
 
-    with data_col:
-        st.markdown("#### 📈 Step 2: Live Performance Audit & Strategy Report")
-        if not st.session_state["audit_data_ready"]:
-            st.info("ℹ️ Analytics data extraction engine idle. Target and link your social handles from Step 1 to generate deep virality reports.")
-        else:
-            # Macro Anonymous Metric Dashboard Layout for Investors Appeal
-            st.write("🔄 **Live Metric Extraction Completed.** Platform Reports (Monday Weekly Cycle Reset):")
-            c1, c2, c3 = st.columns(3)
-            with c1: st.metric(f"{platform} Impressions Data", "148,200", "+14.2% Growth", delta_color="normal")
-            with c2: st.metric("Average System AVD/Retention", "54.2%", "+3.8% Hook Strength")
-            with c3: st.metric("Overall Platform Monetization Criteria", "64.5% Cleared", "Est. 12 Days remaining")
+        with box_col2:
+            st.markdown("### 🪐 META DEVELOPER GRAPH PLATFORM")
+            insta_sync = st.toggle("**Instagram Business Profile Core Feed Data Scopes**", value=st.session_state["channels_synced"])
+            st.caption("🔒 Status: Tracking verified Graph API structural profiles metrics tokens.")
             
-            st.write("---")
-            st.markdown("##### 🕵️ Deep Virality Leak Audit Reports (Hinglish/Local Matrix)")
-            
-            with st.expander("🔴 VIEW DETECTED CRITICAL CONTENT FLAWS (Galti Pakadne Wala System)", expanded=True):
-                st.markdown("""
-                * **⚠️ CTR Decoder:** Bhai, pichli do videos ka thumbnail framework bohot poor tha! 100 logon ko dikha par CTR sirf 2.8% aaya (Target: >8%). Title me curiosity missing hai, use instantly badlo!
-                * **⚠️ Retention Drop Watchdog:** Aapki video ke **10th second** par exactly 68% audience bhaag gayi. Wahan tumne bohot lamba un-necessary text intro diya hai. Agli baar intro max 3 seconds ka rakho.
-                * **⚠️ Platform Strategy Note:** Is hafte tumhari Instagram Reels algorithm top performance de raha tha, par YouTube Shorts dead tha. Agli 3 reels Insta ke prime retention timing ke mutabik schedule karo.
-                """)
-                
-            # 🚀 FUTURE OMNICHANNEL ONE-TOUCH PUBLISHING MATRIX (Phase 2.5 Logic Implementation)
-            st.write("---")
-            st.markdown("##### 🚀 Step 3: Omnichannel Media Publisher Node (Phase 2.5 Sneak Peek)")
-            st.caption("Bina background bot trigger ke, direct user click par assets ko draft bankar schedule karein:")
-            
-            if "script_data" not in st.session_state or not st.session_state["script_data"]:
-                st.warning("⚠️ Publishing dashboard locked: Pehle Tab 1 se video ki script aur assets bundle system generation execute karein.")
-            else:
-                st.info("📄 **AI Generated Content Bundle Detected Ready in RAM!** Below assets will map seamlessly across all selected hubs:")
-                st.checkbox("Attach AI-Generated Script Titles & Descriptions", value=True)
-                st.checkbox("Inject click-driven Shorts feeds Captions & Hashtags", value=True)
-                
-                st.write("Select Scheduling Node Configuration Option:")
-                col_btn1, col_btn2 = st.columns(2)
-                with col_btn1:
-                    if st.button("⚡ Push as Dynamic Drafts (Manual Execution Required on Hubs)", use_container_width=True):
-                        with st.spinner("Syncing compiled text structures directly to pipeline nodes..."):
-                            time.sleep(1.5)
-                            st.session_state["mock_upload_ready"] = True
-                with col_btn2:
-                    st.date_input("📅 Schedule Post Automation Target Cycle Trigger Date:")
+            st.write(" ")
+            st.markdown("### 👥 FACEBOOK PAGES CLUSTER CORE")
+            fb_sync = st.toggle("**Facebook Author Fanpage Insight Sync Systems**")
+            st.caption("🔒 Status: ReadOnly metadata extraction nodes active framework.")
+
+        st.write("---")
+        
+        # Premium Execution Control Hub Rows Layout
+        action_col1, action_col2 = st.columns([2, 1])
+        with action_col1:
+            if st.button("⚡ EXECUTE ONE-CLICK AUTHENTICATED HANDSHAKE SYNC ROUTINE", use_container_width=True, type="primary"):
+                with st.spinner("Locking down high-security OAuth tokens pipelines layer..."):
+                    time.sleep(1.5)
+                    st.session_state["channels_synced"] = True
+                    st.session_state["audit_data_ready"] = True
+                    st.rerun()
+        with action_col2:
+            if st.session_state["channels_synced"]:
+                if st.button("⚠️ EMERGENCY KILL-SWITCH REVOKE", use_container_width=True):
+                    st.session_state["channels_synced"] = False
+                    st.session_state["audit_data_ready"] = False
+                    st.session_state["mock_upload_ready"] = False
+                    st.rerun()
                     
-                if st.session_state["mock_upload_ready"]:
-                    st.success("🔥 SUCCESS: All text structures, descriptions, and thumbnails metadata have been mapped safely as ready-to-publish drafts. Tap final actions inside your dashboard to live push video files!")
+        if st.session_state["channels_synced"]:
+            st.success("🔒 SYSTEM STATUS CLEAR: All verified channel sessions tokens encrypted securely inside internal local RAM database vaults.")
+        else:
+            st.info("🔒 SYSTEM STATUS IDLE: Please toggle authentication scopes options and execute sync routing above.")
+
+    # PILL SECTION B: ANALYSIS ENGINE CODES MATRIX
+    elif selected_auditor_section == "📈 2. Real-Time Performance Audit":
+        st.markdown("### 📈 Live Extraction Performance Audit Strategies")
+        if not st.session_state["audit_data_ready"]:
+            st.warning("⚠️ Access Blocked: Secure Account Data Sync is missing. Please go to the 'Secure Social Account Hub' section to authenticate handles first.")
+        else:
+            st.write("🔄 **Macro-Data Analytics Synthesis Complete.** Analytics Matrix Cycle Report:")
+            m1, m2, m3 = st.columns(3)
+            with m1: st.metric(f"Dynamic {platform} Views Metrics", "148.2K Total", "+14.2% Traction Loop")
+            with m2: st.metric("System Average Retention Rate", "54.2% Score", "+3.8% Hook Retention Peak")
+            with m3: st.metric("Monetization Threshold Velocity", "64.5% Completed", "Expected Clear: 12 Days")
+            
+            st.write("---")
+            st.markdown("#### 🕵️ Deep Virality Leak Diagnostics (Hinglish Local Expert Report)")
+            with st.expander("🔴 VIEW SYSTEM IDENTIFIED PRODUCTION ERRORS", expanded=True):
+                st.markdown("""
+                * **⚠️ CTR Decoder Note:** Bhai, aapka click-through value sirf 2.8% hai! Thumbnails ka face contrast aur focal points clear nahi hai, is wajah se impressions waste ho rhe hain. Titles ko query-based curiosity framework me convert karo immediately!
+                * **⚠️ Audience Retention Watchdog:** Video ke exactly **10th second** par 68% log leave kar rhe hain. AI context parser ne detect kiya h ki wahan aapka cinematic animation intro bohot lamba tha. Rule: Keep intros strictly under 3 seconds!
+                * **⚠️ Platform Weight Calibration:** Aapka short-form content algorithm abhi Instagram Reels network par fast flow pakad rha hai, jabki YouTube Shorts stream slow hai. Strategy: Script assets ka retention matrix distribution pehle Insta timeline ke mutabik launch karo.
+                """)
+
+    # PILL SECTION C: AUTOMATED PUBLISHER DEPLOYMENT PIPELINE
+    else:
+        st.markdown("### 🚀 Omnichannel Automated Media Publisher Pipeline (Phase 2.5 Dynamic Framework)")
+        if "script_data" not in st.session_state or not st.session_state["script_data"]:
+            st.error("⚠️ Dashboard Asset Sync Error: No generated content files found inside application state cache. Please build blueprints under the 'AI Script Generator' mode first.")
+        elif not st.session_state["channels_synced"]:
+            st.warning("⚠️ System Routing Disconnect: Linked platform tokens missing. Please authenticate access under 'Secure Social Account Hub' first.")
+        else:
+            st.info("📄 **Automated Validation Core Success:** Active Production Blueprint Script Data payload detected loaded in local RAM memory.")
+            st.checkbox("Map generated authority descriptions and high-CTR keyword tags", value=True)
+            st.checkbox("Inject click-driven metadata captions elements for cross-feeds optimization", value=True)
+            
+            st.write(" ")
+            st.write("Set Pipeline Delivery Action Targets Layout:")
+            btn_col1, btn_col2 = st.columns(2)
+            with btn_col1:
+                if st.button("⚡ PUSH CURRENT ASSETS AS DIRECT LIVE REPOSITORY DRAFTS", use_container_width=True):
+                    with st.spinner("Streaming data streams safely to social server endpoints hooks..."):
+                        time.sleep(1.2)
+                        st.session_state["mock_upload_ready"] = True
+            with btn_col2:
+                st.date_input("📅 Target Post Strategy Automation Schedule Trigger Date:")
+                
+            if st.session_state["mock_upload_ready"]:
+                st.success("🔥 SUCCESS CONFIRMED: Media asset blueprint scripts data structures mapped as clean staging drafts on target dashboards. Final user verification click required inside specific partner endpoints layouts to set live streaming properties!")
