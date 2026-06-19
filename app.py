@@ -155,8 +155,21 @@ def get_youtube_oauth_url():
     return auth_url
 
 def get_twitter_oauth_url():
-    # 📝 Future Setup: Twitter developer portal se credentials milne par yahan logic setup hoga
-    return "#"
+    client_id = st.secrets.get("TWITTER_CLIENT_ID", "")
+    
+    if not client_id:
+        return "#error_missing_tw_client_id"
+
+    redirect_uri = "https://creator-ai-manager-tgrh5ifkgfqme6kdomcvxb.streamlit.app/" 
+    
+    # Twitter OAuth 2.0 Scopes (Tweet padhne, likhne aur offline access ke liye)
+    scopes = "tweet.read tweet.write users.read offline.access"
+    
+    # X (Twitter) ka OAuth URL (&state=twitter lagaya hai)
+    # Note: Twitter API PKCE security maangta hai, isliye testing ke liye basic challenge add kiya hai
+    auth_url = f"https://twitter.com/i/oauth2/authorize?response_type=code&client_id={client_id}&redirect_uri={redirect_uri}&scope={scopes}&state=twitter&code_challenge=challenge&code_challenge_method=plain"
+    
+    return auth_url
 
 
 def run_my_crew_ai_agents(niche_topic, social_platform, output_language, video_duration, app_mode, user_pasted_script, selected_bundle_options):
@@ -290,7 +303,6 @@ with st.sidebar:
     st.caption("Architecture Framework: CrewAI + Gemini + Groq Matrix")
 
 # ── Main Content Gateway Router ──────────────────────────
-# Yeh URL check karega ki kis platform se code wapas aaya hai
 if "code" in st.query_params:
     auth_code = st.query_params["code"] 
     platform_state = st.query_params.get("state", "instagram") 
@@ -302,6 +314,10 @@ if "code" in st.query_params:
     elif platform_state == "youtube":
         st.success("🎉 YouTube Channel Successfully Linked! ❤️")
         st.session_state["yt_auth_code"] = auth_code
+        st.session_state["channels_synced"] = True
+    elif platform_state == "twitter":
+        st.success("🎉 X (Twitter) Account Successfully Linked! 🩵")
+        st.session_state["tw_auth_code"] = auth_code
         st.session_state["channels_synced"] = True
     else:
         st.success("🎉 Instagram Account Successfully Linked! 🩷")
@@ -403,7 +419,19 @@ else:
                 
             st.write(" ")
             st.subheader("🐦 X (Twitter)")
-            st.button("🩵 Connect X Account", use_container_width=True)
+            # Naya Twitter link function call kiya
+            tw_login_link = get_twitter_oauth_url()
+            
+            # X (Twitter) Black (#000000) color wala HTML button
+            st.markdown(f"""
+                <div style='margin-bottom: 16px;'>
+                    <a href='{tw_login_link}' target='_blank' style='text-decoration: none;'>
+                        <button style='width:100%; background-color:#000000; color:white; border:none; padding:10px; border-radius:5px; font-weight:bold; cursor:pointer; height:42px; font-size:14px; box-shadow: 0px 2px 4px rgba(0,0,0,0.1);'>
+                            🩵 Connect X Account
+                        </button>
+                    </a>
+                </div>
+            """, unsafe_allow_html=True)
 
         with col2:
             st.subheader("📸 Instagram")
