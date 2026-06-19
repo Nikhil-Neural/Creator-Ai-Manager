@@ -110,7 +110,7 @@ def get_meta_oauth_url():
     scopes = ["instagram_business_basic", "instagram_business_manage_insights", "instagram_business_content_publish"]
     scope_str = ",".join(scopes)
     
-    auth_url = f"https://www.instagram.com/oauth/authorize?enable_fb_login=0&client_id={client_id}&redirect_uri={redirect_uri}&scope={scope_str}&response_type=code"
+    auth_url = f"https://www.instagram.com/oauth/authorize?enable_fb_login=0&client_id={client_id}&redirect_uri={redirect_uri}&scope={scope_str}&response_type=code&state=instagram"
     
     return auth_url
 def get_facebook_oauth_url():
@@ -129,7 +129,7 @@ def get_facebook_oauth_url():
     scope_str = ",".join(scopes)
     
     # Facebook ka direct authorization endpoint
-    auth_url = f"https://www.facebook.com/v18.0/dialog/oauth?client_id={client_id}&redirect_uri={redirect_uri}&scope={scope_str}&response_type=code"
+    auth_url = f"https://www.facebook.com/v18.0/dialog/oauth?client_id={client_id}&redirect_uri={redirect_uri}&scope={scope_str}&response_type=code&state=facebook"
     
     return auth_url
 
@@ -274,17 +274,22 @@ with st.sidebar:
 
 # ── Main Content Gateway Router ──────────────────────────
 # Yeh URL check karega ki Meta ne koi 'code' toh nahi bheja
+# Yeh URL check karega ki Meta ne koi 'code' toh nahi bheja
 if "code" in st.query_params:
-    # URL se code extract kar liya
     auth_code = st.query_params["code"] 
     
-    # User ko dikhane ke liye message
-    st.success("🎉 Instagram Account Successfully Linked!")
+    # Meta se puchenge ki kis platform ka tag (state) wapas aaya hai
+    platform_state = st.query_params.get("state", "instagram") # Agar kuch na mile toh default instagram
     
-    # Is code ko hum session state me save kar lenge taki aage use ho sake
-    st.session_state["insta_auth_code"] = auth_code
+    # Platform ke hisaab se message aur session state save karenge
+    if platform_state == "facebook":
+        st.success("🎉 Facebook Page Successfully Linked! 💙")
+        st.session_state["fb_auth_code"] = auth_code
+    else:
+        st.success("🎉 Instagram Account Successfully Linked! 🩷")
+        st.session_state["insta_auth_code"] = auth_code
     
-    # Note: Ek baar code padh liya, toh URL clean karne ke liye aap isko clear kar sakte hain (optional)
+    # Note: Ek baar code padh liya, toh URL clean karne ke liye clear kar denge
     st.query_params.clear()
 st.title("🚀 Creator AI Manager OS")
 st.write(f"System Context: **{current_os_mode}** active | Platform: **{platform}**")
