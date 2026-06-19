@@ -105,7 +105,7 @@ def get_meta_oauth_url():
         return "#error_missing_client_id"
 
     # YAHAN UPDATE KIYA HAI: http ko https kar diya hai (exact match with Meta dashboard)
-    redirect_uri = "https://localhost:8501/" 
+    redirect_uri = "https://creator-ai-manager-tgrh5ifkgfqme6kdomcvxb.streamlit.app/" 
     
     scopes = ["instagram_business_basic", "instagram_business_manage_insights", "instagram_business_content_publish"]
     scope_str = ",".join(scopes)
