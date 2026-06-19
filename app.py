@@ -98,16 +98,22 @@ if "mock_upload_ready" not in st.session_state: st.session_state["mock_upload_re
 
 # 🎯 INTEGRATION POINT 1: OAuth Link Generators Modules
 def get_meta_oauth_url():
-    # DHYAN RAHE: Yahan Facebook App ID nahi, Meta dashboard se "Instagram App ID" lena hai
-    client_id = st.secrets.get("INSTAGRAM_APP_ID", "") 
-    redirect_uri = "http://localhost:8501/" # Aapka valid OAuth redirect URL
+    # Ab yeh directly secrets se aapka naya Insta ID uthayega
+    client_id = st.secrets.get("INSTAGRAM_APP_ID", "")
     
-    # Naye universal scopes jo bina Facebook Page link kiye chalte hain
+    if not client_id:
+        print("[AUTH ERROR] Instagram App ID missing in secrets!")
+        return "#error_missing_client_id"
+
+    redirect_uri = "http://localhost:8501/" 
+    
     scopes = ["instagram_business_basic", "instagram_business_manage_insights", "instagram_business_content_publish"]
     scope_str = ",".join(scopes)
     
-    # Direct Instagram ka Authorization Endpoint
-    return f"https://api.instagram.com/oauth/authorize?client_id={client_id}&redirect_uri={redirect_uri}&scope={scope_str}&response_type=code"
+    # Direct Instagram endpoint
+    auth_url = f"https://www.instagram.com/oauth/authorize?enable_fb_login=0&client_id={client_id}&redirect_uri={redirect_uri}&scope={scope_str}&response_type=code"
+    
+    return auth_url
 
 def get_youtube_oauth_url():
     # 📝 Future Setup: Google console se credentials milne par yahan logic setup hoga
