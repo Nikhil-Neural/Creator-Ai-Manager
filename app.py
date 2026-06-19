@@ -113,6 +113,25 @@ def get_meta_oauth_url():
     auth_url = f"https://www.instagram.com/oauth/authorize?enable_fb_login=0&client_id={client_id}&redirect_uri={redirect_uri}&scope={scope_str}&response_type=code"
     
     return auth_url
+def get_facebook_oauth_url():
+    # Facebook apne main Meta App ID ka hi use karta hai
+    client_id = st.secrets.get("META_APP_ID", "")
+    
+    if not client_id:
+        return "#error_missing_fb_client_id"
+
+    # Aapka live URL
+    redirect_uri = "https://creator-ai-manager-tgrh5ifkgfqme6kdomcvxb.streamlit.app/" 
+    
+    # Facebook ke specific permissions (Scopes)
+    # Yeh permissions aapko page ki list dekhne aur uspar post karne ki power dengi
+    scopes = ["pages_show_list", "pages_read_engagement", "pages_manage_posts"]
+    scope_str = ",".join(scopes)
+    
+    # Facebook ka direct authorization endpoint
+    auth_url = f"https://www.facebook.com/v18.0/dialog/oauth?client_id={client_id}&redirect_uri={redirect_uri}&scope={scope_str}&response_type=code"
+    
+    return auth_url
 
 def get_youtube_oauth_url():
     # 📝 Future Setup: Google console se credentials milne par yahan logic setup hoga
