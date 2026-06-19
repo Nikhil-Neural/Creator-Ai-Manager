@@ -346,7 +346,7 @@ else:
                         🩷 Connect Instagram Business
                     </button>
                 </a>
-            """, unsafe_url_escape=True)
+            """, unsafe_allow_html=True)
                 
             st.write(" ")
             st.subheader("🔵 Facebook")
