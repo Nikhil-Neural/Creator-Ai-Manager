@@ -99,10 +99,14 @@ if "mock_upload_ready" not in st.session_state: st.session_state["mock_upload_re
 # 🎯 INTEGRATION POINT 1: OAuth Link Generators Modules
 def get_meta_oauth_url():
     client_id = st.secrets.get("META_APP_ID", "")
-    redirect_uri = "http://localhost:8501/" # Jab cloud pe live karoge toh dashboard ka link aayega
-    scopes = ["instagram_basic", "instagram_graph_user_profile", "instagram_content_publish", "pages_read_engagement"]
+    redirect_uri = "http://localhost:8501/" # Cloud pe jane par dashboard link
+    
+    # Naye Rules ke mutabik direct Instagram Professional login ke permissions:
+    scopes = ["instagram_business_basic", "instagram_business_content_publish", "instagram_business_manage_insights"]
     scope_str = ",".join(scopes)
-    return f"https://www.facebook.com/v18.0/dialog/oauth?client_id={client_id}&redirect_uri={redirect_uri}&scope={scope_str}&response_type=token"
+    
+    # 💥 CHANGE HERE: Ab Facebook authorization dynamic window ki jagah direct Instagram API endpoint hit hoga
+    return f"https://api.instagram.com/oauth/authorize?client_id={client_id}&redirect_uri={redirect_uri}&scope={scope_str}&response_type=code"
 
 def get_youtube_oauth_url():
     # 📝 Future Setup: Google console se credentials milne par yahan logic setup hoga
