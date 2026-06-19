@@ -339,7 +339,7 @@ else:
             st.button("🩵 Connect X Account", use_container_width=True)
 
         with col2:
-            st.subheader("📸 Instagram / Facebook")
+            st.subheader("📸 Instagram")
             # Generating direct dynamic secure authorization window target link
             meta_login_link = get_meta_oauth_url()
             
