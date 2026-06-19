@@ -388,23 +388,7 @@ else:
                         </button>
                     </a>
                 </div>
-            """, unsafe_allow_html=True)
-                
-            st.write(" ")
-            st.subheader("🔵 Facebook")
-            fb_login_link = get_facebook_oauth_url()
-
-            # 💥 UPDATE: Same uniform height aur margin yahan bhi diya gaya hai
-            st.markdown(f"""
-                <div>
-                    <a href='{fb_login_link}' target='_blank' style='text-decoration: none;'>
-                        <button style='width:100%; background-color:#1877F2; color:white; border:none; padding:10px; border-radius:5px; font-weight:bold; cursor:pointer; height:42px; font-size:14px; box-shadow: 0px 2px 4px rgba(0,0,0,0.1);'>
-                            💙 Connect Facebook Page
-                        </button>
-                    </a>
-                </div>
-            """, unsafe_allow_html=True)
-                
+            """, unsafe_allow_html=True)    
             st.write(" ")
             st.subheader("🔵 Facebook")
 
