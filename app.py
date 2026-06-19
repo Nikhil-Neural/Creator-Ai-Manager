@@ -134,8 +134,25 @@ def get_facebook_oauth_url():
     return auth_url
 
 def get_youtube_oauth_url():
-    # 📝 Future Setup: Google console se credentials milne par yahan logic setup hoga
-    return "#"
+    client_id = st.secrets.get("YOUTUBE_CLIENT_ID", "")
+    
+    if not client_id:
+        return "#error_missing_yt_client_id"
+
+    redirect_uri = "https://creator-ai-manager-tgrh5ifkgfqme6kdomcvxb.streamlit.app/" 
+    
+    # YouTube ke scopes (Analytics padhne aur video upload karne ke liye)
+    scopes = [
+        "https://www.googleapis.com/auth/youtube.readonly",
+        "https://www.googleapis.com/auth/youtube.upload"
+    ]
+    # Google mein scopes space (" ") se alag hote hain
+    scope_str = " ".join(scopes)
+    
+    # Google ka OAuth URL (&state=youtube lagana zaroori hai pehchaan ke liye)
+    auth_url = f"https://accounts.google.com/o/oauth2/v2/auth?client_id={client_id}&redirect_uri={redirect_uri}&response_type=code&scope={scope_str}&access_type=offline&prompt=consent&state=youtube"
+    
+    return auth_url
 
 def get_twitter_oauth_url():
     # 📝 Future Setup: Twitter developer portal se credentials milne par yahan logic setup hoga
@@ -273,23 +290,24 @@ with st.sidebar:
     st.caption("Architecture Framework: CrewAI + Gemini + Groq Matrix")
 
 # ── Main Content Gateway Router ──────────────────────────
-# Yeh URL check karega ki Meta ne koi 'code' toh nahi bheja
-# Yeh URL check karega ki Meta ne koi 'code' toh nahi bheja
+# Yeh URL check karega ki kis platform se code wapas aaya hai
 if "code" in st.query_params:
     auth_code = st.query_params["code"] 
+    platform_state = st.query_params.get("state", "instagram") 
     
-    # Meta se puchenge ki kis platform ka tag (state) wapas aaya hai
-    platform_state = st.query_params.get("state", "instagram") # Agar kuch na mile toh default instagram
-    
-    # Platform ke hisaab se message aur session state save karenge
     if platform_state == "facebook":
         st.success("🎉 Facebook Page Successfully Linked! 💙")
         st.session_state["fb_auth_code"] = auth_code
+        st.session_state["channels_synced"] = True
+    elif platform_state == "youtube":
+        st.success("🎉 YouTube Channel Successfully Linked! ❤️")
+        st.session_state["yt_auth_code"] = auth_code
+        st.session_state["channels_synced"] = True
     else:
         st.success("🎉 Instagram Account Successfully Linked! 🩷")
         st.session_state["insta_auth_code"] = auth_code
-    
-    # Note: Ek baar code padh liya, toh URL clean karne ke liye clear kar denge
+        st.session_state["channels_synced"] = True
+        
     st.query_params.clear()
 st.title("🚀 Creator AI Manager OS")
 st.write(f"System Context: **{current_os_mode}** active | Platform: **{platform}**")
@@ -369,12 +387,19 @@ else:
         
         with col1:
             st.subheader("📺 YouTube")
-            if st.button("❤️ Connect YouTube Channel", use_container_width=True):
-                st.success("Redirecting to secure Google Login...")
-                time.sleep(1)
-                st.session_state["channels_synced"] = True
-                st.session_state["audit_data_ready"] = True
-                st.rerun()
+            # Naya YouTube link function call kiya
+            yt_login_link = get_youtube_oauth_url()
+            
+            # YouTube Red (#FF0000) color wala HTML button
+            st.markdown(f"""
+                <div style='margin-bottom: 16px;'>
+                    <a href='{yt_login_link}' target='_blank' style='text-decoration: none;'>
+                        <button style='width:100%; background-color:#FF0000; color:white; border:none; padding:10px; border-radius:5px; font-weight:bold; cursor:pointer; height:42px; font-size:14px; box-shadow: 0px 2px 4px rgba(0,0,0,0.1);'>
+                            ❤️ Connect YouTube Channel
+                        </button>
+                    </a>
+                </div>
+            """, unsafe_allow_html=True)
                 
             st.write(" ")
             st.subheader("🐦 X (Twitter)")
