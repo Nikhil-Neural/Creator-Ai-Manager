@@ -254,6 +254,19 @@ with st.sidebar:
     st.caption("Architecture Framework: CrewAI + Gemini + Groq Matrix")
 
 # ── Main Content Gateway Router ──────────────────────────
+# Yeh URL check karega ki Meta ne koi 'code' toh nahi bheja
+if "code" in st.query_params:
+    # URL se code extract kar liya
+    auth_code = st.query_params["code"] 
+    
+    # User ko dikhane ke liye message
+    st.success("🎉 Instagram Account Successfully Linked!")
+    
+    # Is code ko hum session state me save kar lenge taki aage use ho sake
+    st.session_state["insta_auth_code"] = auth_code
+    
+    # Note: Ek baar code padh liya, toh URL clean karne ke liye aap isko clear kar sakte hain (optional)
+    st.query_params.clear()
 st.title("🚀 Creator AI Manager OS")
 st.write(f"System Context: **{current_os_mode}** active | Platform: **{platform}**")
 st.write("---")
