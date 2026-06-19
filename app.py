@@ -162,12 +162,13 @@ def get_twitter_oauth_url():
 
     redirect_uri = "https://creator-ai-manager-tgrh5ifkgfqme6kdomcvxb.streamlit.app/" 
     
-    # Twitter OAuth 2.0 Scopes (Tweet padhne, likhne aur offline access ke liye)
     scopes = "tweet.read tweet.write users.read offline.access"
     
-    # X (Twitter) ka OAuth URL (&state=twitter lagaya hai)
-    # Note: Twitter API PKCE security maangta hai, isliye testing ke liye basic challenge add kiya hai
-    auth_url = f"https://twitter.com/i/oauth2/authorize?response_type=code&client_id={client_id}&redirect_uri={redirect_uri}&scope={scopes}&state=twitter&code_challenge=challenge&code_challenge_method=plain"
+    # FIX: Twitter strict rule - challenge code kam se kam 43 characters ka hona chahiye
+    valid_long_challenge = "creator_ai_os_dummy_challenge_string_must_be_43_chars_long"
+    
+    # Naya URL jisme lamba challenge code bheja gaya hai
+    auth_url = f"https://twitter.com/i/oauth2/authorize?response_type=code&client_id={client_id}&redirect_uri={redirect_uri}&scope={scopes}&state=twitter&code_challenge={valid_long_challenge}&code_challenge_method=plain"
     
     return auth_url
 
