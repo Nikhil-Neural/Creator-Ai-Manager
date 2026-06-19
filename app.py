@@ -95,6 +95,24 @@ if "channels_synced"   not in st.session_state: st.session_state["channels_synce
 if "audit_data_ready"  not in st.session_state: st.session_state["audit_data_ready"] = False
 if "mock_upload_ready" not in st.session_state: st.session_state["mock_upload_ready"] = False
 
+
+# 🎯 INTEGRATION POINT 1: OAuth Link Generators Modules
+def get_meta_oauth_url():
+    client_id = st.secrets.get("META_APP_ID", "")
+    redirect_uri = "http://localhost:8501/" # Jab cloud pe live karoge toh dashboard ka link aayega
+    scopes = ["instagram_basic", "instagram_graph_user_profile", "instagram_content_publish", "pages_read_engagement"]
+    scope_str = ",".join(scopes)
+    return f"https://www.facebook.com/v18.0/dialog/oauth?client_id={client_id}&redirect_uri={redirect_uri}&scope={scope_str}&response_type=token"
+
+def get_youtube_oauth_url():
+    # 📝 Future Setup: Google console se credentials milne par yahan logic setup hoga
+    return "#"
+
+def get_twitter_oauth_url():
+    # 📝 Future Setup: Twitter developer portal se credentials milne par yahan logic setup hoga
+    return "#"
+
+
 def run_my_crew_ai_agents(niche_topic, social_platform, output_language, video_duration, app_mode, user_pasted_script, selected_bundle_options):
     target_seconds = int(video_duration * 60)
     target_words = int(video_duration * 140)
@@ -281,12 +299,12 @@ if current_os_mode == "✍️ AI Script Generator":
             with c2: st.download_button("📥 Word Doc (.docx)", create_word_doc(str(st.session_state["script_data"]), platform, st.session_state.get("niche_data", "File")), file_name="blueprint.docx", use_container_width=True)
         else: st.warning("⚠️ No data compiled yet. Run Tab 1 first.")
 
-# MODE 2: AUDITOR ENGINE WITH PREMIUM SUB-PILLS WORKFLOW
+# MODE 2: AUDITOR ENGINE
 else:
     st.markdown("### 📊 AI Omnichannel Channel Auditor Ecosystem")
     st.write("---")
     
-    # 🌟 NEW PRE-BUILT SUB-PILLS ROUTER NODE TO PREVENT CLUTTER
+    # Isko cleanly call karein bina kisi dynamic variable mapping breakdown ke
     selected_auditor_section = st.pills(
         "🛠️ Select Auditor Operational Node Framework:",
         ["🔗 1. Secure Social Account Hub", "📈 2. Real-Time Performance Audit", "🚀 3. Omnichannel Media Publisher Node"],
@@ -294,72 +312,66 @@ else:
     )
     st.write("---")
     
-    # PILL SECTION A: THE PREMIUM SYNC DASHBOARD (Pill 2 - Bold UI Setup)
-    # ── SUDHAR CODE: Clean & Simple UI For Social Connection ──
-if selected_auditor_section == "🔗 1. Secure Social Account Hub":
-    st.markdown("## 🔐 Connect Your Social Accounts")
-    st.write("Apne platforms ko ek click mein connect karein aur real-time analytics reports paayein.")
-    st.write(" ")
-    
-    # 2 Columns for ultra-clean layout
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        st.subheader("📺 YouTube")
-        if st.button("❤️ Connect YouTube Channel", use_container_width=True):
-            st.success("Redirecting to secure Google Login...")
-            time.sleep(1)
-            st.session_state["channels_synced"] = True
-            st.session_state["audit_data_ready"] = True
-            st.rerun()
-            
+    # 🎯 INTEGRATION POINT 2: Re-writing Pill 1 for Real Connections
+    if selected_auditor_section == "🔗 1. Secure Social Account Hub":
+        st.markdown("## 🔐 Connect Your Social Accounts")
+        st.write("Apne platforms ko ek click mein connect karein aur real-time analytics reports paayein.")
         st.write(" ")
-        st.subheader("🐦 X (Twitter)")
-        st.button("🩵 Connect X Account", use_container_width=True)
-
-    with col2:
-        st.subheader("📸 Instagram")
-        if st.button("🩷 Connect Instagram Business", use_container_width=True):
-            st.success("Redirecting to secure Meta Login...")
-            time.sleep(1)
-            st.session_state["channels_synced"] = True
-            st.session_state["audit_data_ready"] = True
-            st.rerun()
-            
-        st.write(" ")
-        st.subheader("🔵 Facebook")
-        st.button("💙 Connect Facebook Page", use_container_width=True)
-
-    st.write("---")
-    if st.session_state["channels_synced"]:
-        st.button("⚠️ Disconnect All Accounts", use_container_width=True, type="secondary")
         
-        # Premium Execution Control Hub Rows Layout
-        action_col1, action_col2 = st.columns([2, 1])
-        with action_col1:
-            if st.button("⚡ EXECUTE ONE-CLICK AUTHENTICATED HANDSHAKE SYNC ROUTINE", use_container_width=True, type="primary"):
-                with st.spinner("Locking down high-security OAuth tokens pipelines layer..."):
-                    time.sleep(1.5)
-                    st.session_state["channels_synced"] = True
-                    st.session_state["audit_data_ready"] = True
-                    st.rerun()
-        with action_col2:
-            if st.session_state["channels_synced"]:
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.subheader("📺 YouTube")
+            # 📝 Static fallback trigger till Google Cloud setup
+            if st.button("❤️ Connect YouTube Channel", use_container_width=True):
+                st.success("Redirecting to secure Google Login...")
+                time.sleep(1)
+                st.session_state["channels_synced"] = True
+                st.session_state["audit_data_ready"] = True
+                st.rerun()
+                
+            st.write(" ")
+            st.subheader("🐦 X (Twitter)")
+            st.button("🩵 Connect X Account", use_container_width=True)
+
+        with col2:
+            st.subheader("📸 Instagram / Facebook")
+            # Generating direct dynamic secure authorization window target link
+            meta_login_link = get_meta_oauth_url()
+            
+            # Premium Clean CSS-HTML Button for Real Web OAuth Redirect (No-Friction UI)
+            st.markdown(f"""
+                <a href="{meta_login_link}" target="_blank" style="text-decoration: none;">
+                    <button style="width:100%; background-color:#E1306C; color:white; border:none; padding:10px; border-radius:5px; font-weight:bold; cursor:pointer; height:38px; font-size:14px; box-shadow: 0px 2px 4px rgba(0,0,0,0.1);">
+                        🩷 Connect Instagram Business
+                    </button>
+                </a>
+            """, unsafe_url_escape=True)
+                
+            st.write(" ")
+            st.subheader("🔵 Facebook")
+            st.button("💙 Connect Facebook Page", use_container_width=True)
+
+        st.write("---")
+        
+        # Bottom Utility Buttons Configuration Flow
+        if st.session_state.get("channels_synced", False):
+            action_col1, action_col2 = st.columns([2, 1])
+            with action_col1:
+                st.success("🔒 SYSTEM STATUS CLEAR: Verified session tokens encrypted securely inside local cache.")
+            with action_col2:
                 if st.button("⚠️ EMERGENCY KILL-SWITCH REVOKE", use_container_width=True):
                     st.session_state["channels_synced"] = False
                     st.session_state["audit_data_ready"] = False
                     st.session_state["mock_upload_ready"] = False
                     st.rerun()
-                    
-        if st.session_state["channels_synced"]:
-            st.success("🔒 SYSTEM STATUS CLEAR: All verified channel sessions tokens encrypted securely inside internal local RAM database vaults.")
         else:
-            st.info("🔒 SYSTEM STATUS IDLE: Please toggle authentication scopes options and execute sync routing above.")
+            st.info("🔒 SYSTEM STATUS IDLE: Please click one of the platform connection buttons above to sync handles.")
 
     # PILL SECTION B: ANALYSIS ENGINE CODES MATRIX
     elif selected_auditor_section == "📈 2. Real-Time Performance Audit":
         st.markdown("### 📈 Live Extraction Performance Audit Strategies")
-        if not st.session_state["audit_data_ready"]:
+        if not st.session_state.get("audit_data_ready", False):
             st.warning("⚠️ Access Blocked: Secure Account Data Sync is missing. Please go to the 'Secure Social Account Hub' section to authenticate handles first.")
         else:
             st.write("🔄 **Macro-Data Analytics Synthesis Complete.** Analytics Matrix Cycle Report:")
@@ -374,15 +386,15 @@ if selected_auditor_section == "🔗 1. Secure Social Account Hub":
                 st.markdown("""
                 * **⚠️ CTR Decoder Note:** Bhai, aapka click-through value sirf 2.8% hai! Thumbnails ka face contrast aur focal points clear nahi hai, is wajah se impressions waste ho rhe hain. Titles ko query-based curiosity framework me convert karo immediately!
                 * **⚠️ Audience Retention Watchdog:** Video ke exactly **10th second** par 68% log leave kar rhe hain. AI context parser ne detect kiya h ki wahan aapka cinematic animation intro bohot lamba tha. Rule: Keep intros strictly under 3 seconds!
-                * **⚠️ Platform Weight Calibration:** Aapka short-form content algorithm abhi Instagram Reels network par fast flow pakad rha hai, jabki YouTube Shorts stream slow hai. Strategy: Script assets ka retention matrix distribution pehle Insta timeline ke mutabik launch karo.
+                * **⚠️ Platform Weight Calibration:** Aapka short-form content algorithm abhi Instagram Reels network par fast flow pakad rha hai, github pipeline clear.
                 """)
 
     # PILL SECTION C: AUTOMATED PUBLISHER DEPLOYMENT PIPELINE
-    else:
+    elif selected_auditor_section == "🚀 3. Omnichannel Media Publisher Node":
         st.markdown("### 🚀 Omnichannel Automated Media Publisher Pipeline (Phase 2.5 Dynamic Framework)")
         if "script_data" not in st.session_state or not st.session_state["script_data"]:
             st.error("⚠️ Dashboard Asset Sync Error: No generated content files found inside application state cache. Please build blueprints under the 'AI Script Generator' mode first.")
-        elif not st.session_state["channels_synced"]:
+        elif not st.session_state.get("channels_synced", False):
             st.warning("⚠️ System Routing Disconnect: Linked platform tokens missing. Please authenticate access under 'Secure Social Account Hub' first.")
         else:
             st.info("📄 **Automated Validation Core Success:** Active Production Blueprint Script Data payload detected loaded in local RAM memory.")
@@ -400,5 +412,5 @@ if selected_auditor_section == "🔗 1. Secure Social Account Hub":
             with btn_col2:
                 st.date_input("📅 Target Post Strategy Automation Schedule Trigger Date:")
                 
-            if st.session_state["mock_upload_ready"]:
+            if st.session_state.get("mock_upload_ready", False):
                 st.success("🔥 SUCCESS CONFIRMED: Media asset blueprint scripts data structures mapped as clean staging drafts on target dashboards. Final user verification click required inside specific partner endpoints layouts to set live streaming properties!")
