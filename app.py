@@ -98,19 +98,18 @@ if "mock_upload_ready" not in st.session_state: st.session_state["mock_upload_re
 
 # 🎯 INTEGRATION POINT 1: OAuth Link Generators Modules
 def get_meta_oauth_url():
-    # Ab yeh directly secrets se aapka naya Insta ID uthayega
     client_id = st.secrets.get("INSTAGRAM_APP_ID", "")
     
     if not client_id:
         print("[AUTH ERROR] Instagram App ID missing in secrets!")
         return "#error_missing_client_id"
 
-    redirect_uri = "http://localhost:8501/" 
+    # YAHAN UPDATE KIYA HAI: http ko https kar diya hai (exact match with Meta dashboard)
+    redirect_uri = "https://localhost:8501/" 
     
     scopes = ["instagram_business_basic", "instagram_business_manage_insights", "instagram_business_content_publish"]
     scope_str = ",".join(scopes)
     
-    # Direct Instagram endpoint
     auth_url = f"https://www.instagram.com/oauth/authorize?enable_fb_login=0&client_id={client_id}&redirect_uri={redirect_uri}&scope={scope_str}&response_type=code"
     
     return auth_url
