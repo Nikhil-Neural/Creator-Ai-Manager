@@ -364,7 +364,6 @@ else:
         
         with col1:
             st.subheader("📺 YouTube")
-            # 📝 Static fallback trigger till Google Cloud setup
             if st.button("❤️ Connect YouTube Channel", use_container_width=True):
                 st.success("Redirecting to secure Google Login...")
                 time.sleep(1)
@@ -378,17 +377,32 @@ else:
 
         with col2:
             st.subheader("📸 Instagram")
-            # Generating direct dynamic secure authorization window target link
             meta_login_link = get_meta_oauth_url()
             
-            # Premium Clean CSS-HTML Button for Real Web OAuth Redirect (No-Friction UI)
-            # 💥 SUDHAR: unsafe_url_escape ko unsafe_allow_html=True se replace kiya gaya hai
+            # 💥 UPDATE: Height aur margin-bottom add kiya UI fix karne ke liye
             st.markdown(f"""
-                <a href='{meta_login_link}' target='_blank' style='text-decoration: none;'>
-                    <button style='width:100%; background-color:#E1306C; color:white; border:none; padding:10px; border-radius:5px; font-weight:bold; cursor:pointer; height:38px; font-size:14px; box-shadow: 0px 2px 4px rgba(0,0,0,0.1);'>
-                        🩷 Connect Instagram Business
-                    </button>
-                </a>
+                <div style='margin-bottom: 16px;'>
+                    <a href='{meta_login_link}' target='_blank' style='text-decoration: none;'>
+                        <button style='width:100%; background-color:#E1306C; color:white; border:none; padding:10px; border-radius:5px; font-weight:bold; cursor:pointer; height:42px; font-size:14px; box-shadow: 0px 2px 4px rgba(0,0,0,0.1);'>
+                            🩷 Connect Instagram Business
+                        </button>
+                    </a>
+                </div>
+            """, unsafe_allow_html=True)
+                
+            st.write(" ")
+            st.subheader("🔵 Facebook")
+            fb_login_link = get_facebook_oauth_url()
+
+            # 💥 UPDATE: Same uniform height aur margin yahan bhi diya gaya hai
+            st.markdown(f"""
+                <div>
+                    <a href='{fb_login_link}' target='_blank' style='text-decoration: none;'>
+                        <button style='width:100%; background-color:#1877F2; color:white; border:none; padding:10px; border-radius:5px; font-weight:bold; cursor:pointer; height:42px; font-size:14px; box-shadow: 0px 2px 4px rgba(0,0,0,0.1);'>
+                            💙 Connect Facebook Page
+                        </button>
+                    </a>
+                </div>
             """, unsafe_allow_html=True)
                 
             st.write(" ")
