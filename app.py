@@ -393,8 +393,18 @@ else:
                 
             st.write(" ")
             st.subheader("🔵 Facebook")
-            st.button("💙 Connect Facebook Page", use_container_width=True)
 
+            # Naya function call karein link generate karne ke liye
+            fb_login_link = get_facebook_oauth_url()
+
+            # Authentic Facebook Blue (#1877F2) color ke sath active HTML button
+            st.markdown(f"""
+                <a href='{fb_login_link}' target='_blank' style='text-decoration: none;'>
+                    <button style='width:100%; background-color:#1877F2; color:white; border:none; padding:10px; border-radius:5px; font-weight:bold; cursor:pointer; height:38px; font-size:14px; box-shadow: 0px 2px 4px rgba(0,0,0,0.1);'>
+                        💙 Connect Facebook Page
+                    </button>
+                </a>
+            """, unsafe_allow_html=True)
         st.write("---")
         
         # Bottom Utility Buttons Configuration Flow
