@@ -6,6 +6,7 @@ except ImportError:
     pass
 
 import streamlit as st
+import urllib.parse
 import os
 import io  # 🌟 Virtual Memory (RAM) ke liye
 from docx import Document  # 🌟 Word Document Blueprint ke liye
@@ -160,15 +161,17 @@ def get_twitter_oauth_url():
     if not client_id:
         return "#error_missing_tw_client_id"
 
+    # Raw variables
     redirect_uri = "https://creator-ai-manager-tgrh5ifkgfqme6kdomcvxb.streamlit.app/" 
-    
     scopes = "tweet.read tweet.write users.read offline.access"
+    challenge = "creator_ai_os_dummy_challenge_string_must_be_43_chars_long"
     
-    # FIX: Twitter strict rule - challenge code kam se kam 43 characters ka hona chahiye
-    valid_long_challenge = "creator_ai_os_dummy_challenge_string_must_be_43_chars_long"
+    # MAGIC FIX 🪄: Yahan hum symbols aur spaces ko internet-safe format mein badal rahe hain
+    safe_redirect = urllib.parse.quote(redirect_uri, safe="")
+    safe_scopes = urllib.parse.quote(scopes, safe="")
     
-    # Naya URL jisme lamba challenge code bheja gaya hai
-    auth_url = f"https://twitter.com/i/oauth2/authorize?response_type=code&client_id={client_id}&redirect_uri={redirect_uri}&scope={scopes}&state=twitter&code_challenge={valid_long_challenge}&code_challenge_method=plain"
+    # Safe URL
+    auth_url = f"https://twitter.com/i/oauth2/authorize?response_type=code&client_id={client_id}&redirect_uri={safe_redirect}&scope={safe_scopes}&state=twitter&code_challenge={challenge}&code_challenge_method=plain"
     
     return auth_url
 
