@@ -448,20 +448,10 @@ else:
                 
             st.write(" ")
             st.subheader("🐦 X (Twitter)")
-            # Naya Twitter link function call kiya
             tw_login_link = get_twitter_oauth_url()
-            
-            # X (Twitter) Black (#000000) color wala HTML button
-            st.markdown(f"""
-                <div style='margin-bottom: 16px;'>
-                    <a href='{tw_login_link}' target='_blank' style='text-decoration: none;'>
-                        <button style='width:100%; background-color:#000000; color:white; border:none; padding:10px; border-radius:5px; font-weight:bold; cursor:pointer; height:42px; font-size:14px; box-shadow: 0px 2px 4px rgba(0,0,0,0.1);'>
-                            🩵 Connect X Account
-                        </button>
-                    </a>
-                </div>
-            """, unsafe_allow_html=True)
 
+# Custom HTML ki jagah official Streamlit button (No UI bugs)
+            st.link_button("🩵 Connect X Account", tw_login_link, use_container_width=True)
         with col2:
             st.subheader("📸 Instagram")
             meta_login_link = get_meta_oauth_url()
