@@ -320,6 +320,7 @@ with st.sidebar:
 
 # ── Main Content Gateway Router ──────────────────────────
 if "code" in st.query_params:
+    st.write("DEBUG — Full query params:", dict(st.query_params))  # 👈 YE NAYI LINE ADD KI
     auth_code = st.query_params["code"] 
     platform_state = st.query_params.get("state", "instagram") 
     
@@ -335,10 +336,12 @@ if "code" in st.query_params:
         st.success("🎉 X (Twitter) Account Successfully Linked! 🩵")
         st.session_state["tw_auth_code"] = auth_code
         st.session_state["channels_synced"] = True
-    else:
+    elif platform_state == "instagram":
         st.success("🎉 Instagram Account Successfully Linked! 🩷")
         st.session_state["insta_auth_code"] = auth_code
         st.session_state["channels_synced"] = True
+    else:
+        st.error("⚠️ Unknown platform state received — connection failed.")
         
     st.query_params.clear()
 st.title("🚀 Creator AI Manager OS")
