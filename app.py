@@ -8,6 +8,9 @@ except ImportError:
 import streamlit as st
 import urllib.parse
 import os
+import base64
+import hashlib
+import os
 import io  # 🌟 Virtual Memory (RAM) ke liye
 from docx import Document  # 🌟 Word Document Blueprint ke liye
 from crewai import Agent, Task, Crew, LLM
@@ -161,17 +164,26 @@ def get_twitter_oauth_url():
     if not client_id:
         return "#error_missing_tw_client_id"
 
-    # Raw variables
     redirect_uri = "https://creator-ai-manager-tgrh5ifkgfqme6kdomcvxb.streamlit.app/" 
     scopes = "tweet.read tweet.write users.read offline.access"
-    challenge = "creator_ai_os_dummy_challenge_string_must_be_43_chars_long"
     
-    # MAGIC FIX 🪄: Yahan hum symbols aur spaces ko internet-safe format mein badal rahe hain
+    # ROOT FIX: Har click par ek fresh, unique random 'Verifier' banayen (32 bytes)
+    code_verifier = base64.urlsafe_b64encode(os.urandom(32)).decode('utf-8').rstrip('=')
+    
+    # Usko SHA-256 algorithm se encrypt karke 'Challenge' banayen
+    code_challenge = base64.urlsafe_b64encode(
+        hashlib.sha256(code_verifier.encode('utf-8')).digest()
+    ).decode('utf-8').rstrip('=')
+    
+    # Verifier ko session mein save karein (baad mein posting ke waqt kaam aayega)
+    st.session_state["tw_code_verifier"] = code_verifier
+    
+    # URL Encoding (taaki spaces aur slashes internet par safe rahein)
     safe_redirect = urllib.parse.quote(redirect_uri, safe="")
     safe_scopes = urllib.parse.quote(scopes, safe="")
     
-    # Safe URL
-    auth_url = f"https://twitter.com/i/oauth2/authorize?response_type=code&client_id={client_id}&redirect_uri={safe_redirect}&scope={safe_scopes}&state=twitter&code_challenge={challenge}&code_challenge_method=plain"
+    # Yahan dhyan dein: 'code_challenge_method=S256' use kiya hai, 'plain' nahi
+    auth_url = f"https://twitter.com/i/oauth2/authorize?response_type=code&client_id={client_id}&redirect_uri={safe_redirect}&scope={safe_scopes}&state=twitter&code_challenge={code_challenge}&code_challenge_method=S256"
     
     return auth_url
 
