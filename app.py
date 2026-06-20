@@ -167,23 +167,33 @@ def get_twitter_oauth_url():
     redirect_uri = "https://creator-ai-manager-tgrh5ifkgfqme6kdomcvxb.streamlit.app/" 
     scopes = "tweet.read tweet.write users.read offline.access"
     
-    # ROOT FIX: Har click par ek fresh, unique random 'Verifier' banayen (32 bytes)
+    # 32 bytes ka secure random verifier
     code_verifier = base64.urlsafe_b64encode(os.urandom(32)).decode('utf-8').rstrip('=')
     
-    # Usko SHA-256 algorithm se encrypt karke 'Challenge' banayen
+    # S256 Challenge create karna
     code_challenge = base64.urlsafe_b64encode(
         hashlib.sha256(code_verifier.encode('utf-8')).digest()
     ).decode('utf-8').rstrip('=')
     
-    # Verifier ko session mein save karein (baad mein posting ke waqt kaam aayega)
     st.session_state["tw_code_verifier"] = code_verifier
     
-    # URL Encoding (taaki spaces aur slashes internet par safe rahein)
-    safe_redirect = urllib.parse.quote(redirect_uri, safe="")
-    safe_scopes = urllib.parse.quote(scopes, safe="")
+    # MAGIC FIX 🪄: URL manually banane ke bajaye urllib ka direct dictionary encoder use karna.
+    # Yeh 100% guarantee dega ki koi bhi character internet raste mein break na ho.
+    params = {
+        "response_type": "code",
+        "client_id": client_id,
+        "redirect_uri": redirect_uri,
+        "scope": scopes,
+        "state": "twitter",
+        "code_challenge": code_challenge,
+        "code_challenge_method": "S256"
+    }
     
-    # Yahan dhyan dein: 'code_challenge_method=S256' use kiya hai, 'plain' nahi
-    auth_url = f"https://twitter.com/i/oauth2/authorize?response_type=code&client_id={client_id}&redirect_uri={safe_redirect}&scope={safe_scopes}&state=twitter&code_challenge={code_challenge}&code_challenge_method=S256"
+    # Params ko safe format mein encode karna
+    url_params = urllib.parse.urlencode(params)
+    
+    # Final clean URL
+    auth_url = f"https://twitter.com/i/oauth2/authorize?{url_params}"
     
     return auth_url
 
