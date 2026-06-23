@@ -42,27 +42,68 @@ SERPER_KEY = S_KEY_1 if S_KEY_1 else st.secrets.get("SERPER_API_KEY", "")
 # ==============================================================
 # 👤 CREATOR IDENTITY HUB (The MVP Login)
 # ==============================================================
-if "creator_handle" not in st.session_state:
-    st.session_state["creator_handle"] = None
+# ==============================================================
+# 🔐 SECURE AUTHENTICATION SYSTEM (Supabase Auth)
+# ==============================================================
+if "user_email" not in st.session_state:
+    st.session_state["user_email"] = None
 
-# Agar user logged in nahi hai, toh sirf login screen dikhao
-if st.session_state["creator_handle"] is None:
-    st.markdown("<h2 style='text-align: center;'>🔐 Access Creator AI OS</h2>", unsafe_allow_html=True)
-    st.markdown("<p style='text-align: center; color: gray;'>Enter your unique Creator Handle to sync your secure workspace.</p>", unsafe_allow_html=True)
+# Agar user logged in nahi hai, toh secure Login/Signup screen dikhao
+if st.session_state["user_email"] is None:
+    st.markdown("<h2 style='text-align: center;'>🔐 Secure Access - Creator AI OS</h2>", unsafe_allow_html=True)
+    st.markdown("<p style='text-align: center; color: gray;'>Create an account or login to access your secure workspace.</p>", unsafe_allow_html=True)
     
     st.write(" ")
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
-        handle_input = st.text_input("Creator Handle", placeholder="@nikhil_ai")
-        if st.button("🚀 Enter Workspace", use_container_width=True):
-            if handle_input.strip() != "":
-                st.session_state["creator_handle"] = handle_input.strip()
-                st.rerun()
-            else:
-                st.error("⚠️ Please enter a valid handle to continue.")
+        tab_login, tab_signup = st.tabs(["🔑 Login", "📝 Create Account"])
+        
+        # --- LOGIN TAB ---
+        with tab_login:
+            log_email = st.text_input("Email Address", key="log_email")
+            log_pass = st.text_input("Password", type="password", key="log_pass")
+            if st.button("🚀 Login", use_container_width=True):
+                try:
+                    # Supabase API Call
+                    user = supabase.auth.sign_in_with_password({"email": log_email, "password": log_pass})
+                    st.session_state["user_email"] = log_email # Email ko identity bana liya
+                    st.session_state["creator_handle"] = log_email # Database mapping ke liye
+                    st.success("Login Successful!")
+                    time.sleep(1)
+                    st.rerun()
+                except Exception as e:
+                    st.error("⚠️ Invalid Email or Password. Please try again.")
+
+        # --- SIGN UP TAB ---
+        with tab_signup:
+            reg_email = st.text_input("New Email Address", key="reg_email")
+            reg_pass = st.text_input("Create Password (Min 6 chars)", type="password", key="reg_pass")
+            # Wah! Aapka apna "Value-Driven" Checkbox:
+            opt_in = st.checkbox("Send my generated AI scripts & channel audit reports to my email.", value=True)
+            
+            if st.button("✨ Create Free Account", use_container_width=True):
+                if len(reg_pass) < 6:
+                    st.warning("Password must be at least 6 characters long.")
+                else:
+                    try:
+                        # Supabase API Call
+                        user = supabase.auth.sign_up({"email": reg_email, "password": reg_pass})
+                        st.success("Account Created Successfully! You can now Login.")
+                    except Exception as e:
+                        st.error(f"⚠️ Registration Failed: {e}")
     
-    # 🛑 MAGIC LINE: Yeh aage ka koi bhi code chalne nahi dega jab tak login na ho
+    # 🛑 SECURITY LOCK: Yahan se aage ka code nahi chalega jab tak auth na ho
     st.stop() 
+
+# Agar yahan tak code aaya, matlab user securely logged in hai!
+st.sidebar.markdown(f"### 👤 Profile:\n**{st.session_state['user_email']}**")
+if st.sidebar.button("🚪 Secure Logout"):
+    supabase.auth.sign_out()
+    st.session_state["user_email"] = None
+    st.session_state["creator_handle"] = None
+    st.session_state["channels_synced"] = False 
+    st.rerun()
+st.sidebar.write("---") 
 
 # Agar yahan tak code aaya, matlab user logged in hai!
 # Sidebar mein user ka naam aur Logout button dikhate hain
