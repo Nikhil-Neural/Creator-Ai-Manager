@@ -65,20 +65,20 @@ if st.session_state["user_email"] is None:
             if st.button("🚀 Login", use_container_width=True):
                 try:
                     # Supabase API Call
-                    user = supabase.auth.sign_in_with_password({"email": log_email, "password": log_pass})
-                    st.session_state["user_email"] = log_email # Email ko identity bana liya
-                    st.session_state["creator_handle"] = log_email # Database mapping ke liye
+                    user = supabase.auth.sign_in_with_password({"email": log_email.strip(), "password": log_pass})
+                    st.session_state["user_email"] = log_email.strip()
+                    st.session_state["creator_handle"] = log_email.strip()
                     st.success("Login Successful!")
                     time.sleep(1)
                     st.rerun()
                 except Exception as e:
-                    st.error("⚠️ Invalid Email or Password. Please try again.")
+                    # 💥 Ab humein asli error dikhega!
+                    st.error(f"⚠️ Login Error: {str(e)}") 
 
         # --- SIGN UP TAB ---
         with tab_signup:
             reg_email = st.text_input("New Email Address", key="reg_email")
             reg_pass = st.text_input("Create Password (Min 6 chars)", type="password", key="reg_pass")
-            # Wah! Aapka apna "Value-Driven" Checkbox:
             opt_in = st.checkbox("Send my generated AI scripts & channel audit reports to my email.", value=True)
             
             if st.button("✨ Create Free Account", use_container_width=True):
@@ -87,10 +87,17 @@ if st.session_state["user_email"] is None:
                 else:
                     try:
                         # Supabase API Call
-                        user = supabase.auth.sign_up({"email": reg_email, "password": reg_pass})
-                        st.success("Account Created Successfully! You can now Login.")
+                        user = supabase.auth.sign_up({"email": reg_email.strip(), "password": reg_pass})
+                        st.success("Account Created! Logging you in automatically... 🚀")
+                        
+                        # 💥 JADOO: Account bante hi direct login!
+                        time.sleep(1.5)
+                        st.session_state["user_email"] = reg_email.strip()
+                        st.session_state["creator_handle"] = reg_email.strip()
+                        st.rerun()
                     except Exception as e:
-                        st.error(f"⚠️ Registration Failed: {e}")
+                        # 💥 Asli signup error
+                        st.error(f"⚠️ Registration Failed: {str(e)}")
     
     # 🛑 SECURITY LOCK: Yahan se aage ka code nahi chalega jab tak auth na ho
     st.stop() 
