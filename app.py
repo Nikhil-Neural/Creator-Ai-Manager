@@ -39,6 +39,39 @@ S_KEY_2 = st.secrets.get("SERPER_API_KEY_2", "")
 GEMINI_KEY = G_KEY_1 if G_KEY_1 else st.secrets.get("GEMINI_API_KEY", "")
 GROQ_KEY   = GR_KEY_1 if GR_KEY_1 else st.secrets.get("GROQ_API_KEY", "")
 SERPER_KEY = S_KEY_1 if S_KEY_1 else st.secrets.get("SERPER_API_KEY", "")
+# ==============================================================
+# 👤 CREATOR IDENTITY HUB (The MVP Login)
+# ==============================================================
+if "creator_handle" not in st.session_state:
+    st.session_state["creator_handle"] = None
+
+# Agar user logged in nahi hai, toh sirf login screen dikhao
+if st.session_state["creator_handle"] is None:
+    st.markdown("<h2 style='text-align: center;'>🔐 Access Creator AI OS</h2>", unsafe_allow_html=True)
+    st.markdown("<p style='text-align: center; color: gray;'>Enter your unique Creator Handle to sync your secure workspace.</p>", unsafe_allow_html=True)
+    
+    st.write(" ")
+    col1, col2, col3 = st.columns([1, 2, 1])
+    with col2:
+        handle_input = st.text_input("Creator Handle", placeholder="@nikhil_ai")
+        if st.button("🚀 Enter Workspace", use_container_width=True):
+            if handle_input.strip() != "":
+                st.session_state["creator_handle"] = handle_input.strip()
+                st.rerun()
+            else:
+                st.error("⚠️ Please enter a valid handle to continue.")
+    
+    # 🛑 MAGIC LINE: Yeh aage ka koi bhi code chalne nahi dega jab tak login na ho
+    st.stop() 
+
+# Agar yahan tak code aaya, matlab user logged in hai!
+# Sidebar mein user ka naam aur Logout button dikhate hain
+st.sidebar.markdown(f"### 👤 Profile:\n**{st.session_state['creator_handle']}**")
+if st.sidebar.button("🚪 Switch Account / Logout"):
+    st.session_state["creator_handle"] = None
+    st.session_state["channels_synced"] = False # Dashboard clear karne ke liye
+    st.rerun()
+st.sidebar.write("---")
 
 from crewai_tools import SerperDevTool
 search_tool = SerperDevTool(api_key=SERPER_KEY) if SERPER_KEY else None
@@ -334,6 +367,29 @@ with st.sidebar:
 
 # ── Main Content Gateway Router ──────────────────────────
 # ── Main Content Gateway Router ──────────────────────────
+# ==============================================================
+# 💾 TOKEN SAVER HELPER FUNCTION
+# ==============================================================
+def save_platform_token(platform_column_name, auth_code):
+    current_user = st.session_state.get("creator_handle")
+    if not current_user:
+        return # Agar user login nahi hai toh kuch mat karo
+        
+    # Check karo ki kya is user ka profile pehle se database mein hai
+    response = supabase.table("creator_profiles").select("id").eq("creator_handle", current_user).execute()
+    
+    if response.data:
+        # User pehle se hai, toh bas us naye platform ka token update kar do
+        supabase.table("creator_profiles").update({
+            platform_column_name: auth_code
+        }).eq("creator_handle", current_user).execute()
+    else:
+        # Naya user hai, toh naya row banao aur token save karo
+        supabase.table("creator_profiles").insert({
+            "creator_handle": current_user,
+            platform_column_name: auth_code
+        }).execute()
+# ── Main Content Gateway Router ──────────────────────────
 if "code" in st.query_params:
     auth_code = st.query_params["code"] 
     platform_state = st.query_params.get("state", "instagram") 
@@ -341,25 +397,32 @@ if "code" in st.query_params:
     if platform_state == "facebook":
         st.success("🎉 Facebook Page Successfully Linked! 💙")
         st.session_state["fb_auth_code"] = auth_code
+        save_platform_token("facebook_token", auth_code) # 💾 Database mein save
         st.session_state["channels_synced"] = True
+        
     elif platform_state == "youtube":
         st.success("🎉 YouTube Channel Successfully Linked! ❤️")
         st.session_state["yt_auth_code"] = auth_code
+        save_platform_token("youtube_token", auth_code) # 💾 Database mein save
         st.session_state["channels_synced"] = True
+        
     elif platform_state == "instagram":
         st.success("🎉 Instagram Account Successfully Linked! 🩷")
         st.session_state["insta_auth_code"] = auth_code
+        save_platform_token("instagram_token", auth_code) # 💾 Database mein save
         st.session_state["channels_synced"] = True
+        
     else:
         # 🟢 THE TWITTER SUPABASE FIX 🟢
-        # Kyunki Twitter ka state ek lamba random number (UUID) hai, wo inme se koi nahi hoga
         response = supabase.table("twitter_auth_states").select("code_verifier").eq("state", platform_state).execute()
         
         if response.data:
             saved_code_verifier = response.data[0]["code_verifier"]
             st.success("🎉 X (Twitter) Account Successfully Linked on PC/Mobile! 🩵")
             st.session_state["tw_auth_code"] = auth_code
-            st.session_state["tw_code_verifier"] = saved_code_verifier # Aage kaam aayega
+            st.session_state["tw_code_verifier"] = saved_code_verifier 
+            
+            save_platform_token("twitter_token", auth_code) # 💾 Database mein save
             st.session_state["channels_synced"] = True
             
             # Kachra saaf kar dein database se
