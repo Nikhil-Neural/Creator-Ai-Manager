@@ -124,10 +124,13 @@ st.sidebar.write("---")
 
 # Agar yahan tak code aaya, matlab user logged in hai!
 # Sidebar mein user ka naam aur Logout button dikhate hain
-st.sidebar.markdown(f"### 👤 Profile:\n**{st.session_state['creator_handle']}**")
-if st.sidebar.button("🚪 Switch Account / Logout"):
+# ✅ SIRF YEH REHNA CHAHIYE ✅
+st.sidebar.markdown(f"### 👤 Profile:\n**{st.session_state['user_email']}**")
+if st.sidebar.button("🚪 Secure Logout"):
+    supabase.auth.sign_out()
+    st.session_state["user_email"] = None
     st.session_state["creator_handle"] = None
-    st.session_state["channels_synced"] = False # Dashboard clear karne ke liye
+    st.session_state["channels_synced"] = False 
     st.rerun()
 st.sidebar.write("---")
 
