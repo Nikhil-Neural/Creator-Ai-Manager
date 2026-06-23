@@ -472,9 +472,6 @@ else:
                     </a>
                 </div>
             """, unsafe_allow_html=True)
-
-# Custom HTML ki jagah official Streamlit button (No UI bugs)
-            st.link_button("🩵 Connect X Account", tw_login_link, use_container_width=True)
         with col2:
             st.subheader("📸 Instagram")
             meta_login_link = get_meta_oauth_url()
