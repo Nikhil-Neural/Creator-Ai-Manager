@@ -48,6 +48,16 @@ SERPER_KEY = S_KEY_1 if S_KEY_1 else st.secrets.get("SERPER_API_KEY", "")
 if "user_email" not in st.session_state:
     st.session_state["user_email"] = None
 
+# 🧠 SUPABASE SESSION AUTO-RECOVERY (Memory Check)
+if st.session_state["user_email"] is None:
+    try:
+        current_session = supabase.auth.get_session()
+        if current_session and current_session.user:
+            st.session_state["user_email"] = current_session.user.email
+            st.session_state["creator_handle"] = current_session.user.email
+    except:
+        pass
+
 # Agar user logged in nahi hai, toh secure Login/Signup screen dikhao
 if st.session_state["user_email"] is None:
     st.markdown("<h2 style='text-align: center;'>🔐 Secure Access - Creator AI OS</h2>", unsafe_allow_html=True)
@@ -102,7 +112,7 @@ if st.session_state["user_email"] is None:
     # 🛑 SECURITY LOCK: Yahan se aage ka code nahi chalega jab tak auth na ho
     st.stop() 
 
-# Agar yahan tak code aaya, matlab user securely logged in hai!
+# ✅ SIRF YEH NAYA CODE REHNA CHAHIYE ✅
 st.sidebar.markdown(f"### 👤 Profile:\n**{st.session_state['user_email']}**")
 if st.sidebar.button("🚪 Secure Logout"):
     supabase.auth.sign_out()
