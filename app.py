@@ -114,6 +114,24 @@ if st.session_state["user_email"] is None:
 
 # ✅ SIRF YEH NAYA CODE REHNA CHAHIYE ✅
 st.sidebar.markdown(f"### 👤 Profile:\n**{st.session_state['user_email']}**")
+# ==============================================================
+# 🧠 SMART MEMORY RECOVERY (Check Saved Platforms on Login)
+# ==============================================================
+if "db_checked" not in st.session_state and st.session_state.get("creator_handle"):
+    try:
+        # User ka profile database se mangwao
+        response = supabase.table("creator_profiles").select("*").eq("creator_handle", st.session_state["creator_handle"]).execute()
+        
+        if response.data:
+            user_data = response.data[0]
+            # Check karo ki kya inme se koi bhi token pehle se saved hai?
+            if user_data.get("youtube_token") or user_data.get("instagram_token") or user_data.get("facebook_token") or user_data.get("twitter_token"):
+                st.session_state["channels_synced"] = True
+                
+        # Mark kardo ki check ho gaya, taaki app baar-baar load na le
+        st.session_state["db_checked"] = True
+    except Exception as e:
+        print(f"Memory Sync Error: {e}")
 if st.sidebar.button("🚪 Secure Logout"):
     supabase.auth.sign_out()
     st.session_state["user_email"] = None
