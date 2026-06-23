@@ -179,7 +179,7 @@ def generate_pkce_pair():
 # FIXED TWITTER OAUTH FUNCTION
 # ==============================================================
 def get_twitter_oauth_url():
-    CLIENT_ID = st.secrets.get("TWITTER_CLIENT_ID", "") # Aapke secrets se aayega
+    CLIENT_ID = st.secrets.get("TWITTER_CLIENT_ID", "") 
     REDIRECT_URI = "https://creator-ai-manager-tgrh5ifkgfqme6kdomcvxb.streamlit.app/"
     
     # 1. Naya code_verifier aur challenge banayein
@@ -188,14 +188,16 @@ def get_twitter_oauth_url():
     # 2. Ek unique ID banayein is login session ke liye
     state = str(uuid.uuid4())
     
-    # 3. Streamlit memory ki jagah SUPABASE mein save karein!
+    # 3. Streamlit memory ki jagah SUPABASE mein save karein
     supabase.table("twitter_auth_states").insert({
         "state": state,
         "code_verifier": code_verifier
     }).execute()
     
-    # 4. Apna Twitter URL return karein 
-    tw_login_link = f"https://twitter.com/i/oauth2/authorize?response_type=code&client_id={CLIENT_ID}&redirect_uri={REDIRECT_URI}&state={state}&code_challenge={code_challenge}&code_challenge_method=S256"
+    # 4. Apna Twitter URL return karein (💥 ADDED SCOPE PARAMETER)
+    scopes = "tweet.read users.read tweet.write offline.access"
+    encoded_scopes = scopes.replace(" ", "%20")
+    tw_login_link = f"https://twitter.com/i/oauth2/authorize?response_type=code&client_id={CLIENT_ID}&redirect_uri={REDIRECT_URI}&state={state}&code_challenge={code_challenge}&code_challenge_method=S256&scope={encoded_scopes}"
     
     return tw_login_link
 
