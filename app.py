@@ -122,18 +122,6 @@ if st.sidebar.button("🚪 Secure Logout"):
     st.rerun()
 st.sidebar.write("---") 
 
-# Agar yahan tak code aaya, matlab user logged in hai!
-# Sidebar mein user ka naam aur Logout button dikhate hain
-# ✅ SIRF YEH REHNA CHAHIYE ✅
-st.sidebar.markdown(f"### 👤 Profile:\n**{st.session_state['user_email']}**")
-if st.sidebar.button("🚪 Secure Logout"):
-    supabase.auth.sign_out()
-    st.session_state["user_email"] = None
-    st.session_state["creator_handle"] = None
-    st.session_state["channels_synced"] = False 
-    st.rerun()
-st.sidebar.write("---")
-
 from crewai_tools import SerperDevTool
 search_tool = SerperDevTool(api_key=SERPER_KEY) if SERPER_KEY else None
 
