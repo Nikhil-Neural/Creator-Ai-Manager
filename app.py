@@ -6,6 +6,13 @@ except ImportError:
     pass
 
 import streamlit as st
+from supabase import create_client, Client
+import uuid
+
+# Supabase se connect karna
+url = st.secrets["SUPABASE_URL"]
+key = st.secrets["SUPABASE_KEY"]
+supabase: Client = create_client(url, key)
 import urllib.parse
 import os
 import base64
@@ -158,44 +165,39 @@ def get_youtube_oauth_url():
     
     return auth_url
 
-def get_twitter_oauth_url():
-    client_id = st.secrets.get("TWITTER_CLIENT_ID", "")
-    
-    if not client_id:
-        return "#error_missing_tw_client_id"
-
-    redirect_uri = "https://creator-ai-manager-tgrh5ifkgfqme6kdomcvxb.streamlit.app/" 
-    scopes = "tweet.read tweet.write users.read offline.access"
-    
-    # 32 bytes ka secure random verifier
+# ==============================================================
+# TWITTER PKCE GENERATOR (Missing Function Added)
+# ==============================================================
+def generate_pkce_pair():
     code_verifier = base64.urlsafe_b64encode(os.urandom(32)).decode('utf-8').rstrip('=')
+    m = hashlib.sha256()
+    m.update(code_verifier.encode('utf-8'))
+    code_challenge = base64.urlsafe_b64encode(m.digest()).decode('utf-8').rstrip('=')
+    return code_verifier, code_challenge
+
+# ==============================================================
+# FIXED TWITTER OAUTH FUNCTION
+# ==============================================================
+def get_twitter_oauth_url():
+    CLIENT_ID = st.secrets.get("TWITTER_CLIENT_ID", "") # Aapke secrets se aayega
+    REDIRECT_URI = "https://creator-ai-manager-tgrh5ifkgfqme6kdomcvxb.streamlit.app/"
     
-    # S256 Challenge create karna
-    code_challenge = base64.urlsafe_b64encode(
-        hashlib.sha256(code_verifier.encode('utf-8')).digest()
-    ).decode('utf-8').rstrip('=')
+    # 1. Naya code_verifier aur challenge banayein
+    code_verifier, code_challenge = generate_pkce_pair() 
     
-    st.session_state["tw_code_verifier"] = code_verifier
+    # 2. Ek unique ID banayein is login session ke liye
+    state = str(uuid.uuid4())
     
-    # MAGIC FIX 🪄: URL manually banane ke bajaye urllib ka direct dictionary encoder use karna.
-    # Yeh 100% guarantee dega ki koi bhi character internet raste mein break na ho.
-    params = {
-        "response_type": "code",
-        "client_id": client_id,
-        "redirect_uri": redirect_uri,
-        "scope": scopes,
-        "state": "twitter",
-        "code_challenge": code_challenge,
-        "code_challenge_method": "S256"
-    }
+    # 3. Streamlit memory ki jagah SUPABASE mein save karein!
+    supabase.table("twitter_auth_states").insert({
+        "state": state,
+        "code_verifier": code_verifier
+    }).execute()
     
-    # Params ko safe format mein encode karna
-    url_params = urllib.parse.urlencode(params)
+    # 4. Apna Twitter URL return karein 
+    tw_login_link = f"https://twitter.com/i/oauth2/authorize?response_type=code&client_id={CLIENT_ID}&redirect_uri={REDIRECT_URI}&state={state}&code_challenge={code_challenge}&code_challenge_method=S256"
     
-    # Final clean URL
-    auth_url = f"https://twitter.com/i/oauth2/authorize?{url_params}"
-    
-    return auth_url
+    return tw_login_link
 
 
 def run_my_crew_ai_agents(niche_topic, social_platform, output_language, video_duration, app_mode, user_pasted_script, selected_bundle_options):
@@ -329,8 +331,8 @@ with st.sidebar:
     st.caption("Architecture Framework: CrewAI + Gemini + Groq Matrix")
 
 # ── Main Content Gateway Router ──────────────────────────
+# ── Main Content Gateway Router ──────────────────────────
 if "code" in st.query_params:
-    st.write("DEBUG — Full query params:", dict(st.query_params))  # 👈 YE NAYI LINE ADD KI
     auth_code = st.query_params["code"] 
     platform_state = st.query_params.get("state", "instagram") 
     
@@ -342,17 +344,27 @@ if "code" in st.query_params:
         st.success("🎉 YouTube Channel Successfully Linked! ❤️")
         st.session_state["yt_auth_code"] = auth_code
         st.session_state["channels_synced"] = True
-    elif platform_state == "twitter":
-        st.success("🎉 X (Twitter) Account Successfully Linked! 🩵")
-        st.session_state["tw_auth_code"] = auth_code
-        st.session_state["channels_synced"] = True
     elif platform_state == "instagram":
         st.success("🎉 Instagram Account Successfully Linked! 🩷")
         st.session_state["insta_auth_code"] = auth_code
         st.session_state["channels_synced"] = True
     else:
-        st.error("⚠️ Unknown platform state received — connection failed.")
+        # 🟢 THE TWITTER SUPABASE FIX 🟢
+        # Kyunki Twitter ka state ek lamba random number (UUID) hai, wo inme se koi nahi hoga
+        response = supabase.table("twitter_auth_states").select("code_verifier").eq("state", platform_state).execute()
         
+        if response.data:
+            saved_code_verifier = response.data[0]["code_verifier"]
+            st.success("🎉 X (Twitter) Account Successfully Linked on PC/Mobile! 🩵")
+            st.session_state["tw_auth_code"] = auth_code
+            st.session_state["tw_code_verifier"] = saved_code_verifier # Aage kaam aayega
+            st.session_state["channels_synced"] = True
+            
+            # Kachra saaf kar dein database se
+            supabase.table("twitter_auth_states").delete().eq("state", platform_state).execute()
+        else:
+            st.error("⚠️ Unknown platform state or Twitter Session Expired. Please try again.")
+            
     st.query_params.clear()
 st.title("🚀 Creator AI Manager OS")
 st.write(f"System Context: **{current_os_mode}** active | Platform: **{platform}**")
@@ -449,6 +461,17 @@ else:
             st.write(" ")
             st.subheader("🐦 X (Twitter)")
             tw_login_link = get_twitter_oauth_url()
+
+            # Custom Black HTML Button for X
+            st.markdown(f"""
+                <div style='margin-bottom: 16px;'>
+                    <a href='{tw_login_link}' target='_blank' style='text-decoration: none;'>
+                        <button style='width:100%; background-color:#000000; color:white; border:none; padding:10px; border-radius:5px; font-weight:bold; cursor:pointer; height:42px; font-size:14px; box-shadow: 0px 2px 4px rgba(0,0,0,0.1);'>
+                            🩵 Connect X Account
+                        </button>
+                    </a>
+                </div>
+            """, unsafe_allow_html=True)
 
 # Custom HTML ki jagah official Streamlit button (No UI bugs)
             st.link_button("🩵 Connect X Account", tw_login_link, use_container_width=True)
