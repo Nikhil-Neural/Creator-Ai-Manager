@@ -711,23 +711,40 @@ else:
     # PILL SECTION B: ANALYSIS ENGINE CODES MATRIX
     elif selected_auditor_section == "📈 2. Real-Time Performance Audit":
         st.markdown("### 📈 Live Extraction Performance Audit Strategies")
-        if not st.session_state.get("audit_data_ready", False):
-            st.warning("⚠️ Access Blocked: Secure Account Data Sync is missing. Please go to the 'Secure Social Account Hub' section to authenticate handles first.")
+        
+        # 1. BRIDGE: Vault se blueprints fetch karo
+        try:
+            response = supabase.table("ai_blueprints_vault").select("*").eq("creator_email", st.session_state["user_email"]).execute()
+            blueprints = response.data if response.data else []
+        except:
+            blueprints = []
+
+        if not blueprints:
+            st.warning("⚠️ Vault Empty: Pehle Tab 1 mein script generate karein.")
         else:
-            st.write("🔄 **Macro-Data Analytics Synthesis Complete.** Analytics Matrix Cycle Report:")
+            # 2. Dropdown UI to Select Blueprint
+            blueprint_options = {f"{item['niche_topic']} ({item['target_platform']})": item for item in blueprints}
+            selected_bp_name = st.selectbox("Select a Blueprint to Audit:", options=list(blueprint_options.keys()))
+            selected_bp = blueprint_options[selected_bp_name]
+
+            # 3. Inject Metadata into Session
+            st.session_state["audit_data_ready"] = True
+            
+            st.write(f"---")
+            st.write(f"🔄 **Auditing Blueprint:** {selected_bp['niche_topic']}")
+            
+            # 4. Zero-Cost Metrics Display (Using fetched DB data)
             m1, m2, m3 = st.columns(3)
-            with m1: st.metric(f"Dynamic {platform} Views Metrics", "148.2K Total", "+14.2% Traction Loop")
-            with m2: st.metric("System Average Retention Rate", "54.2% Score", "+3.8% Hook Retention Peak")
-            with m3: st.metric("Monetization Threshold Velocity", "64.5% Completed", "Expected Clear: 12 Days")
+            with m1: st.metric("Platform", selected_bp['target_platform'])
+            with m2: st.metric("Status", selected_bp['status'])
+            with m3: st.metric("Date", selected_bp['created_at'].split('T')[0])
             
             st.write("---")
-            st.markdown("#### 🕵️ Deep Virality Leak Diagnostics (Hinglish Local Expert Report)")
-            with st.expander("🔴 VIEW SYSTEM IDENTIFIED PRODUCTION ERRORS", expanded=True):
-                st.markdown("""
-                * **⚠️ CTR Decoder Note:** Bhai, aapka click-through value sirf 2.8% hai! Thumbnails ka face contrast aur focal points clear nahi hai, is wajah se impressions waste ho rhe hain. Titles ko query-based curiosity framework me convert karo immediately!
-                * **⚠️ Audience Retention Watchdog:** Video ke exactly **10th second** par 68% log leave kar rhe hain. AI context parser ne detect kiya h ki wahan aapka cinematic animation intro bohot lamba tha. Rule: Keep intros strictly under 3 seconds!
-                * **⚠️ Platform Weight Calibration:** Aapka short-form content algorithm abhi Instagram Reels network par fast flow pakad rha hai, github pipeline clear.
-                """)
+            st.markdown("#### 🕵️ Deep Virality Leak Diagnostics")
+            
+            # Yahan hum AI ko call nahi kar rahe, DB se utha kar dikha rahe hain!
+            with st.expander("🔴 VIEW PRODUCTION ANALYSIS", expanded=True):
+                st.markdown(selected_bp['script_content'])
 
     # PILL SECTION C: AUTOMATED PUBLISHER DEPLOYMENT PIPELINE
     elif selected_auditor_section == "🚀 3. Omnichannel Media Publisher Node":
