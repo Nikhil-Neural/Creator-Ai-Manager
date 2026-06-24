@@ -504,7 +504,7 @@ st.write("---")
 
 # MODE 1: SCRIPT ENGINE
 if current_os_mode == "✍️ AI Script Generator":
-    tab1, tab2 = st.tabs(["🔥 Trend & Script Workspace", "📥 Download Generated Blueprint"])
+    tab1, tab2, tab3 = st.tabs(["🔥 Trend & Script Workspace", "📥 Download Generated Blueprint", "📂 My Saved Vault"])
     with tab1:
         st.markdown("### 🔥 AI Content Strategy Hub")
         app_mode = st.radio("🔮 Kis Mode me kaam karna hai?", ["🚀 Complete Blueprint Mode", "✍️ Repurpose My Script Mode"], horizontal=True)
@@ -535,10 +535,27 @@ if current_os_mode == "✍️ AI Script Generator":
         if st.session_state.get("form_submitted"):
             with st.spinner("🕵️ Processing failproof generation sequence..."):
                 try:
+                    # CrewAI se script banwayi
                     ai_output = run_my_crew_ai_agents(st.session_state["niche_data"], platform, language, st.session_state.get("duration", 1.0), st.session_state["current_mode"], st.session_state.get("pasted_script", ""), st.session_state["selected_options"])
+                    
                     st.session_state["script_data"] = ai_output
                     st.session_state["form_submitted"] = False
-                    st.success("🎉 Blueprint ready! Switch to Tab 2 to download content.")
+                    
+                    # 💾 THE VAULT: Database mein permanent save karna
+                    if st.session_state.get("user_email"):
+                        try:
+                            supabase.table("ai_blueprints_vault").insert({
+                                "creator_email": st.session_state["user_email"],
+                                "target_platform": platform,
+                                "niche_topic": st.session_state["niche_data"],
+                                "script_content": ai_output,
+                                "social_metadata": str(st.session_state["selected_options"]),
+                                "status": "Draft"
+                            }).execute()
+                        except Exception as db_error:
+                            print(f"[VAULT ERROR] Could not save to database: {db_error}")
+
+                    st.success("🎉 Blueprint ready & automatically saved to your Vault! Switch to Tab 2 to download content.")
                 except Exception as e:
                     st.session_state["form_submitted"] = False
                     st.error(f"Engine Error: {str(e)}")
@@ -552,6 +569,39 @@ if current_os_mode == "✍️ AI Script Generator":
             with c1: st.download_button("📥 Notepad (.txt)", str(st.session_state["script_data"]), file_name="blueprint.txt", use_container_width=True)
             with c2: st.download_button("📥 Word Doc (.docx)", create_word_doc(str(st.session_state["script_data"]), platform, st.session_state.get("niche_data", "File")), file_name="blueprint.docx", use_container_width=True)
         else: st.warning("⚠️ No data compiled yet. Run Tab 1 first.")
+    with tab3:
+        st.header("📂 My Saved Blueprints Vault")
+        st.markdown("Access all your previously generated high-retention scripts and metadata here.")
+        
+        if st.session_state.get("user_email"):
+            # Database se user ki purani scripts fetch karna (Nayi sabse upar aayegi)
+            try:
+                response = supabase.table("ai_blueprints_vault").select("*").eq("creator_email", st.session_state["user_email"]).order("created_at", desc=True).execute()
+                
+                if response.data and len(response.data) > 0:
+                    st.success(f"📦 Found {len(response.data)} saved blueprints in your secure vault.")
+                    st.write("---")
+                    
+                    # Har script ko ek accordion (expander) mein dikhana
+                    for item in response.data:
+                        # Date format ko clean karna
+                        raw_date = item.get('created_at', '')
+                        clean_date = raw_date.split('T')[0] if 'T' in raw_date else "Unknown Date"
+                        
+                        # Expander ka Title
+                        with st.expander(f"🎬 {item.get('niche_topic', 'Untitled')} | 📅 {clean_date} | 📍 {item.get('target_platform', 'Unknown')}"):
+                            st.caption(f"**Selected Metadata Assets:** {item.get('social_metadata', 'None')}")
+                            st.write("---")
+                            st.markdown(item.get('script_content', 'No content found.'))
+                            
+                            # Ek chhota sa copy button logic (user copy-paste kar sake)
+                            st.button("📋 Access Data", key=f"btn_{item['id']}")
+                else:
+                    st.info("📭 Your vault is currently empty. Generate your first script in Tab 1 to see it here!")
+            except Exception as e:
+                st.error(f"⚠️ Vault Sync Error: Could not fetch data from database. ({str(e)})")
+        else:
+            st.warning("⚠️ Access Blocked: Please log in to view your saved blueprints.")
 
 # MODE 2: AUDITOR ENGINE
 else:
