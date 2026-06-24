@@ -115,23 +115,32 @@ if st.session_state["user_email"] is None:
 # ✅ SIRF YEH NAYA CODE REHNA CHAHIYE ✅
 st.sidebar.markdown(f"### 👤 Profile:\n**{st.session_state['user_email']}**")
 # ==============================================================
-# 🧠 SMART MEMORY RECOVERY (Check Saved Platforms on Login)
+# 🧠 SMART MEMORY RECOVERY & HELPERS
 # ==============================================================
 if "db_checked" not in st.session_state and st.session_state.get("creator_handle"):
     try:
-        # User ka profile database se mangwao
         response = supabase.table("creator_profiles").select("*").eq("creator_handle", st.session_state["creator_handle"]).execute()
-        
         if response.data:
             user_data = response.data[0]
-            # Check karo ki kya inme se koi bhi token pehle se saved hai?
-            if user_data.get("youtube_token") or user_data.get("instagram_token") or user_data.get("facebook_token") or user_data.get("twitter_token"):
+            # Har platform ka individual status check
+            st.session_state["yt_connected"] = bool(user_data.get("youtube_token"))
+            st.session_state["tw_connected"] = bool(user_data.get("twitter_token"))
+            st.session_state["ig_connected"] = bool(user_data.get("instagram_token"))
+            st.session_state["fb_connected"] = bool(user_data.get("facebook_token"))
+            
+            if any([st.session_state.get(k) for k in ["yt_connected", "tw_connected", "ig_connected", "fb_connected"]]):
                 st.session_state["channels_synced"] = True
                 
-        # Mark kardo ki check ho gaya, taaki app baar-baar load na le
         st.session_state["db_checked"] = True
     except Exception as e:
         print(f"Memory Sync Error: {e}")
+
+def disconnect_platform(platform_column, session_key):
+    """Database se token hatane aur button reset karne ka function"""
+    if st.session_state.get("creator_handle"):
+        supabase.table("creator_profiles").update({platform_column: None}).eq("creator_handle", st.session_state["creator_handle"]).execute()
+        st.session_state[session_key] = False
+        st.rerun()
 if st.sidebar.button("🚪 Secure Logout"):
     supabase.auth.sign_out()
     st.session_state["user_email"] = None
@@ -463,36 +472,30 @@ if "code" in st.query_params:
     
     if platform_state == "facebook":
         st.success("🎉 Facebook Page Successfully Linked! 💙")
-        st.session_state["fb_auth_code"] = auth_code
-        save_platform_token("facebook_token", auth_code) # 💾 Database mein save
+        save_platform_token("facebook_token", auth_code)
+        st.session_state["fb_connected"] = True
         st.session_state["channels_synced"] = True
         
     elif platform_state == "youtube":
         st.success("🎉 YouTube Channel Successfully Linked! ❤️")
-        st.session_state["yt_auth_code"] = auth_code
-        save_platform_token("youtube_token", auth_code) # 💾 Database mein save
+        save_platform_token("youtube_token", auth_code)
+        st.session_state["yt_connected"] = True
         st.session_state["channels_synced"] = True
         
     elif platform_state == "instagram":
         st.success("🎉 Instagram Account Successfully Linked! 🩷")
-        st.session_state["insta_auth_code"] = auth_code
-        save_platform_token("instagram_token", auth_code) # 💾 Database mein save
+        save_platform_token("instagram_token", auth_code)
+        st.session_state["ig_connected"] = True
         st.session_state["channels_synced"] = True
         
     else:
         # 🟢 THE TWITTER SUPABASE FIX 🟢
         response = supabase.table("twitter_auth_states").select("code_verifier").eq("state", platform_state).execute()
-        
         if response.data:
-            saved_code_verifier = response.data[0]["code_verifier"]
-            st.success("🎉 X (Twitter) Account Successfully Linked on PC/Mobile! 🩵")
-            st.session_state["tw_auth_code"] = auth_code
-            st.session_state["tw_code_verifier"] = saved_code_verifier 
-            
-            save_platform_token("twitter_token", auth_code) # 💾 Database mein save
+            st.success("🎉 X (Twitter) Account Successfully Linked! 🩵")
+            save_platform_token("twitter_token", auth_code)
+            st.session_state["tw_connected"] = True
             st.session_state["channels_synced"] = True
-            
-            # Kachra saaf kar dein database se
             supabase.table("twitter_auth_states").delete().eq("state", platform_state).execute()
         else:
             st.error("⚠️ Unknown platform state or Twitter Session Expired. Please try again.")
@@ -619,69 +622,50 @@ else:
     # 🎯 INTEGRATION POINT 2: Re-writing Pill 1 for Real Connections
     if selected_auditor_section == "🔗 1. Secure Social Account Hub":
         st.markdown("## 🔐 Connect Your Social Accounts")
-        st.write("Apne platforms ko ek click mein connect karein aur real-time analytics reports paayein.")
+        st.write("Apne platforms ko ek click mein connect karein. (One Brand Rule Active)")
         st.write(" ")
         
         col1, col2 = st.columns(2)
         
         with col1:
             st.subheader("📺 YouTube")
-            # Naya YouTube link function call kiya
-            yt_login_link = get_youtube_oauth_url()
-            
-            # YouTube Red (#FF0000) color wala HTML button
-            st.markdown(f"""
-                <div style='margin-bottom: 16px;'>
-                    <a href='{yt_login_link}' target='_blank' style='text-decoration: none;'>
-                        <button style='width:100%; background-color:#FF0000; color:white; border:none; padding:10px; border-radius:5px; font-weight:bold; cursor:pointer; height:42px; font-size:14px; box-shadow: 0px 2px 4px rgba(0,0,0,0.1);'>
-                            ❤️ Connect YouTube Channel
-                        </button>
-                    </a>
-                </div>
-            """, unsafe_allow_html=True)
+            if st.session_state.get("yt_connected"):
+                st.success("✅ Connected: YouTube Channel")
+                if st.button("❌ Disconnect YouTube", use_container_width=True):
+                    disconnect_platform("youtube_token", "yt_connected")
+            else:
+                yt_login_link = get_youtube_oauth_url()
+                st.markdown(f"<div style='margin-bottom: 16px;'><a href='{yt_login_link}' target='_blank' style='text-decoration: none;'><button style='width:100%; background-color:#FF0000; color:white; border:none; padding:10px; border-radius:5px; font-weight:bold; cursor:pointer; height:42px; font-size:14px; box-shadow: 0px 2px 4px rgba(0,0,0,0.1);'>❤️ Connect YouTube Channel</button></a></div>", unsafe_allow_html=True)
                 
             st.write(" ")
             st.subheader("🐦 X (Twitter)")
-            tw_login_link = get_twitter_oauth_url()
-
-            # Custom Black HTML Button for X
-            st.markdown(f"""
-                <div style='margin-bottom: 16px;'>
-                    <a href='{tw_login_link}' target='_blank' style='text-decoration: none;'>
-                        <button style='width:100%; background-color:#000000; color:white; border:none; padding:10px; border-radius:5px; font-weight:bold; cursor:pointer; height:42px; font-size:14px; box-shadow: 0px 2px 4px rgba(0,0,0,0.1);'>
-                            🩵 Connect X Account
-                        </button>
-                    </a>
-                </div>
-            """, unsafe_allow_html=True)
+            if st.session_state.get("tw_connected"):
+                st.success("✅ Connected: X Account")
+                if st.button("❌ Disconnect X (Twitter)", use_container_width=True):
+                    disconnect_platform("twitter_token", "tw_connected")
+            else:
+                tw_login_link = get_twitter_oauth_url()
+                st.markdown(f"<div style='margin-bottom: 16px;'><a href='{tw_login_link}' target='_blank' style='text-decoration: none;'><button style='width:100%; background-color:#000000; color:white; border:none; padding:10px; border-radius:5px; font-weight:bold; cursor:pointer; height:42px; font-size:14px; box-shadow: 0px 2px 4px rgba(0,0,0,0.1);'>🩵 Connect X Account</button></a></div>", unsafe_allow_html=True)
+                
         with col2:
             st.subheader("📸 Instagram")
-            meta_login_link = get_meta_oauth_url()
-            
-            # 💥 UPDATE: Height aur margin-bottom add kiya UI fix karne ke liye
-            st.markdown(f"""
-                <div style='margin-bottom: 16px;'>
-                    <a href='{meta_login_link}' target='_blank' style='text-decoration: none;'>
-                        <button style='width:100%; background-color:#E1306C; color:white; border:none; padding:10px; border-radius:5px; font-weight:bold; cursor:pointer; height:42px; font-size:14px; box-shadow: 0px 2px 4px rgba(0,0,0,0.1);'>
-                            🩷 Connect Instagram Business
-                        </button>
-                    </a>
-                </div>
-            """, unsafe_allow_html=True)    
+            if st.session_state.get("ig_connected"):
+                st.success("✅ Connected: Instagram Business")
+                if st.button("❌ Disconnect Instagram", use_container_width=True):
+                    disconnect_platform("instagram_token", "ig_connected")
+            else:
+                meta_login_link = get_meta_oauth_url()
+                st.markdown(f"<div style='margin-bottom: 16px;'><a href='{meta_login_link}' target='_blank' style='text-decoration: none;'><button style='width:100%; background-color:#E1306C; color:white; border:none; padding:10px; border-radius:5px; font-weight:bold; cursor:pointer; height:42px; font-size:14px; box-shadow: 0px 2px 4px rgba(0,0,0,0.1);'>🩷 Connect Instagram Business</button></a></div>", unsafe_allow_html=True)    
+                
             st.write(" ")
             st.subheader("🔵 Facebook")
-
-            # Naya function call karein link generate karne ke liye
-            fb_login_link = get_facebook_oauth_url()
-
-            # Authentic Facebook Blue (#1877F2) color ke sath active HTML button
-            st.markdown(f"""
-                <a href='{fb_login_link}' target='_blank' style='text-decoration: none;'>
-                    <button style='width:100%; background-color:#1877F2; color:white; border:none; padding:10px; border-radius:5px; font-weight:bold; cursor:pointer; height:38px; font-size:14px; box-shadow: 0px 2px 4px rgba(0,0,0,0.1);'>
-                        💙 Connect Facebook Page
-                    </button>
-                </a>
-            """, unsafe_allow_html=True)
+            if st.session_state.get("fb_connected"):
+                st.success("✅ Connected: Facebook Page")
+                if st.button("❌ Disconnect Facebook", use_container_width=True):
+                    disconnect_platform("facebook_token", "fb_connected")
+            else:
+                fb_login_link = get_facebook_oauth_url()
+                st.markdown(f"<a href='{fb_login_link}' target='_blank' style='text-decoration: none;'><button style='width:100%; background-color:#1877F2; color:white; border:none; padding:10px; border-radius:5px; font-weight:bold; cursor:pointer; height:38px; font-size:14px; box-shadow: 0px 2px 4px rgba(0,0,0,0.1);'>💙 Connect Facebook Page</button></a>", unsafe_allow_html=True)
         st.write("---")
         
         # Bottom Utility Buttons Configuration Flow
