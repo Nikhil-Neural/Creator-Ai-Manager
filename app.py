@@ -40,13 +40,17 @@ GEMINI_KEY = G_KEY_1 if G_KEY_1 else st.secrets.get("GEMINI_API_KEY", "")
 GROQ_KEY   = GR_KEY_1 if GR_KEY_1 else st.secrets.get("GROQ_API_KEY", "")
 SERPER_KEY = S_KEY_1 if S_KEY_1 else st.secrets.get("SERPER_API_KEY", "")
 # ==============================================================
-# 👤 CREATOR IDENTITY HUB (The MVP Login)
-# ==============================================================
-# ==============================================================
 # 🔐 SECURE AUTHENTICATION SYSTEM (Supabase Auth)
 # ==============================================================
 if "user_email" not in st.session_state:
     st.session_state["user_email"] = None
+
+# 🔄 NAYA: Redirect ke baad Supabase ka 'ID Card' wapas pehnana
+if st.session_state.get("sb_access_token") and st.session_state.get("sb_refresh_token"):
+    try:
+        supabase.auth.set_session(st.session_state["sb_access_token"], st.session_state["sb_refresh_token"])
+    except:
+        pass
 
 # 🧠 SUPABASE SESSION AUTO-RECOVERY (Memory Check)
 if st.session_state["user_email"] is None:
@@ -55,6 +59,8 @@ if st.session_state["user_email"] is None:
         if current_session and current_session.user:
             st.session_state["user_email"] = current_session.user.email
             st.session_state["creator_handle"] = current_session.user.email
+            st.session_state["sb_access_token"] = current_session.access_token
+            st.session_state["sb_refresh_token"] = current_session.refresh_token
     except:
         pass
 
@@ -78,11 +84,13 @@ if st.session_state["user_email"] is None:
                     user = supabase.auth.sign_in_with_password({"email": log_email.strip(), "password": log_pass})
                     st.session_state["user_email"] = log_email.strip()
                     st.session_state["creator_handle"] = log_email.strip()
+                    # 💾 ID Card memory mein save kar rahe hain
+                    st.session_state["sb_access_token"] = user.session.access_token
+                    st.session_state["sb_refresh_token"] = user.session.refresh_token
                     st.success("Login Successful!")
                     time.sleep(1)
                     st.rerun()
                 except Exception as e:
-                    # 💥 Ab humein asli error dikhega!
                     st.error(f"⚠️ Login Error: {str(e)}") 
 
         # --- SIGN UP TAB ---
@@ -96,20 +104,19 @@ if st.session_state["user_email"] is None:
                     st.warning("Password must be at least 6 characters long.")
                 else:
                     try:
-                        # Supabase API Call
                         user = supabase.auth.sign_up({"email": reg_email.strip(), "password": reg_pass})
                         st.success("Account Created! Logging you in automatically... 🚀")
-                        
-                        # 💥 JADOO: Account bante hi direct login!
                         time.sleep(1.5)
                         st.session_state["user_email"] = reg_email.strip()
                         st.session_state["creator_handle"] = reg_email.strip()
+                        # 💾 ID Card memory mein save kar rahe hain
+                        st.session_state["sb_access_token"] = user.session.access_token
+                        st.session_state["sb_refresh_token"] = user.session.refresh_token
                         st.rerun()
                     except Exception as e:
-                        # 💥 Asli signup error
                         st.error(f"⚠️ Registration Failed: {str(e)}")
     
-    # 🛑 SECURITY LOCK: Yahan se aage ka code nahi chalega jab tak auth na ho
+    # 🛑 SECURITY LOCK
     st.stop() 
 
 # ✅ SIRF YEH NAYA CODE REHNA CHAHIYE ✅
@@ -143,6 +150,8 @@ def disconnect_platform(platform_column, session_key):
         st.rerun()
 if st.sidebar.button("🚪 Secure Logout"):
     supabase.auth.sign_out()
+    st.session_state["sb_access_token"] = None
+    st.session_state["sb_refresh_token"] = None
     st.session_state["user_email"] = None
     st.session_state["creator_handle"] = None
     st.session_state["channels_synced"] = False 
