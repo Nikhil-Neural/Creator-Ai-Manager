@@ -684,10 +684,27 @@ else:
                 st.success("🔒 SYSTEM STATUS CLEAR: Verified session tokens encrypted securely inside local cache.")
             with action_col2:
                 if st.button("⚠️ EMERGENCY KILL-SWITCH REVOKE", use_container_width=True):
-                    st.session_state["channels_synced"] = False
-                    st.session_state["audit_data_ready"] = False
-                    st.session_state["mock_upload_ready"] = False
-                    st.rerun()
+                    with st.spinner("Nuking all connected accounts from secure vault..."):
+                        # 1. Database se ek saath saare tokens uda do
+                        if st.session_state.get("creator_handle"):
+                            supabase.table("creator_profiles").update({
+                                "youtube_token": None,
+                                "twitter_token": None,
+                                "instagram_token": None,
+                                "facebook_token": None
+                            }).eq("creator_handle", st.session_state["creator_handle"]).execute()
+                        
+                        # 2. App ki memory (RAM) se sab reset kar do
+                        st.session_state["yt_connected"] = False
+                        st.session_state["tw_connected"] = False
+                        st.session_state["ig_connected"] = False
+                        st.session_state["fb_connected"] = False
+                        
+                        st.session_state["channels_synced"] = False
+                        st.session_state["audit_data_ready"] = False
+                        st.session_state["mock_upload_ready"] = False
+                        time.sleep(1)
+                        st.rerun()
         else:
             st.info("🔒 SYSTEM STATUS IDLE: Please click one of the platform connection buttons above to sync handles.")
 
