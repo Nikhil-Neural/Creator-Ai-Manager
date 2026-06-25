@@ -427,7 +427,20 @@ def run_my_crew_ai_agents(niche_topic, social_platform, output_language, video_d
         tasks_pipeline.append(distribution_task)
 
     master_crew = Crew(agents=[trend_analyst, script_writer, copy_maestro], tasks=tasks_pipeline, verbose=True, process='sequential')
-    master_crew.kickoff()
+    
+    # 🛡️ THE MID-AIR PARACHUTE SYSTEM
+    try:
+        master_crew.kickoff()
+    except Exception as crew_error:
+        print(f"🚨 [ENGINE CRASH] Primary LLM failed mid-generation: {crew_error}")
+        print("🔄 Deploying GROQ Parachute Engine...")
+        
+        # 1. Force swap the failed agent's brain to Groq
+        script_writer.llm = groq_cluster_llm
+        
+        # 2. Restart the Crew with the new engine
+        master_crew = Crew(agents=[trend_analyst, script_writer, copy_maestro], tasks=tasks_pipeline, verbose=True, process='sequential')
+        master_crew.kickoff()
     
     compiled_final_output = "### 🕵️ EXPERT TREND RESEARCH ANALYSIS\n" + str(research_task.output.raw if hasattr(research_task, 'output') and research_task.output else "") + "\n\n"
     if script_task and script_task.output:
