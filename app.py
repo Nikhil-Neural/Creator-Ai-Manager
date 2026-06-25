@@ -748,26 +748,92 @@ else:
 
     # PILL SECTION C: AUTOMATED PUBLISHER DEPLOYMENT PIPELINE
     elif selected_auditor_section == "🚀 3. Omnichannel Media Publisher Node":
-        st.markdown("### 🚀 Omnichannel Automated Media Publisher Pipeline (Phase 2.5 Dynamic Framework)")
-        if "script_data" not in st.session_state or not st.session_state["script_data"]:
-            st.error("⚠️ Dashboard Asset Sync Error: No generated content files found inside application state cache. Please build blueprints under the 'AI Script Generator' mode first.")
-        elif not st.session_state.get("channels_synced", False):
-            st.warning("⚠️ System Routing Disconnect: Linked platform tokens missing. Please authenticate access under 'Secure Social Account Hub' first.")
-        else:
-            st.info("📄 **Automated Validation Core Success:** Active Production Blueprint Script Data payload detected loaded in local RAM memory.")
-            st.checkbox("Map generated authority descriptions and high-CTR keyword tags", value=True)
-            st.checkbox("Inject click-driven metadata captions elements for cross-feeds optimization", value=True)
+        st.markdown("### 🚀 Omnichannel Automated Media Publisher")
+        st.write("Upload your video, select metadata, and publish everywhere in one click.")
+        
+        # 🎬 STEP 1: VIDEO UPLOAD GATEWAY
+        st.markdown("#### 🎬 Step 1: Upload Media")
+        uploaded_video = st.file_uploader("Drop your final video file here (Max 500MB)", type=["mp4", "mov", "mkv"])
+        
+        if uploaded_video:
+            st.success(f"✅ Video '{uploaded_video.name}' ready for processing!")
             
-            st.write(" ")
-            st.write("Set Pipeline Delivery Action Targets Layout:")
-            btn_col1, btn_col2 = st.columns(2)
-            with btn_col1:
-                if st.button("⚡ PUSH CURRENT ASSETS AS DIRECT LIVE REPOSITORY DRAFTS", use_container_width=True):
-                    with st.spinner("Streaming data streams safely to social server endpoints hooks..."):
-                        time.sleep(1.2)
-                        st.session_state["mock_upload_ready"] = True
-            with btn_col2:
-                st.date_input("📅 Target Post Strategy Automation Schedule Trigger Date:")
+        st.write("---")
+        
+        # 🧠 STEP 2: METADATA SOURCE ENGINE
+        st.markdown("#### 🧠 Step 2: Metadata Source")
+        metadata_source = st.radio("Choose how you want to add titles, descriptions, and captions:", 
+                                   ["📂 Use Saved Vault Data (Recommended)", "✍️ Manual Paste", "✨ Generate New Metadata"], 
+                                   horizontal=True)
+        
+        # Option 1: Vault Data (The Bridge)
+        if metadata_source == "📂 Use Saved Vault Data (Recommended)":
+            try:
+                response = supabase.table("ai_blueprints_vault").select("*").eq("creator_email", st.session_state.get("user_email")).order("created_at", desc=True).execute()
+                blueprints = response.data if response.data else []
+            except:
+                blueprints = []
                 
-            if st.session_state.get("mock_upload_ready", False):
-                st.success("🔥 SUCCESS CONFIRMED: Media asset blueprint scripts data structures mapped as clean staging drafts on target dashboards. Final user verification click required inside specific partner endpoints layouts to set live streaming properties!")
+            if not blueprints:
+                st.error("📭 Your Vault is empty. Please generate a script first.")
+            else:
+                blueprint_options = {f"{item['niche_topic']} ({item['target_platform']})": item for item in blueprints}
+                selected_bp_name = st.selectbox("Select a Blueprint to extract metadata from:", options=list(blueprint_options.keys()))
+                selected_bp = blueprint_options[selected_bp_name]
+                
+                st.success(f"✅ Data injected from: {selected_bp['niche_topic']}")
+                with st.expander("🔍 Preview Injected Data", expanded=False):
+                    st.markdown(selected_bp['script_content'])
+
+        # Option 2: Manual Paste (Clean UI with Expanders)
+        elif metadata_source == "✍️ Manual Paste":
+            st.info("Manually enter your content for each platform below.")
+            with st.expander("📺 YouTube Metadata", expanded=True):
+                st.text_input("YouTube Title", key="man_yt_title")
+                st.text_area("YouTube Description", key="man_yt_desc")
+            with st.expander("🐦 X (Twitter) Thread"):
+                st.text_area("Tweet 1 (Video attached here)", key="man_tw_1")
+                st.caption("*(Logic for '+ Add Tweet' button will be integrated here during API wiring)*")
+            with st.expander("📸 Instagram & Facebook Captions"):
+                st.text_area("Reel/Post Caption", key="man_ig_cap")
+                
+        # Option 3: Generate New
+        elif metadata_source == "✨ Generate New Metadata":
+            st.warning("⚠️ You need fresh metadata. Please switch to the **'✍️ AI Script Generator'** mode from the left sidebar to build and save a new blueprint to your Vault.")
+            
+        st.write("---")
+        
+        # 🌍 STEP 3: PLATFORM ROUTING
+        st.markdown("#### 🌍 Step 3: Distribution Routing")
+        st.write("Select the platforms you want to publish this video to:")
+        
+        col_p1, col_p2, col_p3, col_p4 = st.columns(4)
+        with col_p1: push_yt = st.checkbox("📺 YouTube", value=True)
+        with col_p2: push_tw = st.checkbox("🐦 X (Twitter)")
+        with col_p3: push_ig = st.checkbox("📸 Instagram")
+        with col_p4: push_fb = st.checkbox("🔵 Facebook")
+        
+        if push_yt:
+            st.caption("*Note: YouTube API does not support custom thumbnails for Shorts. A frame will be auto-selected.*")
+            
+        st.write("---")
+        
+        # 🛡️ STEP 4: COMPLIANCE & KILL-SWITCH
+        st.markdown("#### 🛡️ Step 4: Compliance & Safety")
+        legal_1 = st.checkbox("I have reviewed and edited the AI-generated content and confirm it is ready for publishing.")
+        legal_2 = st.checkbox("I take full responsibility for this posting. I understand that Creator AI OS is not liable for account strikes, spam bans, or TOS violations.")
+        
+        st.write(" ")
+        
+        # 🚀 THE PUBLISH BUTTON
+        if st.button("🚀 PUBLISH TO ALL SELECTED PLATFORMS", use_container_width=True, type="primary"):
+            if not uploaded_video:
+                st.error("⚠️ Action Blocked: Please upload a video file first!")
+            elif not (legal_1 and legal_2):
+                st.error("⚠️ Action Blocked: You must agree to both compliance checkboxes before publishing.")
+            elif not st.session_state.get("channels_synced"):
+                st.error("⚠️ Connection Error: Your social accounts are not linked. Go to 'Secure Social Account Hub' first.")
+            else:
+                with st.spinner("Initiating secure upload sequence to social APIs..."):
+                    time.sleep(2) # Fake processing time for UI feel
+                    st.success("🔥 SUCCESS CONFIRMED: Media and metadata routed to platform staging! (Python API dispatch logic will run here)")
