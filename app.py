@@ -449,12 +449,49 @@ with st.sidebar:
     language = st.selectbox("Output Interface Language:", ["Hinglish", "Hindi", "English"])
     st.write("---")
     st.caption("Architecture Framework: CrewAI + Gemini + Groq Matrix")
+# ==============================================================
+# 🧠 SMART DATA PARSER ENGINE
+# ==============================================================
+def parse_blueprint_metadata(raw_text):
+    metadata = {
+        "yt_title": "",
+        "yt_desc": "",
+        "tw_thread": "",
+        "ig_caption": ""
+    }
+    
+    # Check agar AI ne 'DISTRIBUTION' section generate kiya hai
+    if "### 📱 DISTRIBUTION MICRO-ASSETS PACKAGE" in raw_text:
+        assets_text = raw_text.split("### 📱 DISTRIBUTION MICRO-ASSETS PACKAGE")[1]
+        lines = assets_text.split('\n')
+        
+        current_section = None
+        for line in lines:
+            lower_line = line.lower()
+            
+            # Keywords pakad kar section change karna
+            if "title" in lower_line and ":" in lower_line:
+                current_section = "yt_title"
+                metadata["yt_title"] = line.split(":", 1)[-1].replace("*", "").replace('"', '').strip()
+            elif "description" in lower_line or "desc:" in lower_line:
+                current_section = "yt_desc"
+            elif "twitter" in lower_line or "thread" in lower_line or "x:" in lower_line:
+                current_section = "tw_thread"
+            elif "instagram" in lower_line or "caption" in lower_line or "facebook" in lower_line:
+                current_section = "ig_caption"
+            else:
+                # Jo data mil raha hai, usko current section mein add karte jao
+                clean_line = line.replace("*", "").strip()
+                if clean_line and current_section:
+                    metadata[current_section] += clean_line + "\n"
+                    
+    # Fallback: Agar AI ne ajeeb format diya, toh default values
+    if not metadata["yt_title"]: metadata["yt_title"] = "My Awesome Video"
+    if not metadata["yt_desc"]: metadata["yt_desc"] = "Extracted Raw Data:\n" + raw_text[-500:]
+    
+    return metadata
 
 # ── Main Content Gateway Router ──────────────────────────
-# ── Main Content Gateway Router ──────────────────────────
-# ==============================================================
-# 💾 TOKEN SAVER HELPER FUNCTION
-# ==============================================================
 def save_platform_token(platform_column_name, auth_code):
     current_user = st.session_state.get("creator_handle")
     if not current_user:
@@ -767,6 +804,7 @@ else:
                                    horizontal=True)
         
         # Option 1: Vault Data (The Bridge)
+        # Option 1: Vault Data (The Bridge with Smart Parser)
         if metadata_source == "📂 Use Saved Vault Data (Recommended)":
             try:
                 response = supabase.table("ai_blueprints_vault").select("*").eq("creator_email", st.session_state.get("user_email")).order("created_at", desc=True).execute()
@@ -781,9 +819,21 @@ else:
                 selected_bp_name = st.selectbox("Select a Blueprint to extract metadata from:", options=list(blueprint_options.keys()))
                 selected_bp = blueprint_options[selected_bp_name]
                 
-                st.success(f"✅ Data injected from: {selected_bp['niche_topic']}")
-                with st.expander("🔍 Preview Injected Data", expanded=False):
-                    st.markdown(selected_bp['script_content'])
+                # 🧠 PARSER ACTION: Text ko tod kar variables mein badalna
+                parsed_data = parse_blueprint_metadata(selected_bp['script_content'])
+                
+                st.success(f"✅ AI Metadata successfully parsed and injected! Please review below.")
+                
+                # Yahan auto-fill boxes aayenge (User inhe edit kar sakta hai)
+                with st.expander("📺 Auto-Filled: YouTube Metadata", expanded=True):
+                    final_yt_title = st.text_input("YouTube Title", value=parsed_data["yt_title"])
+                    final_yt_desc = st.text_area("YouTube Description", value=parsed_data["yt_desc"], height=150)
+                
+                with st.expander("🐦 Auto-Filled: X (Twitter) Thread"):
+                    final_tw_thread = st.text_area("Generated Thread Content", value=parsed_data["tw_thread"], height=150)
+                
+                with st.expander("📸 Auto-Filled: Social Captions"):
+                    final_ig_cap = st.text_area("Instagram/Facebook Caption", value=parsed_data["ig_caption"], height=100)
 
         # Option 2: Manual Paste (Clean UI with Expanders)
         elif metadata_source == "✍️ Manual Paste":
