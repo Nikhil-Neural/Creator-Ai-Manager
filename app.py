@@ -682,7 +682,15 @@ if current_os_mode == "✍️ AI Script Generator":
                             st.markdown(item.get('script_content', 'No content found.'))
                             
                             # Ek chhota sa copy button logic (user copy-paste kar sake)
-                            st.button("📋 Access Data", key=f"btn_{item['id']}")
+                            # Action Buttons (Access & Delete)
+                            col_action1, col_action2 = st.columns(2)
+                            with col_action1:
+                                st.button("📋 Access Data", key=f"btn_{item['id']}", use_container_width=True)
+                            with col_action2:
+                                if st.button("🗑️ Delete Script", key=f"del_{item['id']}", use_container_width=True):
+                                    # Supabase DB se permanent delete karna
+                                    supabase.table("ai_blueprints_vault").delete().eq("id", item['id']).execute()
+                                    st.rerun() # UI ko turant refresh karne ke liye
                 else:
                     st.info("📭 Your vault is currently empty. Generate your first script in Tab 1 to see it here!")
             except Exception as e:
