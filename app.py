@@ -430,57 +430,70 @@ def run_my_crew_ai_agents(niche_topic, social_platform, output_language, video_d
     if any("Threads" in opt for opt in selected_bundle_options): dist_requirements.append("- 5 vertical engagement elements package")
 
     if dist_requirements:
-        # 🧠 HYPER-ENGINEERED DYNAMIC SEO LOGIC
+        # 🧠 HYPER-ENGINEERED DYNAMIC SEO LOGIC (YOUTUBE)
         if video_duration <= 1.0:
-            desc_instruction = """[SHORT-FORM VIDEO DESCRIPTION (Under 1 min)]
+            desc_instruction = """[YOUTUBE SHORT-FORM DESCRIPTION (Under 1 min)]
             Constraint: STRICTLY UNDER 50 WORDS.
-            Structure: 
-            - 1 punchy 'Show More' hook line.
-            - A direct Call-To-Action (CTA).
-            - 3 HIGHLY RELEVANT, niche-specific hashtags (Do not use generic tags like #viral)."""
+            Structure: 1 punchy 'Show More' hook line, a direct CTA, and 3 HIGHLY RELEVANT niche hashtags."""
         elif video_duration <= 3.0:
-            desc_instruction = f"""[MEDIUM-FORM VIDEO DESCRIPTION (Approx {video_duration} mins)]
+            desc_instruction = f"""[YOUTUBE MEDIUM-FORM DESCRIPTION (Approx {video_duration} mins)]
             Constraint: 100-150 WORDS.
-            Structure:
-            - The 'Show More' Hook: First 2 lines must contain the primary keyword naturally.
-            - Mini-Blog: 3 short, value-driven bullet points summarizing the video.
-            - CTA & Tags: A clear call to action followed by 3-5 highly relevant niche hashtags."""
+            Structure: 'Show More' hook (first 2 lines with primary keyword), Mini-Blog (3 value-driven bullet points), CTA, and 3-5 highly relevant hashtags."""
         else:
-            desc_instruction = f"""[LONG-FORM VIDEO DESCRIPTION (Approx {video_duration} mins)]
+            desc_instruction = f"""[YOUTUBE LONG-FORM DESCRIPTION (Approx {video_duration} mins)]
             Constraint: 200+ WORDS.
-            Structure MUST strictly follow this 4-Part SEO Framework:
-            1. The 'Show More' Hook: First 2 lines capturing attention with primary SEO keywords.
-            2. The Mini-Blog: 3-5 detailed bullet points explaining the core value. Naturally integrate SEO search terms.
-            3. Timestamps (Chapters): Generate 3-4 logical timestamps for a {video_duration} min video (e.g., 0:00 Intro, 1:30 [Topic], etc.).
-            4. The Bottom: A strong CTA and EXACTLY 5 highly relevant, niche-specific SEO hashtags."""
+            Structure MUST strictly follow:
+            1. 'Show More' Hook: First 2 lines capturing attention with primary SEO keywords.
+            2. Mini-Blog: 3-5 detailed bullet points naturally integrating SEO search terms.
+            3. Timestamps: Generate 3-4 logical timestamps for a {video_duration} min video (e.g., 0:00 Intro, 1:30 [Topic]).
+            4. The Bottom: Strong CTA and EXACTLY 5 highly relevant SEO hashtags."""
+
+        # 🏢 HYPER-ENGINEERED B2B COPY LOGIC (LINKEDIN)
+        linkedin_instruction = """[LINKEDIN POST FRAMEWORK]
+        Role: B2B Authority & Tech Industry Leader.
+        Constraints: Use short sentences (1 sentence = 1 line). Use high-level business vocabulary (e.g., ROI-driven, operational friction, scalable architecture).
+        Structure MUST strictly follow:
+        1. Pattern Interrupt Hook: First 2 lines must make a bold claim or share a hard data point. 
+        2. The Cliffhanger: Leave a blank line after the 3rd sentence to force a '...see more' click.
+        3. The Skimmable Meat: Use bullet points to deliver the core blueprint/value.
+        4. The 'Aha!' Insight: Provide a contrarian or paradigm-shifting perspective near the end.
+        5. Engagement CTA: Ask a thought-provoking question to drive comments. Explicitly state "Link is in the first comment" (Do not put the actual URL in the text)."""
+
+        # 🧵 HYPER-ENGINEERED VIRAL LOGIC (TWITTER/X)
+        twitter_instruction = """[TWITTER/X VIRAL THREAD FRAMEWORK]
+        Role: Tech/SaaS Thought Leader.
+        Constraints: Exactly 5 to 7 tweets total. Max 280 characters per tweet. NO HASHTAGS. End each tweet with a progress tracker (e.g., 1/6, 2/6).
+        Structure MUST strictly follow:
+        - Tweet 1 (The Banger): Scroll-stopping massive claim. Suggest a sleek, dark-themed, ultra-detailed visual/graphic in brackets. End with thread emoji 🧵👇.
+        - Tweet 2 (The Agitation): Hit the core pain point. Why should the reader care?
+        - Tweet 3-5 (The Meat): One single idea per tweet. Use white space and bullet marks (•, ✅).
+        - Penultimate Tweet (TL;DR): A quick bulleted summary of the thread.
+        - Final Tweet (The Loop): CTA asking to Retweet the first tweet ♻️, follow for more breakdowns, and check the link in the reply."""
 
         distribution_task = Task(
-            description=f"""Act as a Top-Tier Metadata & SEO Specialist. Generate a package for the topic '{niche_topic}' in '{output_language}'.
+            description=f"""Act as a Top-Tier Metadata & Copywriting Specialist. Generate a package for the topic '{niche_topic}' in '{output_language}'.
             {chr(10).join(dist_requirements)}
             
             CRITICAL CONSTRAINTS FOR OUTPUT (FOLLOW STRICTLY):
             
             1. 🛑 LANGUAGE RULE: 
-               - If requested language is 'Hinglish': Use ONLY the English alphabet (Latin script).
-               - If requested language is 'Hindi': Use ONLY the Devanagari script (हिंदी).
+               - If '{output_language}' is 'Hinglish': Use ONLY the English alphabet (Latin script).
+               - If 'Hindi': Use ONLY the Devanagari script (हिंदी).
                - If 'English': Use pure English.
                
-            2. 🎯 THE VIRAL TITLE RULE:
-               - Length: STRICTLY under 60 characters for mobile optimization.
-               - Structure: Must include a Curiosity Hook + Core Keyword + A Power/Visual Element (like brackets [] or () or an emoji).
-               - NO HASHTAGS in the title.
+            2. 🤖 API PARSER FORMAT (MANDATORY FORMATTING):
+               You MUST output EXACTLY in this format with these exact section headings. Do not deviate.
                
-            3. 🤖 API PARSER FORMAT (MANDATORY):
-               At the VERY TOP of your output, you MUST provide exactly ONE optimized master title and ONE master description. Format it EXACTLY like this:
+               Title: [Your single best 60-character YouTube title. Hook + Keyword + Bracket/Emoji. NO HASHTAGS.]
+               Description: [{desc_instruction}]
                
-               Title: [Your single best 60-character title here following the rule above]
-               Description: [Your master description here following the instructions below]
+               LinkedIn Post:
+               [{linkedin_instruction}]
                
-               INSTRUCTION FOR DESCRIPTION:
-               {desc_instruction}
-               
-            After this primary Title/Description section, you can list the other alternative titles and thread assets requested.""",
-            expected_output="Compiled social media assets tier list package with highly engineered, dynamically scaled, SEO-optimized metadata.",
+               Twitter Thread:
+               [{twitter_instruction}]
+               """,
+            expected_output="Compiled social media assets tier list package with highly engineered, dynamically scaled, SEO-optimized metadata and professional social copy.",
             agent=copy_maestro
         )
         tasks_pipeline.append(distribution_task)
