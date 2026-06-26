@@ -430,27 +430,57 @@ def run_my_crew_ai_agents(niche_topic, social_platform, output_language, video_d
     if any("Threads" in opt for opt in selected_bundle_options): dist_requirements.append("- 5 vertical engagement elements package")
 
     if dist_requirements:
-        # 🧠 Smart Tiered Logic based on exact duration (UPDATED WITH RELEVANT SEO)
+        # 🧠 HYPER-ENGINEERED DYNAMIC SEO LOGIC
         if video_duration <= 1.0:
-            desc_instruction = "Since this is a SHORT-FORM video (under 1 min), keep the description punchy, engaging, and STRICTLY UNDER 50 WORDS. Include 3 HIGHLY RELEVANT hashtags specifically related to the exact video topic."
+            desc_instruction = """[SHORT-FORM VIDEO DESCRIPTION (Under 1 min)]
+            Constraint: STRICTLY UNDER 50 WORDS.
+            Structure: 
+            - 1 punchy 'Show More' hook line.
+            - A direct Call-To-Action (CTA).
+            - 3 HIGHLY RELEVANT, niche-specific hashtags (Do not use generic tags like #viral)."""
         elif video_duration <= 3.0:
-            desc_instruction = f"Since this is a MEDIUM-LENGTH video (approx {video_duration} mins), write a concise description of ABOUT 100-150 WORDS. Include a brief hook, 3 short bullet points, and 3-5 HIGHLY RELEVANT hashtags specific to the video niche."
+            desc_instruction = f"""[MEDIUM-FORM VIDEO DESCRIPTION (Approx {video_duration} mins)]
+            Constraint: 100-150 WORDS.
+            Structure:
+            - The 'Show More' Hook: First 2 lines must contain the primary keyword naturally.
+            - Mini-Blog: 3 short, value-driven bullet points summarizing the video.
+            - CTA & Tags: A clear call to action followed by 3-5 highly relevant niche hashtags."""
         else:
-            desc_instruction = f"Since this is a LONG-FORM video (approx {video_duration} mins), write a highly detailed, SEO-optimized description of 200+ WORDS. Include a strong hook, detailed bullet points, naturally integrated and HIGHLY RELEVANT SEO search keywords, and 5 niche-specific hashtags strictly related to the video topic."
+            desc_instruction = f"""[LONG-FORM VIDEO DESCRIPTION (Approx {video_duration} mins)]
+            Constraint: 200+ WORDS.
+            Structure MUST strictly follow this 4-Part SEO Framework:
+            1. The 'Show More' Hook: First 2 lines capturing attention with primary SEO keywords.
+            2. The Mini-Blog: 3-5 detailed bullet points explaining the core value. Naturally integrate SEO search terms.
+            3. Timestamps (Chapters): Generate 3-4 logical timestamps for a {video_duration} min video (e.g., 0:00 Intro, 1:30 [Topic], etc.).
+            4. The Bottom: A strong CTA and EXACTLY 5 highly relevant, niche-specific SEO hashtags."""
 
         distribution_task = Task(
-            description=f"""Generate package for topic '{niche_topic}' in '{output_language}'. 
+            description=f"""Act as a Top-Tier Metadata & SEO Specialist. Generate a package for the topic '{niche_topic}' in '{output_language}'.
             {chr(10).join(dist_requirements)}
             
-            CRITICAL CONSTRAINTS FOR OUTPUT & PARSING:
-            1. Language Rule: If the requested language is 'Hinglish', you MUST use the English alphabet. If it is 'Hindi', you MUST use the Devanagari script (हिंदी). If 'English', use pure English.
-            2. API Parser Format: At the very top of your output, you MUST provide exactly ONE optimized title and ONE master description that our API will pick up. Format it EXACTLY like this:
+            CRITICAL CONSTRAINTS FOR OUTPUT (FOLLOW STRICTLY):
             
-            Title: [Your single best, high-CTR title here]
-            Description: [{desc_instruction}]
-            
-            After this primary section, you can list the other alternative titles and thread assets.""",
-            expected_output="Compiled social media assets tier list package with dynamically scaled, highly relevant optimized metadata.",
+            1. 🛑 LANGUAGE RULE: 
+               - If requested language is 'Hinglish': Use ONLY the English alphabet (Latin script).
+               - If requested language is 'Hindi': Use ONLY the Devanagari script (हिंदी).
+               - If 'English': Use pure English.
+               
+            2. 🎯 THE VIRAL TITLE RULE:
+               - Length: STRICTLY under 60 characters for mobile optimization.
+               - Structure: Must include a Curiosity Hook + Core Keyword + A Power/Visual Element (like brackets [] or () or an emoji).
+               - NO HASHTAGS in the title.
+               
+            3. 🤖 API PARSER FORMAT (MANDATORY):
+               At the VERY TOP of your output, you MUST provide exactly ONE optimized master title and ONE master description. Format it EXACTLY like this:
+               
+               Title: [Your single best 60-character title here following the rule above]
+               Description: [Your master description here following the instructions below]
+               
+               INSTRUCTION FOR DESCRIPTION:
+               {desc_instruction}
+               
+            After this primary Title/Description section, you can list the other alternative titles and thread assets requested.""",
+            expected_output="Compiled social media assets tier list package with highly engineered, dynamically scaled, SEO-optimized metadata.",
             agent=copy_maestro
         )
         tasks_pipeline.append(distribution_task)
