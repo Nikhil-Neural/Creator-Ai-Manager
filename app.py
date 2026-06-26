@@ -430,18 +430,27 @@ def run_my_crew_ai_agents(niche_topic, social_platform, output_language, video_d
     if any("Threads" in opt for opt in selected_bundle_options): dist_requirements.append("- 5 vertical engagement elements package")
 
     if dist_requirements:
+        # 🧠 Smart Tiered Logic based on exact duration (UPDATED WITH RELEVANT SEO)
+        if video_duration <= 1.0:
+            desc_instruction = "Since this is a SHORT-FORM video (under 1 min), keep the description punchy, engaging, and STRICTLY UNDER 50 WORDS. Include 3 HIGHLY RELEVANT hashtags specifically related to the exact video topic."
+        elif video_duration <= 3.0:
+            desc_instruction = f"Since this is a MEDIUM-LENGTH video (approx {video_duration} mins), write a concise description of ABOUT 100-150 WORDS. Include a brief hook, 3 short bullet points, and 3-5 HIGHLY RELEVANT hashtags specific to the video niche."
+        else:
+            desc_instruction = f"Since this is a LONG-FORM video (approx {video_duration} mins), write a highly detailed, SEO-optimized description of 200+ WORDS. Include a strong hook, detailed bullet points, naturally integrated and HIGHLY RELEVANT SEO search keywords, and 5 niche-specific hashtags strictly related to the video topic."
+
         distribution_task = Task(
-            description=f"""Generate package for topic '{niche_topic}' in '{output_language}':
+            description=f"""Generate package for topic '{niche_topic}' in '{output_language}'. 
             {chr(10).join(dist_requirements)}
             
             CRITICAL CONSTRAINTS FOR OUTPUT & PARSING:
-            1. Language Rule: If the requested language '{output_language}' is 'Hinglish', you MUST use the English alphabet. If it is 'Hindi', you MUST use the Devanagari script (हिंदी). If 'English', use pure English.
-            2. API Parser Format: At the very top of your output, you MUST provide exactly ONE optimized title and ONE description that our API will pick up. Format it exactly like this:
-            Title: [Your single best title here in the correct language]
-            Description: [Your single best description here in the correct language]
+            1. Language Rule: If the requested language is 'Hinglish', you MUST use the English alphabet. If it is 'Hindi', you MUST use the Devanagari script (हिंदी). If 'English', use pure English.
+            2. API Parser Format: At the very top of your output, you MUST provide exactly ONE optimized title and ONE master description that our API will pick up. Format it EXACTLY like this:
             
-            After this primary section, you can list the other alternative options.""",
-            expected_output="Compiled social media assets tier list package in the strictly requested language script.",
+            Title: [Your single best, high-CTR title here]
+            Description: [{desc_instruction}]
+            
+            After this primary section, you can list the other alternative titles and thread assets.""",
+            expected_output="Compiled social media assets tier list package with dynamically scaled, highly relevant optimized metadata.",
             agent=copy_maestro
         )
         tasks_pipeline.append(distribution_task)
