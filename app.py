@@ -444,8 +444,9 @@ def get_twitter_oauth_url():
 
 
 def run_my_crew_ai_agents(niche_topic, social_platform, output_language, video_duration, app_mode, user_pasted_script, selected_bundle_options):
-    target_seconds = int(video_duration * 60)
-    target_words = int(video_duration * 140)
+    # ⏱️ SHORTS MATHS: Direct seconds, aur approx 2.5 words per second (150 words/min)
+    target_seconds = int(video_duration)
+    target_words = int((video_duration / 60) * 150)
     
     groq_cluster_llm = get_cluster_llm(provider="groq")
     script_writing_llm = None
@@ -556,22 +557,14 @@ def run_my_crew_ai_agents(niche_topic, social_platform, output_language, video_d
         
         # 🧠 HYPER-ENGINEERED DYNAMIC SEO LOGIC (YOUTUBE)
         if include_youtube:
-            if video_duration <= 1.0:
-                desc_instruction = """[YOUTUBE SHORT-FORM DESCRIPTION (Under 1 min)]
-            Constraint: STRICTLY UNDER 50 WORDS.
-            Structure: 1 punchy 'Show More' hook line, a direct CTA, and 3 HIGHLY RELEVANT niche hashtags."""
-            elif video_duration <= 3.0:
-                desc_instruction = f"""[YOUTUBE MEDIUM-FORM DESCRIPTION (Approx {video_duration} mins)]
-            Constraint: 100-150 WORDS.
-            Structure: 'Show More' hook (first 2 lines with primary keyword), Mini-Blog (3 value-driven bullet points), CTA, and 3-5 highly relevant hashtags."""
-            else:
-                desc_instruction = f"""[YOUTUBE LONG-FORM DESCRIPTION (Approx {video_duration} mins)]
-            Constraint: 200+ WORDS.
-            Structure MUST strictly follow:
-            1. 'Show More' Hook: First 2 lines capturing attention with primary SEO keywords.
-            2. Mini-Blog: 3-5 detailed bullet points naturally integrating SEO search terms.
-            3. Timestamps: Generate 3-4 logical timestamps for a {video_duration} min video (e.g., 0:00 Intro, 1:30 [Topic]).
-            4. The Bottom: Strong CTA and EXACTLY 5 highly relevant SEO hashtags."""
+            desc_instruction = """[YOUTUBE SHORTS DESCRIPTION]
+            Constraint: STRICTLY UNDER 60 WORDS.
+            Structure MUST include: 
+            1. A punchy hook line.
+            2. A direct CTA.
+            3. 'Keywords:' followed by 3-4 highly relevant SEO search terms (comma-separated).
+            4. EXACTLY 3 niche hashtags.
+            DO NOT generate long paragraphs, mini-blogs, or timestamps."""
             
             # YouTube ka format parser mein add ho gaya
             parser_format += f"""
