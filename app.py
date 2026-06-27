@@ -25,6 +25,117 @@ from crewai import Agent, Task, Crew, LLM
 import time # 🌟 Runtime backoff delays ke liye
 import requests
 import json
+def post_to_twitter_thread(tweets_list, bearer_token):
+    """
+    Takes a list of tweets and posts them as a thread using Twitter v2 API.
+    tweets_list: list of strings (e.g., ["Tweet 1", "Tweet 2"])
+    """
+    url = "https://api.twitter.com/2/tweets"
+    headers = {
+        "Authorization": f"Bearer {bearer_token}",
+        "Content-Type": "application/json"
+    }
+    
+    previous_tweet_id = None
+    successful_tweets = 0
+    
+    for tweet in tweets_list:
+        payload = {"text": tweet}
+        # Agar yeh pehla tweet nahi hai, toh isko pichle wale ka reply banao (Thread logic)
+        if previous_tweet_id:
+            payload["reply"] = {"in_reply_to_tweet_id": previous_tweet_id}
+            
+        try:
+            response = requests.post(url, json=payload, headers=headers)
+            if response.status_code == 201:
+                previous_tweet_id = response.json()['data']['id']
+                successful_tweets += 1
+                time.sleep(1) # API rate limit se bachne ke liye 1 sec delay
+            else:
+                return False, f"Twitter API Error: {response.text}"
+        except Exception as e:
+            return False, f"System Error: {str(e)}"
+            
+    return True, f"Success! {successful_tweets} tweets posted in thread."
+def post_to_linkedin(post_text, access_token, person_urn):
+    """
+    Posts text to LinkedIn using v2 API.
+    person_urn: User's LinkedIn ID (e.g., 'urn:li:person:12345ABC')
+    """
+    url = "https://api.linkedin.com/v2/ugcPosts"
+    headers = {
+        "Authorization": f"Bearer {access_token}",
+        "Content-Type": "application/json",
+        "X-Restli-Protocol-Version": "2.0.0"
+    }
+    
+    payload = {
+        "author": person_urn,
+        "lifecycleState": "PUBLISHED",
+        "specificContent": {
+            "com.linkedin.ugc.ShareContent": {
+                "shareCommentary": {
+                    "text": post_text
+                },
+                "shareMediaCategory": "NONE"
+            }
+        },
+        "visibility": {
+            "com.linkedin.ugc.MemberNetworkVisibility": "PUBLIC"
+        }
+    }
+    
+    try:
+        response = requests.post(url, json=payload, headers=headers)
+        if response.status_code == 201:
+            return True, "Successfully posted to LinkedIn!"
+        else:
+            return False, f"LinkedIn API Error: {response.text}"
+    except Exception as e:
+        return False, f"System Error: {str(e)}"
+import re
+
+def parse_blueprint_metadata(raw_text):
+    """
+    Takes the raw text from CrewAI, slices it based on exact headings using Regex, 
+    and returns a formatted dictionary for Tab 3 UI boxes.
+    """
+    # 1. Khali dictionary banayein jisme Tab 3 ke saare expected keys hon (To prevent KeyError)
+    metadata = {
+        "yt_title": "",
+        "yt_desc": "",
+        "linkedin_post": "",
+        "tw_thread": "",
+        "ig_caption": ""
+    }
+    
+    # 2. Slicing with Regex
+    # Extract Title
+    title_match = re.search(r"Title:\s*(.*?)(?=\nDescription:|\nLinkedIn Post:|\nTwitter Thread:|$)", raw_text, re.IGNORECASE | re.DOTALL)
+    if title_match:
+        metadata["yt_title"] = title_match.group(1).strip()
+        
+    # Extract Description
+    desc_match = re.search(r"Description:\s*(.*?)(?=\nLinkedIn Post:|\nTwitter Thread:|$)", raw_text, re.IGNORECASE | re.DOTALL)
+    if desc_match:
+        metadata["yt_desc"] = desc_match.group(1).strip()
+        
+    # Extract LinkedIn
+    linkedin_match = re.search(r"LinkedIn Post:\s*(.*?)(?=\nTwitter Thread:|$)", raw_text, re.IGNORECASE | re.DOTALL)
+    if linkedin_match:
+        metadata["linkedin_post"] = linkedin_match.group(1).strip()
+        
+    # Extract Twitter
+    twitter_match = re.search(r"Twitter Thread:\s*(.*?)(?=$)", raw_text, re.IGNORECASE | re.DOTALL)
+    if twitter_match:
+        metadata["tw_thread"] = twitter_match.group(1).strip()
+        
+    # Extract Instagram (Agar by chance future mein add ho)
+    ig_match = re.search(r"Instagram Caption:\s*(.*?)(?=$)", raw_text, re.IGNORECASE | re.DOTALL)
+    if ig_match:
+        metadata["ig_caption"] = ig_match.group(1).strip()
+        
+    return metadata
 
 st.set_page_config(page_title="Creator AI OS", layout="wide")
 
@@ -424,51 +535,85 @@ def run_my_crew_ai_agents(niche_topic, social_platform, output_language, video_d
 
     distribution_task = None
     dist_requirements = []
-    if any("Titles" in opt for opt in selected_bundle_options): dist_requirements.append("- 5 High-CTR Titles & Descriptions")
+    
+    # 🧠 SMART UI CHECKS (Checking individual buttons)
+    include_youtube = any("Titles" in opt for opt in selected_bundle_options)
+    include_linkedin = any("LinkedIn" in opt for opt in selected_bundle_options)
+    include_twitter = any("Twitter" in opt for opt in selected_bundle_options)
+    
+    # Appending only what user requested
+    if include_youtube: dist_requirements.append("- 1 Optimized YouTube Title & Description")
     if any("Thumbnail" in opt for opt in selected_bundle_options): dist_requirements.append("- 3 thumbnail design concepts layout framework")
     if any("Captions" in opt for opt in selected_bundle_options): dist_requirements.append("- 3 short captions & tags")
-    if any("Threads" in opt for opt in selected_bundle_options): dist_requirements.append("- 5 vertical engagement elements package")
+    if include_linkedin: dist_requirements.append("- 1 High-Converting LinkedIn Post")
+    if include_twitter: dist_requirements.append("- 1 Viral Twitter/X Thread")
 
     if dist_requirements:
+        desc_instruction = ""
+        linkedin_instruction = ""
+        twitter_instruction = ""
+        parser_format = ""
+        
         # 🧠 HYPER-ENGINEERED DYNAMIC SEO LOGIC (YOUTUBE)
-        if video_duration <= 1.0:
-            desc_instruction = """[YOUTUBE SHORT-FORM DESCRIPTION (Under 1 min)]
+        if include_youtube:
+            if video_duration <= 1.0:
+                desc_instruction = """[YOUTUBE SHORT-FORM DESCRIPTION (Under 1 min)]
             Constraint: STRICTLY UNDER 50 WORDS.
             Structure: 1 punchy 'Show More' hook line, a direct CTA, and 3 HIGHLY RELEVANT niche hashtags."""
-        elif video_duration <= 3.0:
-            desc_instruction = f"""[YOUTUBE MEDIUM-FORM DESCRIPTION (Approx {video_duration} mins)]
+            elif video_duration <= 3.0:
+                desc_instruction = f"""[YOUTUBE MEDIUM-FORM DESCRIPTION (Approx {video_duration} mins)]
             Constraint: 100-150 WORDS.
             Structure: 'Show More' hook (first 2 lines with primary keyword), Mini-Blog (3 value-driven bullet points), CTA, and 3-5 highly relevant hashtags."""
-        else:
-            desc_instruction = f"""[YOUTUBE LONG-FORM DESCRIPTION (Approx {video_duration} mins)]
+            else:
+                desc_instruction = f"""[YOUTUBE LONG-FORM DESCRIPTION (Approx {video_duration} mins)]
             Constraint: 200+ WORDS.
             Structure MUST strictly follow:
             1. 'Show More' Hook: First 2 lines capturing attention with primary SEO keywords.
             2. Mini-Blog: 3-5 detailed bullet points naturally integrating SEO search terms.
             3. Timestamps: Generate 3-4 logical timestamps for a {video_duration} min video (e.g., 0:00 Intro, 1:30 [Topic]).
             4. The Bottom: Strong CTA and EXACTLY 5 highly relevant SEO hashtags."""
+            
+            # YouTube ka format parser mein add ho gaya
+            parser_format += f"""
+               Title: [Your single best 60-character YouTube title. Hook + Keyword + Bracket/Emoji. NO HASHTAGS.]
+               Description: [{desc_instruction}]
+               """
 
         # 🏢 HYPER-ENGINEERED B2B COPY LOGIC (LINKEDIN)
-        linkedin_instruction = """[LINKEDIN POST FRAMEWORK]
-        Role: B2B Authority & Tech Industry Leader.
-        Constraints: Use short sentences (1 sentence = 1 line). Use high-level business vocabulary (e.g., ROI-driven, operational friction, scalable architecture).
-        Structure MUST strictly follow:
-        1. Pattern Interrupt Hook: First 2 lines must make a bold claim or share a hard data point. 
-        2. The Cliffhanger: Leave a blank line after the 3rd sentence to force a '...see more' click.
-        3. The Skimmable Meat: Use bullet points to deliver the core blueprint/value.
-        4. The 'Aha!' Insight: Provide a contrarian or paradigm-shifting perspective near the end.
-        5. Engagement CTA: Ask a thought-provoking question to drive comments. Explicitly state "Link is in the first comment" (Do not put the actual URL in the text)."""
+        if include_linkedin:
+            linkedin_instruction = """[LINKEDIN POST FRAMEWORK]
+            Role: B2B Authority & Tech Industry Leader.
+            Constraints: Use short sentences (1 sentence = 1 line). Use high-level business vocabulary (e.g., ROI-driven, operational friction, scalable architecture).
+            Structure MUST strictly follow:
+            1. Pattern Interrupt Hook: First 2 lines must make a bold claim or share a hard data point. 
+            2. The Cliffhanger: Leave a blank line after the 3rd sentence to force a '...see more' click.
+            3. The Skimmable Meat: Use bullet points to deliver the core blueprint/value.
+            4. The 'Aha!' Insight: Provide a contrarian or paradigm-shifting perspective near the end.
+            5. Engagement CTA: Ask a thought-provoking question to drive comments. Explicitly state "Link is in the first comment" (Do not put the actual URL in the text)."""
+            
+            # LinkedIn ka format parser mein add ho gaya
+            parser_format += f"""
+               LinkedIn Post:
+               [{linkedin_instruction}]
+               """
 
         # 🧵 HYPER-ENGINEERED VIRAL LOGIC (TWITTER/X)
-        twitter_instruction = """[TWITTER/X VIRAL THREAD FRAMEWORK]
-        Role: Tech/SaaS Thought Leader.
-        Constraints: Exactly 5 to 7 tweets total. Max 280 characters per tweet. NO HASHTAGS. End each tweet with a progress tracker (e.g., 1/6, 2/6).
-        Structure MUST strictly follow:
-        - Tweet 1 (The Banger): Scroll-stopping massive claim. Suggest a sleek, dark-themed, ultra-detailed visual/graphic in brackets. End with thread emoji 🧵👇.
-        - Tweet 2 (The Agitation): Hit the core pain point. Why should the reader care?
-        - Tweet 3-5 (The Meat): One single idea per tweet. Use white space and bullet marks (•, ✅).
-        - Penultimate Tweet (TL;DR): A quick bulleted summary of the thread.
-        - Final Tweet (The Loop): CTA asking to Retweet the first tweet ♻️, follow for more breakdowns, and check the link in the reply."""
+        if include_twitter:
+            twitter_instruction = """[TWITTER/X VIRAL THREAD FRAMEWORK]
+            Role: Tech/SaaS Thought Leader.
+            Constraints: Exactly 5 to 7 tweets total. Max 280 characters per tweet. NO HASHTAGS. End each tweet with a progress tracker (e.g., 1/6, 2/6).
+            Structure MUST strictly follow:
+            - Tweet 1 (The Banger): Scroll-stopping massive claim. Suggest a sleek, dark-themed, ultra-detailed visual/graphic in brackets. End with thread emoji 🧵👇.
+            - Tweet 2 (The Agitation): Hit the core pain point. Why should the reader care?
+            - Tweet 3-5 (The Meat): One single idea per tweet. Use white space and bullet marks (•, ✅).
+            - Penultimate Tweet (TL;DR): A quick bulleted summary of the thread.
+            - Final Tweet (The Loop): CTA asking to Retweet the first tweet ♻️, follow for more breakdowns, and check the link in the reply."""
+            
+            # Twitter ka format parser mein add ho gaya
+            parser_format += f"""
+               Twitter Thread:
+               [{twitter_instruction}]
+               """
 
         distribution_task = Task(
             description=f"""Act as a Top-Tier Metadata & Copywriting Specialist. Generate a package for the topic '{niche_topic}' in '{output_language}'.
@@ -482,16 +627,8 @@ def run_my_crew_ai_agents(niche_topic, social_platform, output_language, video_d
                - If 'English': Use pure English.
                
             2. 🤖 API PARSER FORMAT (MANDATORY FORMATTING):
-               You MUST output EXACTLY in this format with these exact section headings. Do not deviate.
-               
-               Title: [Your single best 60-character YouTube title. Hook + Keyword + Bracket/Emoji. NO HASHTAGS.]
-               Description: [{desc_instruction}]
-               
-               LinkedIn Post:
-               [{linkedin_instruction}]
-               
-               Twitter Thread:
-               [{twitter_instruction}]
+               You MUST output EXACTLY in this format with these exact section headings for the requested items. Do not deviate.
+               {parser_format}
                """,
             expected_output="Compiled social media assets tier list package with highly engineered, dynamically scaled, SEO-optimized metadata and professional social copy.",
             agent=copy_maestro
@@ -535,48 +672,6 @@ with st.sidebar:
     language = st.selectbox("Output Interface Language:", ["Hinglish", "Hindi", "English"])
     st.write("---")
     st.caption("Architecture Framework: CrewAI + Gemini + Groq Matrix")
-# ==============================================================
-# 🧠 SMART DATA PARSER ENGINE
-# ==============================================================
-def parse_blueprint_metadata(raw_text):
-    metadata = {
-        "yt_title": "",
-        "yt_desc": "",
-        "tw_thread": "",
-        "ig_caption": ""
-    }
-    
-    # Check agar AI ne 'DISTRIBUTION' section generate kiya hai
-    if "### 📱 DISTRIBUTION MICRO-ASSETS PACKAGE" in raw_text:
-        assets_text = raw_text.split("### 📱 DISTRIBUTION MICRO-ASSETS PACKAGE")[1]
-        lines = assets_text.split('\n')
-        
-        current_section = None
-        for line in lines:
-            lower_line = line.lower()
-            
-            # Keywords pakad kar section change karna
-            if "title" in lower_line and ":" in lower_line:
-                current_section = "yt_title"
-                metadata["yt_title"] = line.split(":", 1)[-1].replace("*", "").replace('"', '').strip()
-            elif "description" in lower_line or "desc:" in lower_line:
-                current_section = "yt_desc"
-            elif "twitter" in lower_line or "thread" in lower_line or "x:" in lower_line:
-                current_section = "tw_thread"
-            elif "instagram" in lower_line or "caption" in lower_line or "facebook" in lower_line:
-                current_section = "ig_caption"
-            else:
-                # Jo data mil raha hai, usko current section mein add karte jao
-                clean_line = line.replace("*", "").strip()
-                if clean_line and current_section:
-                    metadata[current_section] += clean_line + "\n"
-                    
-    # Fallback: Agar AI ne ajeeb format diya, toh default values
-    if not metadata["yt_title"]: metadata["yt_title"] = "My Awesome Video"
-    if not metadata["yt_desc"]: metadata["yt_desc"] = "Extracted Raw Data:\n" + raw_text[-500:]
-    
-    return metadata
-
 # ── Main Content Gateway Router ──────────────────────────
 def save_platform_token(platform_column_name, auth_code):
     current_user = st.session_state.get("creator_handle")
@@ -647,11 +742,11 @@ if current_os_mode == "✍️ AI Script Generator":
         
         with st.form("trend_form"):
             if app_mode == "🚀 Complete Blueprint Mode":
-                bundle_options = st.pills("🎁 Content Bundle Items: (Multi-Select)", ["🎬 Retention Script & Visual Cues", "🎯 High-CTR Viral Titles & Descriptions", "🎨 High-CTR Thumbnail Design Concepts", "📱 Shorts/Reels Viral Captions & Tags", "🧵 LinkedIn & X (Twitter) Threads"], default=["🎬 Retention Script & Visual Cues"], selection_mode="multi")
+                bundle_options = st.pills("🎁 Content Bundle Items: (Multi-Select)", ["🎬 Retention Script & Visual Cues", "🎯 High-CTR Viral Titles & Descriptions", "🎨 High-CTR Thumbnail Design Concepts", "📱 Shorts/Reels Viral Captions & Tags", "🏢 LinkedIn Post", "🧵 X (Twitter) Thread"], default=["🎬 Retention Script & Visual Cues"], selection_mode="multi")
                 user_niche = st.text_input("🎯 Kis topic par video banani hai?", value=st.session_state.get("niche_data", ""))
                 video_duration = st.slider("⏱ Video duration (Minutes)", 0.5, 3.0, 1.0, 0.5)
             else:
-                bundle_options = st.pills("🎁 Extraction Bundle Items: (Multi-Select)", ["🎯 High-CTR Viral Titles & Descriptions", "🎨 High-CTR Thumbnail Design Concepts", "📱 Shorts/Reels Viral Captions & Tags", "🧵 LinkedIn & X (Twitter) Threads"], default=["🎯 High-CTR Viral Titles & Descriptions"], selection_mode="multi")
+                bundle_options = st.pills("🎁 Extraction Bundle Items: (Multi-Select)", ["🎯 High-CTR Viral Titles & Descriptions", "🎨 High-CTR Thumbnail Design Concepts", "📱 Shorts/Reels Viral Captions & Tags", "🏢 LinkedIn Post", "🧵 X (Twitter) Thread"], default=["🎯 High-CTR Viral Titles & Descriptions"], selection_mode="multi")
                 user_niche = st.text_input("🎯 Video Title/Topic:", value=st.session_state.get("niche_data", ""))
                 user_pasted_script = st.text_area("📝 Script content:", height=200)
 
@@ -1016,10 +1111,25 @@ else:
                             # --- TWITTER DISPATCH ---
                             if push_tw:
                                 if user_tokens.get("twitter_token"):
-                                    st.info("⏳ Uploading to X (Twitter)...")
-                                    time.sleep(1) # [API CALL PLACEHOLDER]
-                                    # Yahan requests.post() aayega Twitter V2 API ke liye
-                                    success_logs.append("✅ X (Twitter) Account")
+                                    st.info("⏳ Uploading Thread to X (Twitter)...")
+                                    
+                                    # 1. UI se kate hue (parsed) thread ka text uthao
+                                    # Note: Hum parsed_data use kar rahe hain jo Tab 3 mein already mapped hai
+                                    raw_twitter_text = parsed_data.get("tw_thread", "")
+                                    
+                                    if raw_twitter_text:
+                                        # 2. Lamba text list mein split karna (Blank lines ke basis par)
+                                        tweets_list = [t.strip() for t in raw_twitter_text.split('\n\n') if t.strip()]
+                                        
+                                        # 3. API Function Call
+                                        success, msg = post_to_twitter_thread(tweets_list, user_tokens.get("twitter_token"))
+                                        
+                                        if success:
+                                            success_logs.append("✅ X (Twitter) Thread")
+                                        else:
+                                            st.error(f"❌ Twitter Failed: {msg}")
+                                    else:
+                                        st.warning("⚠️ Twitter skipped: No thread content found in blueprint.")
                                 else:
                                     st.warning("⚠️ Twitter skipped: Account not connected.")
 
@@ -1028,6 +1138,7 @@ else:
                                 if user_tokens.get("instagram_token"):
                                     st.info("⏳ Uploading to Instagram Reels...")
                                     time.sleep(1) # [API CALL PLACEHOLDER]
+                                    # Yahan requests.post() aayega Instagram API ke liye
                                     success_logs.append("✅ Instagram Business")
                                 else:
                                     st.warning("⚠️ Instagram skipped: Account not connected.")
