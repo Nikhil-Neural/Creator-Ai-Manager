@@ -728,7 +728,17 @@ if "code" in st.query_params:
             st.error("⚠️ Unknown platform state or Twitter Session Expired. Please try again.")
             
     st.query_params.clear()
-st.title("🚀 Creator AI Manager OS")
+st.markdown(
+    """
+    <div style="display: flex; align-items: baseline; gap: 10px;">
+        <h1 style="margin: 0;">🚀 Creator AI Manager OS</h1>
+        <span style="background-color: #ff4b4b; color: white; padding: 4px 10px; border-radius: 15px; font-size: 14px; font-weight: bold;">
+            ⚡ Shorts Only (Long-form coming soon)
+        </span>
+    </div>
+    """, 
+    unsafe_allow_html=True
+)
 st.write(f"System Context: **{current_os_mode}** active | Platform: **{platform}**")
 st.write("---")
 
@@ -744,7 +754,9 @@ if current_os_mode == "✍️ AI Script Generator":
             if app_mode == "🚀 Complete Blueprint Mode":
                 bundle_options = st.pills("🎁 Content Bundle Items: (Multi-Select)", ["🎬 Retention Script & Visual Cues", "🎯 High-CTR Viral Titles & Descriptions", "🎨 High-CTR Thumbnail Design Concepts", "📱 Shorts/Reels Viral Captions & Tags", "🏢 LinkedIn Post", "🧵 X (Twitter) Thread"], default=["🎬 Retention Script & Visual Cues"], selection_mode="multi")
                 user_niche = st.text_input("🎯 Kis topic par video banani hai?", value=st.session_state.get("niche_data", ""))
-                video_duration = st.slider("⏱ Video duration (Minutes)", 0.5, 3.0, 1.0, 0.5)
+                
+                # ⏱️ NAYA SLIDER: 30s se 60s tak, 5s ke gap par
+                video_duration = st.slider("⏱ Video duration (Seconds)", min_value=30, max_value=60, value=60, step=5)
             else:
                 bundle_options = st.pills("🎁 Extraction Bundle Items: (Multi-Select)", ["🎯 High-CTR Viral Titles & Descriptions", "🎨 High-CTR Thumbnail Design Concepts", "📱 Shorts/Reels Viral Captions & Tags", "🏢 LinkedIn Post", "🧵 X (Twitter) Thread"], default=["🎯 High-CTR Viral Titles & Descriptions"], selection_mode="multi")
                 user_niche = st.text_input("🎯 Video Title/Topic:", value=st.session_state.get("niche_data", ""))
