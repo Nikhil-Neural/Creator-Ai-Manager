@@ -760,7 +760,10 @@ if current_os_mode == "✍️ AI Script Generator":
             else:
                 bundle_options = st.pills("🎁 Extraction Bundle Items: (Multi-Select)", ["🎯 High-CTR Viral Titles & Descriptions", "🎨 High-CTR Thumbnail Design Concepts", "📱 Shorts/Reels Viral Captions & Tags", "🏢 LinkedIn Post", "🧵 X (Twitter) Thread"], default=["🎯 High-CTR Viral Titles & Descriptions"], selection_mode="multi")
                 user_niche = st.text_input("🎯 Video Title/Topic:", value=st.session_state.get("niche_data", ""))
-                user_pasted_script = st.text_area("📝 Script content:", height=200)
+                
+                # 🛑 THE TOKEN LOCK: max_chars=1200 (~180 Words limit for 60 Seconds)
+                st.caption("💡 60-Second Limit: A typical Short contains 150-180 words.")
+                user_pasted_script = st.text_area("📝 Script content:", height=200, max_chars=1200)
 
             submit_btn = st.form_submit_button("🚀 Launch Specialized Agents Grid", use_container_width=True)
             if submit_btn:
