@@ -743,49 +743,102 @@ if current_os_mode == "✍️ AI Script Generator":
         app_mode = st.radio("🔮 Kis Mode me kaam karna hai?", ["🚀 Complete Blueprint Mode", "✍️ Repurpose My Script Mode"], horizontal=True)
         st.write("---")
         
-        with st.form("trend_form"):
-            if app_mode == "🚀 Complete Blueprint Mode":
-                bundle_options = st.pills("🎁 Content Bundle Items: (Multi-Select)", ["🎬 Retention Script & Visual Cues", "🎯 High-CTR Viral Titles & Descriptions", "🎨 High-CTR Thumbnail Design Concepts", "📱 Shorts/Reels Viral Captions & Tags", "🏢 LinkedIn Post", "🧵 X (Twitter) Thread"], default=["🎬 Retention Script & Visual Cues"], selection_mode="multi")
-                user_niche = st.text_input("🎯 Kis topic par video banani hai?", value=st.session_state.get("niche_data", ""))
-                
-                # ⏱️ NAYA SLIDER: 30s se 60s tak, 5s ke gap par
-                video_duration = st.slider("⏱ Video duration (Seconds)", min_value=30, max_value=60, value=60, step=5)
+        # 1. Blueprint Arrays (The 10 Hooks, 4 Bodies, 4 CTAs)
+        HOOK_OPTIONS = [
+            "Select a Hook...",
+            "The Negative Warning (Stop doing X. It's destroying Y)",
+            "The Curiosity Gap (The real reason why X, and nobody is talking about it)",
+            "The Contrarian (Myth Buster - X is a complete lie)",
+            "The Secret Tool Drop (This secret feels illegal to know)",
+            "The Bold Claim (This simple shift will change X forever)",
+            "The 'How-To' Tease (How to achieve X in short time)",
+            "The Mind-Reader (You are probably struggling with X...)",
+            "The Shocking Statistic (99% fail because of this...)",
+            "The Visual Anchor (Direct bizarre statement matching B-Roll)",
+            "The 'Us vs. Them' (Why A is losing, while B takes over)"
+        ]
+
+        BODY_OPTIONS = [
+            "Select a Body Framework...",
+            "The Step-by-Step Blueprint (Highly logical, Step 1, 2, 3)",
+            "The Case Study (Real-world success story or trend breakdown)",
+            "The Problem-Agitate-Solve (PAS - Pain, Agitate, Solution)",
+            "Rapid Fire Facts (High-density, fast-paced bullet points)"
+        ]
+
+        CTA_OPTIONS = [
+            "Select a CTA...",
+            "The Value Bribe (Comment [KEYWORD] for DM)",
+            "The Seamless Loop (Connects end perfectly to the hook)",
+            "The Cliffhanger (Hit subscribe for Part 2)",
+            "The Direct Engagement Question (What is your take?)"
+        ]
+
+        # 2. UI Routing based on Mode
+        if app_mode == "🚀 Complete Blueprint Mode":
+            bundle_options = st.pills("🎁 Content Bundle Items: (Multi-Select)", ["🎬 Retention Script & Visual Cues", "🎯 High-CTR Viral Titles & Descriptions", "🎨 High-CTR Thumbnail Design Concepts", "📱 Shorts/Reels Viral Captions & Tags", "🏢 LinkedIn Post", "🧵 X (Twitter) Thread"], default=["🎬 Retention Script & Visual Cues"], selection_mode="multi")
+            user_niche = st.text_input("🎯 Kis topic par video banani hai?", value=st.session_state.get("niche_data", ""))
+            video_duration = st.slider("⏱ Video duration (Seconds)", min_value=30, max_value=60, value=60, step=5)
+            
+            st.markdown("### 🧬 Viral Script Parameters")
+            col1, col2, col3 = st.columns(3)
+            with col1: selected_hook = st.selectbox("🪝 Hook", HOOK_OPTIONS)
+            with col2: selected_body = st.selectbox("🧬 Body", BODY_OPTIONS)
+            with col3: selected_cta = st.selectbox("🎯 CTA", CTA_OPTIONS)
+            
+            # Strict Validation Logic
+            is_ready_to_launch = (selected_hook != "Select a Hook..." and selected_body != "Select a Body Framework..." and selected_cta != "Select a CTA...")
+        
+        else:
+            bundle_options = st.pills("🎁 Extraction Bundle Items: (Multi-Select)", ["🎯 High-CTR Viral Titles & Descriptions", "🎨 High-CTR Thumbnail Design Concepts", "📱 Shorts/Reels Viral Captions & Tags", "🏢 LinkedIn Post", "🧵 X (Twitter) Thread"], default=["🎯 High-CTR Viral Titles & Descriptions"], selection_mode="multi")
+            user_niche = st.text_input("🎯 Video Title/Topic:", value=st.session_state.get("niche_data", ""))
+            st.caption("💡 60-Second Limit: A typical Short contains 150-180 words.")
+            user_pasted_script = st.text_area("📝 Script content:", height=200, max_chars=1200)
+            is_ready_to_launch = True # Repurpose mode bypasses validation
+
+        st.write("---")
+
+        # 3. Dynamic Engine Button (Outside of st.form to work properly)
+        submit_btn = st.button("🚀 Launch Specialized Agents Grid", use_container_width=True, disabled=not is_ready_to_launch)
+
+        if not is_ready_to_launch and app_mode == "🚀 Complete Blueprint Mode":
+            st.warning("⚠️ Please select Hook, Body, and CTA to unlock the Generate button.")
+
+        if submit_btn:
+            if not bundle_options: 
+                st.error("⚠️ Bundle item select karein!")
+            elif not user_niche: 
+                st.error("⚠️ Topic cannot be empty!")
             else:
-                bundle_options = st.pills("🎁 Extraction Bundle Items: (Multi-Select)", ["🎯 High-CTR Viral Titles & Descriptions", "🎨 High-CTR Thumbnail Design Concepts", "📱 Shorts/Reels Viral Captions & Tags", "🏢 LinkedIn Post", "🧵 X (Twitter) Thread"], default=["🎯 High-CTR Viral Titles & Descriptions"], selection_mode="multi")
-                user_niche = st.text_input("🎯 Video Title/Topic:", value=st.session_state.get("niche_data", ""))
-                
-                # 🛑 THE TOKEN LOCK: max_chars=1200 (~180 Words limit for 60 Seconds)
-                st.caption("💡 60-Second Limit: A typical Short contains 150-180 words.")
-                user_pasted_script = st.text_area("📝 Script content:", height=200, max_chars=1200)
-
-            submit_btn = st.form_submit_button("🚀 Launch Specialized Agents Grid", use_container_width=True)
-            if submit_btn:
-                if not bundle_options: st.error("⚠️ Bundle item select karein!")
-                elif user_niche:
+                # 🧠 MAGIC INJECTION: We append the chosen frameworks directly to the topic!
+                if app_mode == "🚀 Complete Blueprint Mode":
+                    st.session_state["niche_data"] = f"{user_niche} | STRICT RULES -> Hook: {selected_hook} | Body: {selected_body} | CTA: {selected_cta}"
+                else:
                     st.session_state["niche_data"] = user_niche
-                    st.session_state["form_submitted"] = True
-                    st.session_state["selected_options"] = bundle_options
-                    st.session_state["current_mode"] = app_mode
-                    st.session_state["pasted_script"] = user_pasted_script if 'user_pasted_script' in locals() else ""
-                    st.session_state["duration"] = video_duration if 'video_duration' in locals() else 1.0
-                else: st.error("⚠️ Topic cannot be empty!")
+                    
+                st.session_state["form_submitted"] = True
+                st.session_state["selected_options"] = bundle_options
+                st.session_state["current_mode"] = app_mode
+                st.session_state["pasted_script"] = user_pasted_script if app_mode != "🚀 Complete Blueprint Mode" else ""
+                st.session_state["duration"] = video_duration if app_mode == "🚀 Complete Blueprint Mode" else 1.0
 
+        # 4. Engine Processing Block
         if st.session_state.get("form_submitted"):
             with st.spinner("🕵️ Processing failproof generation sequence..."):
                 try:
-                    # CrewAI se script banwayi
+                    # CrewAI Executed with Injected Data
                     ai_output = run_my_crew_ai_agents(st.session_state["niche_data"], platform, language, st.session_state.get("duration", 1.0), st.session_state["current_mode"], st.session_state.get("pasted_script", ""), st.session_state["selected_options"])
                     
                     st.session_state["script_data"] = ai_output
                     st.session_state["form_submitted"] = False
                     
-                    # 💾 THE VAULT: Database mein permanent save karna
+                    # 💾 THE VAULT MEMORY
                     if st.session_state.get("user_email"):
                         try:
                             supabase.table("ai_blueprints_vault").insert({
                                 "creator_email": st.session_state["user_email"],
                                 "target_platform": platform,
-                                "niche_topic": st.session_state["niche_data"],
+                                "niche_topic": st.session_state["niche_data"], # Updated context goes here
                                 "script_content": ai_output,
                                 "social_metadata": str(st.session_state["selected_options"]),
                                 "status": "Draft"
