@@ -443,8 +443,7 @@ def get_twitter_oauth_url():
     return tw_login_link
 
 
-def run_my_crew_ai_agents(niche_topic, social_platform, output_language, video_duration, app_mode, user_pasted_script, selected_bundle_options):
-    # ⏱️ SHORTS MATHS: Direct seconds, aur approx 2.5 words per second (150 words/min)
+def run_my_crew_ai_agents(niche_topic, social_platform, script_language, meta_langs, video_duration, app_mode, user_pasted_script, selected_bundle_options):    # ⏱️ SHORTS MATHS: Direct seconds, aur approx 2.5 words per second (150 words/min)
     target_seconds = int(video_duration)
     target_words = int((video_duration / 60) * 150)
     
@@ -492,8 +491,15 @@ def run_my_crew_ai_agents(niche_topic, social_platform, output_language, video_d
 
     script_writer = Agent(
         role="Humanized Script Writer",
-        goal="Write a 2-column video script blueprint.",
-        backstory="Writes clean high-retention humanized content without any robotic AI watermarks.",
+        goal="Write a hyper-engaging, 2-column video script blueprint.",
+        backstory="""You are a highly successful, 28-year-old content creator who has written 500+ viral scripts. 
+        You talk like you're explaining a fascinating secret to a friend, not presenting in a boardroom. 
+        You use casual, spoken-English transitions like 'Look,', 'Here's the thing,', 'Honestly,', 'The crazy part is...'.
+        
+        NEVER write like this (robotic): "Context windows play a crucial role in determining LLM performance."
+        ALWAYS write like this (human): "Itni lambi memory honi chahiye AI ko ki purani baatein bhool na jaaye."
+        
+        BANNED WORDS: Delve, Unleash, Tapestry, In today's digital landscape, Buckle up, Crucial, Imperative, Furthermore, Moreover, In conclusion, Testament.""",
         llm=script_writing_llm, max_iter=1, max_rpm=5, verbose=True, allow_delegation=False, memory=False
     )
 
@@ -525,29 +531,37 @@ def run_my_crew_ai_agents(niche_topic, social_platform, output_language, video_d
             script_prompt = f"Analyze and re-engineer raw script: '{user_pasted_script}'."
             
         script_task = Task(
-            description=f"""{script_prompt} Target language: '{output_language}'.
+            description=f"""{script_prompt} Target language: '{script_language}'.
+            
+            ANTI-ROBOT RULES:
+            1. RHYTHM VARIATION: Mix short punchy sentences (3-5 words) with longer explanatory ones. Do not over-explain.
+            2. VISUAL-VERBAL SYNC: Do not formally narrate the visuals. Point to them organically (e.g., "See this? It's not just a graphic...").
+            
             CRITICAL CRITERIA: You MUST use this exact table framework layout:
-            | Timestamp | Visuals | Audio ({output_language}) |
-            | :--- | :--- | :--- |""",
-            expected_output="Perfect Markdown 3-column table framework script context.",
+            | Timestamp | Visuals | Audio ({script_language}) |
+            | :--- | :--- | :--- |
+            
+            🌟 EXAMPLE SHOT-PROMPTING FORMAT:
+            | [00:00-00:05] | Camera zooms in sharply | Kya tumhe pata hai AI kya sochta hai? |
+            | [00:05-00:10] | Holographic flowchart expanding | Yeh simple hai. Lekin iska impact bahut bada hai. |
+            """,
+            expected_output="Perfect Markdown 3-column table framework script avoiding all banned AI words.",
             agent=script_writer, context=[research_task]
         )
         tasks_pipeline.append(script_task)
 
     distribution_task = None
     dist_requirements = []
-    
-    # 🧠 SMART UI CHECKS (Checking individual buttons)
-    include_youtube = any("Titles" in opt for opt in selected_bundle_options)
+    # 🧠 SMART UI CHECKS (Checking individual buttons by new names)
+    include_youtube = any("YouTube SEO" in opt for opt in selected_bundle_options)
     include_linkedin = any("LinkedIn" in opt for opt in selected_bundle_options)
-    include_twitter = any("Twitter" in opt for opt in selected_bundle_options)
+    include_twitter = any("X & Threads" in opt for opt in selected_bundle_options)
     
     # Appending only what user requested
     if include_youtube: dist_requirements.append("- 1 Optimized YouTube Title & Description")
-    if any("Thumbnail" in opt for opt in selected_bundle_options): dist_requirements.append("- 3 thumbnail design concepts layout framework")
-    if any("Captions" in opt for opt in selected_bundle_options): dist_requirements.append("- 3 short captions & tags")
+    if any("Insta & FB" in opt for opt in selected_bundle_options): dist_requirements.append("- 3 short Instagram/Facebook captions & tags")
     if include_linkedin: dist_requirements.append("- 1 High-Converting LinkedIn Post")
-    if include_twitter: dist_requirements.append("- 1 Viral Twitter/X Thread")
+    if include_twitter: dist_requirements.append("- 1 Viral Thread format suitable for X (Twitter) and Meta Threads")
 
     if dist_requirements:
         desc_instruction = ""
@@ -609,13 +623,13 @@ def run_my_crew_ai_agents(niche_topic, social_platform, output_language, video_d
                """
 
         distribution_task = Task(
-            description=f"""Act as a Top-Tier Metadata & Copywriting Specialist. Generate a package for the topic '{niche_topic}' in '{output_language}'.
+            description=f"""Act as a Top-Tier Metadata & Copywriting Specialist. Generate a package for the topic '{niche_topic}' in '{script_language}'.
             {chr(10).join(dist_requirements)}
             
             CRITICAL CONSTRAINTS FOR OUTPUT (FOLLOW STRICTLY):
             
             1. 🛑 LANGUAGE RULE: 
-               - If '{output_language}' is 'Hinglish': Use ONLY the English alphabet (Latin script).
+               - If '{script_language}' is 'Hinglish': Use ONLY the English alphabet (Latin script).
                - If 'Hindi': Use ONLY the Devanagari script (हिंदी).
                - If 'English': Use pure English.
                
@@ -662,7 +676,6 @@ with st.sidebar:
     )
     st.write("---")
     platform = st.selectbox("Global Target Platform:", ["YouTube", "Instagram", "Facebook", "X (Twitter)"])
-    language = st.selectbox("Output Interface Language:", ["Hinglish", "Hindi", "English"])
     st.write("---")
     st.caption("Architecture Framework: CrewAI + Gemini + Groq Matrix")
 # ── Main Content Gateway Router ──────────────────────────
@@ -776,7 +789,7 @@ if current_os_mode == "✍️ AI Script Generator":
 
         # 2. UI Routing based on Mode
         if app_mode == "🚀 Complete Blueprint Mode":
-            bundle_options = st.pills("🎁 Content Bundle Items: (Multi-Select)", ["🎬 Retention Script & Visual Cues", "🎯 High-CTR Viral Titles & Descriptions", "🎨 High-CTR Thumbnail Design Concepts", "📱 Shorts/Reels Viral Captions & Tags", "🏢 LinkedIn Post", "🧵 X (Twitter) Thread"], default=["🎬 Retention Script & Visual Cues"], selection_mode="multi")
+            bundle_options = st.pills("🎁 Content Bundle Items: (Multi-Select)", ["🎬 Retention Script & Visual Cues", "📺 YouTube SEO: Viral Title & Description", "📸 Insta & FB Reels: Captions + Tags", "🏢 LinkedIn Post", "🐦 X & Threads: Viral Thread Format"], default=["🎬 Retention Script & Visual Cues"], selection_mode="multi")
             user_niche = st.text_input("🎯 Kis topic par video banani hai?", value=st.session_state.get("niche_data", ""))
             video_duration = st.slider("⏱ Video duration (Seconds)", min_value=30, max_value=60, value=60, step=5)
             
@@ -790,11 +803,32 @@ if current_os_mode == "✍️ AI Script Generator":
             is_ready_to_launch = (selected_hook != "Select a Hook..." and selected_body != "Select a Body Framework..." and selected_cta != "Select a CTA...")
         
         else:
-            bundle_options = st.pills("🎁 Extraction Bundle Items: (Multi-Select)", ["🎯 High-CTR Viral Titles & Descriptions", "🎨 High-CTR Thumbnail Design Concepts", "📱 Shorts/Reels Viral Captions & Tags", "🏢 LinkedIn Post", "🧵 X (Twitter) Thread"], default=["🎯 High-CTR Viral Titles & Descriptions"], selection_mode="multi")
+            bundle_options = st.pills("🎁 Extraction Bundle Items: (Multi-Select)", ["📺 YouTube SEO: Viral Title & Description", "📸 Insta & FB Reels: Captions + Tags", "🏢 LinkedIn Post", "🐦 X & Threads: Viral Thread Format"], default=["📺 YouTube SEO: Viral Title & Description"], selection_mode="multi")
             user_niche = st.text_input("🎯 Video Title/Topic:", value=st.session_state.get("niche_data", ""))
             st.caption("💡 60-Second Limit: A typical Short contains 150-180 words.")
             user_pasted_script = st.text_area("📝 Script content:", height=200, max_chars=1200)
             is_ready_to_launch = True # Repurpose mode bypasses validation
+
+        st.write("---")
+        
+        # 🌍 THE DYNAMIC LANGUAGE UI 🌍
+        st.markdown("### 🎬 Core Script Language")
+        script_language = st.selectbox("Select language for your Voiceover/Script:", ["Hinglish", "Hindi", "English"], index=0)
+        
+        meta_languages = {"yt": "English", "ig": "English", "li": "English", "tw": "English"}
+        st.markdown("### 📱 Social Media Language Routing")
+        lang_col1, lang_col2 = st.columns(2)
+        
+        with lang_col1:
+            if any("YouTube SEO" in opt for opt in bundle_options):
+                meta_languages["yt"] = st.selectbox("📺 YouTube Title & Desc:", ["English", "Hinglish", "Hindi"], index=0)
+            if any("LinkedIn" in opt for opt in bundle_options):
+                meta_languages["li"] = st.selectbox("🏢 LinkedIn Post:", ["English", "Hinglish", "Hindi"], index=0)
+        with lang_col2:
+            if any("Insta & FB" in opt for opt in bundle_options):
+                meta_languages["ig"] = st.selectbox("📸 Insta/FB Captions:", ["Hinglish", "Hindi", "English"], index=0)
+            if any("X & Threads" in opt for opt in bundle_options):
+                meta_languages["tw"] = st.selectbox("🐦 X & Threads:", ["English", "Hinglish", "Hindi"], index=0)
 
         st.write("---")
 
@@ -827,7 +861,16 @@ if current_os_mode == "✍️ AI Script Generator":
             with st.spinner("🕵️ Processing failproof generation sequence..."):
                 try:
                     # CrewAI Executed with Injected Data
-                    ai_output = run_my_crew_ai_agents(st.session_state["niche_data"], platform, language, st.session_state.get("duration", 1.0), st.session_state["current_mode"], st.session_state.get("pasted_script", ""), st.session_state["selected_options"])
+                    ai_output = run_my_crew_ai_agents(
+                        st.session_state["niche_data"], 
+                        platform, 
+                        script_language, 
+                        meta_languages, # Naya dictionary parameter 
+                        st.session_state.get("duration", 1.0), 
+                        st.session_state["current_mode"], 
+                        st.session_state.get("pasted_script", ""), 
+                        st.session_state["selected_options"]
+                    )
                     
                     st.session_state["script_data"] = ai_output
                     st.session_state["form_submitted"] = False
