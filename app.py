@@ -483,9 +483,11 @@ def run_my_crew_ai_agents(niche_topic, social_platform, script_language, meta_la
         script_writing_llm = LLM(model="groq/llama-3.3-70b-versatile", api_key=target_groq_key, timeout=30)
 
     trend_analyst = Agent(
-        role="Fast Trend Spotter",
-        goal=f"Extract minimal psychological hooks and viewer retention triggers for '{niche_topic}' on {social_platform}.",
-        backstory="Data-saving trend analyst. Raw psychological data output constraint locked.",
+        role="Viral Retention Strategist",
+        goal=f"Extract extreme psychological hooks and viewer retention triggers for '{niche_topic}' on {social_platform}.",
+        backstory="""You are a top-tier YouTube Shorts & Reels strategist who has analyzed 10,000+ viral videos. 
+        You don't just look for 'topics', you look for 'Dopamine Hits', 'Curiosity Gaps', and 'Pattern Interrupts'. 
+        You know exactly why a user stops scrolling in the first 3 seconds.""",
         llm=groq_cluster_llm, max_iter=1, max_rpm=5, verbose=True, allow_delegation=False, memory=False
     )
 
@@ -504,9 +506,12 @@ def run_my_crew_ai_agents(niche_topic, social_platform, script_language, meta_la
     )
 
     copy_maestro = Agent(
-        role="Micro Copywriter",
-        goal="Convert concepts into short social media assets instantly.",
-        backstory="Extreme token efficiency. Expert direct copy structures setup engine.",
+        role="Direct-Response Micro Copywriter",
+        goal="Convert concepts into highly aggressive, scroll-stopping social media assets.",
+        backstory="""You are a ruthless social media manager known for driving massive engagement. 
+        You use psychological triggers, extreme curiosity, and sharp sarcasm. 
+        You NEVER use cringey emojis or robotic corporate speak like 'In today's fast-paced world'. 
+        Your goal is to force the user to click '...more' or jump into the comments section.""",
         llm=groq_cluster_llm, max_iter=1, max_rpm=5, verbose=True, allow_delegation=False, memory=False
     )
 
