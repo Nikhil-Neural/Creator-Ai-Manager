@@ -837,8 +837,12 @@ if current_os_mode == "✍️ AI Script Generator":
         st.write("---")
         
         # 🌍 THE DYNAMIC LANGUAGE UI 🌍
-        st.markdown("### 🎬 Core Script Language")
-        script_language = st.selectbox("Select language for your Voiceover/Script:", ["Hinglish", "Hindi", "English"], index=0)
+        if app_mode == "🚀 Complete Blueprint Mode":
+            st.markdown("### 🎬 Core Script Language")
+            script_language = st.selectbox("Select language for your Voiceover/Script:", ["Hinglish", "Hindi", "English"], index=0)
+        else:
+            # Repurpose mode ke liye background variable (UI mein nahi dikhega)
+            script_language = "" 
         
         meta_languages = {"yt": "English", "ig": "English", "li": "English", "tw": "English"}
         st.markdown("### 📱 Social Media Language Routing")
