@@ -246,8 +246,9 @@ if "db_checked" not in st.session_state and st.session_state.get("creator_handle
             st.session_state["tw_connected"] = bool(user_data.get("twitter_token"))
             st.session_state["ig_connected"] = bool(user_data.get("instagram_token"))
             st.session_state["fb_connected"] = bool(user_data.get("facebook_token"))
-            
-            if any([st.session_state.get(k) for k in ["yt_connected", "tw_connected", "ig_connected", "fb_connected"]]):
+            st.session_state["li_connected"] = bool(user_data.get("linkedin_token")) # 💼 LinkedIn Memory Load
+
+            if any([st.session_state.get(k) for k in ["yt_connected", "tw_connected", "ig_connected", "fb_connected", "li_connected"]]):
                 st.session_state["channels_synced"] = True
                 
         st.session_state["db_checked"] = True
@@ -349,6 +350,31 @@ if "mock_upload_ready" not in st.session_state: st.session_state["mock_upload_re
 
 
 # 🎯 INTEGRATION POINT 1: OAuth Link Generators Modules
+# LINKEDIN OAUTH FUNCTION
+# ==============================================================
+def get_linkedin_oauth_url():
+    # Streamlit secrets se Client ID uthana
+    client_id = st.secrets.get("LINKEDIN_CLIENT_ID", "")
+    
+    if not client_id:
+        return "#error_missing_linkedin_client_id"
+
+    # Tera exact live URL
+    redirect_uri = "https://creator-ai-manager-tgrh5ifkgfqme6kdomcvxb.streamlit.app/" 
+    
+    # LinkedIn ke permissions (Profile padhna aur post karna)
+    # w_member_social = Post karne ki power
+    # openid, profile, email = User ki basic details (URN) nikalne ki power
+    scopes = ["openid", "profile", "email", "w_member_social"]
+    scope_str = "%20".join(scopes)
+    
+    # Security ke liye unique state generate karna
+    state = "linkedin_" + str(uuid.uuid4())[:8]
+    
+    # LinkedIn ka official authorization URL
+    auth_url = f"https://www.linkedin.com/oauth/v2/authorization?response_type=code&client_id={client_id}&redirect_uri={redirect_uri}&state={state}&scope={scope_str}"
+    
+    return auth_url
 def get_meta_oauth_url():
     client_id = st.secrets.get("INSTAGRAM_APP_ID", "")
     
@@ -739,7 +765,13 @@ if "code" in st.query_params:
         save_platform_token("youtube_token", auth_code)
         st.session_state["yt_connected"] = True
         st.session_state["channels_synced"] = True
-        
+    
+    elif platform_state.startswith("linkedin"):
+        st.success("🎉 LinkedIn Profile Successfully Linked! 💼")
+        save_platform_token("linkedin_token", auth_code)
+        st.session_state["li_connected"] = True 
+        st.session_state["channels_synced"] = True
+
     elif platform_state == "instagram":
         st.success("🎉 Instagram Account Successfully Linked! 🩷")
         save_platform_token("instagram_token", auth_code)
@@ -1037,6 +1069,16 @@ else:
             else:
                 fb_login_link = get_facebook_oauth_url()
                 st.markdown(f"<a href='{fb_login_link}' target='_blank' style='text-decoration: none;'><button style='width:100%; background-color:#1877F2; color:white; border:none; padding:10px; border-radius:5px; font-weight:bold; cursor:pointer; height:38px; font-size:14px; box-shadow: 0px 2px 4px rgba(0,0,0,0.1);'>💙 Connect Facebook Page</button></a>", unsafe_allow_html=True)
+            # 💼 NEW: LINKEDIN UI CONNECT NODE
+            st.write(" ")
+            st.subheader("💼 LinkedIn")
+            if st.session_state.get("li_connected"):
+                st.success("✅ Connected: LinkedIn Profile")
+                if st.button("❌ Disconnect LinkedIn", use_container_width=True):
+                    disconnect_platform("linkedin_token", "li_connected")
+            else:
+                linkedin_login_link = get_linkedin_oauth_url()
+                st.markdown(f"<div style='margin-bottom: 16px;'><a href='{linkedin_login_link}' target='_blank' style='text-decoration: none;'><button style='width:100%; background-color:#0077B5; color:white; border:none; padding:10px; border-radius:5px; font-weight:bold; cursor:pointer; height:42px; font-size:14px; box-shadow: 0px 2px 4px rgba(0,0,0,0.1);'>💼 Connect LinkedIn Profile</button></a></div>", unsafe_allow_html=True)
         st.write("---")
         
         # Bottom Utility Buttons Configuration Flow
@@ -1053,7 +1095,8 @@ else:
                                 "youtube_token": None,
                                 "twitter_token": None,
                                 "instagram_token": None,
-                                "facebook_token": None
+                                "facebook_token": None,
+                                "linkedin_token": None
                             }).eq("creator_handle", st.session_state["creator_handle"]).execute()
                         
                         # 2. App ki memory (RAM) se sab reset kar do
@@ -1061,6 +1104,7 @@ else:
                         st.session_state["tw_connected"] = False
                         st.session_state["ig_connected"] = False
                         st.session_state["fb_connected"] = False
+                        st.session_state["li_connected"] = False
                         
                         st.session_state["channels_synced"] = False
                         st.session_state["audit_data_ready"] = False
