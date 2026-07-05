@@ -772,17 +772,18 @@ if "code" in st.query_params:
         save_platform_token("linkedin_token", auth_code)
         st.session_state["li_connected"] = True 
         st.session_state["channels_synced"] = True
-
+    
+    # 🧵 THREADS DETECTOR (Isko Instagram se hamesha UPAR rakhna)
+    elif "thread" in str(platform_state).lower():
+        st.success("🎉 Meta Threads Account Successfully Linked! 🧵")
+        save_platform_token("threads_token", auth_code)
+        st.session_state["th_connected"] = True
+        st.session_state["channels_synced"] = True
+        
     elif platform_state == "instagram":
         st.success("🎉 Instagram Account Successfully Linked! 🩷")
         save_platform_token("instagram_token", auth_code)
         st.session_state["ig_connected"] = True
-        st.session_state["channels_synced"] = True
-    
-    elif platform_state == "threads":
-        st.success("🎉 Meta Threads Account Successfully Linked! 🧵")
-        save_platform_token("threads_token", auth_code)
-        st.session_state["th_connected"] = True
         st.session_state["channels_synced"] = True
 
     else:
