@@ -392,6 +392,26 @@ def get_meta_oauth_url():
     auth_url = f"https://www.instagram.com/oauth/authorize?enable_fb_login=0&client_id={client_id}&redirect_uri={redirect_uri}&scope={scope_str}&response_type=code&state=instagram"
     
     return auth_url
+# ==============================================================
+# META THREADS OAUTH FUNCTION
+# ==============================================================
+def get_threads_oauth_url():
+    client_id = st.secrets.get("THREADS_APP_ID", "")
+    
+    if not client_id:
+        return "#error_missing_threads_client_id"
+
+    # Tera live exact URL
+    redirect_uri = "https://creator-ai-manager-tgrh5ifkgfqme6kdomcvxb.streamlit.app/" 
+    
+    # Threads ke permissions
+    scopes = ["threads_basic", "threads_content_publish"]
+    scope_str = ",".join(scopes)
+    
+    # Asli Threads ka URL aur state="threads"
+    auth_url = f"https://threads.net/oauth/authorize?client_id={client_id}&redirect_uri={redirect_uri}&scope={scope_str}&response_type=code&state=threads"
+    
+    return auth_url
 def get_facebook_oauth_url():
     # Facebook apne main Meta App ID ka hi use karta hai
     client_id = st.secrets.get("META_APP_ID", "")
@@ -779,7 +799,7 @@ if "code" in st.query_params:
         save_platform_token("threads_token", auth_code)
         st.session_state["th_connected"] = True
         st.session_state["channels_synced"] = True
-        
+
     elif platform_state == "instagram":
         st.success("🎉 Instagram Account Successfully Linked! 🩷")
         save_platform_token("instagram_token", auth_code)
@@ -1065,8 +1085,8 @@ else:
                 if st.button("❌ Disconnect Threads", use_container_width=True):
                     disconnect_platform("threads_token", "th_connected")
             else:
-                # Meta Threads Meta Dashboard ke URL framework ko use karega
-                meta_threads_link = get_meta_oauth_url() # Abhi ke liye Meta Flow se map kiya
+                # 🟢 YAHAN UPDATE KIYA HAI: Asli threads ka function call hoga
+                meta_threads_link = get_threads_oauth_url() 
                 st.markdown(f"<div style='margin-bottom: 16px;'><a href='{meta_threads_link}' target='_blank' style='text-decoration: none;'><button style='width:100%; background-color:#000000; color:white; border: 1px solid #333; padding:10px; border-radius:5px; font-weight:bold; cursor:pointer; height:42px; font-size:14px; box-shadow: 0px 2px 4px rgba(0,0,0,0.1);'>🧵 Connect Meta Threads</button></a></div>", unsafe_allow_html=True)
 
         with col2:
