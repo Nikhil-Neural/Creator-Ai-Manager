@@ -186,6 +186,33 @@ def sync_platform_analytics():
     except Exception as e:
         print(f"[SYSTEM SYNC ERROR] {str(e)}")
         return False
+def get_youtube_access_token(auth_code):
+    """
+    Kachhe Auth Code ko Google ke server par bhej kar asli Access Token laata hai.
+    """
+    client_id = st.secrets.get("YOUTUBE_CLIENT_ID", "")
+    client_secret = st.secrets.get("YOUTUBE_CLIENT_SECRET", "") # ⚠️ Yeh secret chahiye hoga!
+    redirect_uri = "https://creator-ai-manager-tgrh5ifkgfqme6kdomcvxb.streamlit.app/"
+    
+    token_url = "https://oauth2.googleapis.com/token"
+    payload = {
+        "client_id": client_id,
+        "client_secret": client_secret,
+        "code": auth_code,
+        "grant_type": "authorization_code",
+        "redirect_uri": redirect_uri
+    }
+    
+    try:
+        response = requests.post(token_url, data=payload)
+        if response.status_code == 200:
+            return response.json().get("access_token")
+        else:
+            print(f"[YT TOKEN ERROR] Google rejected the code: {response.text}")
+            return None
+    except Exception as e:
+        print(f"[YT TOKEN EXCEPTION] {str(e)}")
+        return None
 
 def parse_blueprint_metadata(raw_text):
     """
@@ -874,10 +901,16 @@ if "code" in st.query_params:
         st.session_state["channels_synced"] = True
         
     elif platform_state == "youtube":
-        st.success("🎉 YouTube Channel Successfully Linked! ❤️")
-        save_platform_token("youtube_token", auth_code)
-        st.session_state["yt_connected"] = True
-        st.session_state["channels_synced"] = True
+        st.info("🔄 Authenticating secure connection with Google...")
+        real_access_token = get_youtube_access_token(auth_code)
+        
+        if real_access_token:
+            st.success("🎉 YouTube Channel Successfully Linked! ❤️")
+            save_platform_token("youtube_token", real_access_token) # Yahan asli token save ho raha hai!
+            st.session_state["yt_connected"] = True
+            st.session_state["channels_synced"] = True
+        else:
+            st.error("❌ YouTube Auth Failed. Please try connecting again.")
     
     elif platform_state.startswith("linkedin"):
         st.success("🎉 LinkedIn Profile Successfully Linked! 💼")
