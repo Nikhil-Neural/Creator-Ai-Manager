@@ -184,8 +184,8 @@ def sync_platform_analytics():
         return True
         
     except Exception as e:
-        print(f"[SYSTEM SYNC ERROR] {str(e)}")
-        return False
+        # Ab hum error ko chhipayenge nahi, seedha UI par bhejenge!
+        return f"CRASH LOG: {str(e)}"
 def get_youtube_access_token(auth_code):
     """
     Kachhe Auth Code ko Google ke server par bhej kar asli Access Token laata hai.
@@ -1316,14 +1316,18 @@ else:
             with col_head2:
                 # ⚡ THE PREMIUM SYNC BUTTON
                 if st.button("⚡ Live Sync (Premium)", use_container_width=True):
-                    with st.spinner("Establishing secure connection to Meta & Google APIs..."):
-                        success = sync_platform_analytics()
-                        if success:
+                    with st.spinner("Bypassing security layers... Extracting matrix data..."):
+                        sync_result = sync_platform_analytics()
+                        
+                        if sync_result is True:
                             st.toast("✅ Data successfully synced to cache matrix!")
                             time.sleep(1)
                             st.rerun()
+                        elif sync_result is False:
+                            st.error("❌ Sync Failed: User data not found. Please re-login.")
                         else:
-                            st.error("Sync Failed. Check API connections.")
+                            # 🚨 THE X-RAY VISION (Asli error yahan dikhega)
+                            st.error(f"⚠️ SYSTEM REJECTED: {sync_result}")
 
             st.write("---")
             
