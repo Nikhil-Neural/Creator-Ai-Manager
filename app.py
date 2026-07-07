@@ -94,6 +94,98 @@ def post_to_linkedin(post_text, access_token, person_urn):
     except Exception as e:
         return False, f"System Error: {str(e)}"
 import re
+# ==============================================================
+# 📊 ANALYTICS DATA FETCHERS (READ BRIDGES)
+# ==============================================================
+def fetch_youtube_analytics(access_token):
+    """
+    YouTube Data API v3 se channel ke total views, subs aur video count nikalta hai.
+    """
+    url = "https://www.googleapis.com/youtube/v3/channels?part=statistics&mine=true"
+    headers = {
+        "Authorization": f"Bearer {access_token}",
+        "Accept": "application/json"
+    }
+    
+    try:
+        response = requests.get(url, headers=headers)
+        if response.status_code == 200:
+            data = response.json()
+            if "items" in data and len(data["items"]) > 0:
+                stats = data["items"][0]["statistics"]
+                # JSONB format ke liye clean dictionary return kar rahe hain
+                return {
+                    "views": int(stats.get("viewCount", 0)),
+                    "subscribers": int(stats.get("subscriberCount", 0)),
+                    "video_count": int(stats.get("videoCount", 0)),
+                    "status": "connected"
+                }
+            else:
+                return {"error": "Channel not found", "status": "failed"}
+        elif response.status_code == 401:
+            # Token expire hone ka error
+            return {"error": "Token Expired", "status": "auth_failed"}
+        else:
+            return {"error": f"API Error: {response.status_code}", "status": "failed"}
+            
+    except Exception as e:
+        print(f"[YT ANALYTICS ERROR] {str(e)}")
+        return {"error": str(e), "status": "failed"}
+# ==============================================================
+# 🔄 MASTER SYNC ENGINE (API to Supabase Cache)
+# ==============================================================
+def sync_platform_analytics():
+    """
+    User ke tokens fetch karta hai, live APIs ko hit karta hai, aur data ko 
+    platform_analytics_cache table mein update (UPSERT) kar deta hai.
+    """
+    creator_handle = st.session_state.get("creator_handle")
+    if not creator_handle:
+        return False
+        
+    try:
+        # 1. User ke secure tokens nikalo
+        profile_res = supabase.table("creator_profiles").select("*").eq("creator_handle", creator_handle).execute()
+        if not profile_res.data:
+            return False
+            
+        user_tokens = profile_res.data[0]
+        yt_token = user_tokens.get("youtube_token")
+        
+        yt_data = {}
+        sync_health = "Healthy"
+        
+        # 2. YouTube Data Pull karo (Agar connected hai)
+        if yt_token:
+            yt_data = fetch_youtube_analytics(yt_token)
+            if yt_data.get("status") == "auth_failed":
+                sync_health = "YT_Auth_Failed"
+                
+        # (Future mein Meta aur Threads ke fetchers bhi yahan aayenge)
+        
+        # 3. Supabase Cache Matrix mein Inject karo (Check if exists)
+        cache_res = supabase.table("platform_analytics_cache").select("id").eq("creator_handle", creator_handle).execute()
+        
+        if cache_res.data:
+            # Puraana data mila, toh UPDATE karo
+            supabase.table("platform_analytics_cache").update({
+                "youtube_data": yt_data,
+                "sync_status": sync_health,
+                # last_synced_at automatically update ho jayega default function se ya hum manual bhej sakte hain
+            }).eq("creator_handle", creator_handle).execute()
+        else:
+            # Naya user hai, toh INSERT karo
+            supabase.table("platform_analytics_cache").insert({
+                "creator_handle": creator_handle,
+                "youtube_data": yt_data,
+                "sync_status": sync_health
+            }).execute()
+            
+        return True
+        
+    except Exception as e:
+        print(f"[SYSTEM SYNC ERROR] {str(e)}")
+        return False
 
 def parse_blueprint_metadata(raw_text):
     """
@@ -1157,41 +1249,94 @@ else:
 
     # PILL SECTION B: ANALYSIS ENGINE CODES MATRIX
     elif selected_auditor_section == "📈 2. Real-Time Performance Audit":
-        st.markdown("### 📈 Live Extraction Performance Audit Strategies")
+        st.markdown("### 📈 Omnichannel Smart Analytics Matrix")
+        st.write("Real-time aggregated performance data across your linked platforms.")
         
-        # 1. BRIDGE: Vault se blueprints fetch karo
-        try:
-            response = supabase.table("ai_blueprints_vault").select("*").eq("creator_email", st.session_state["user_email"]).execute()
-            blueprints = response.data if response.data else []
-        except:
-            blueprints = []
+        # 🎨 CYBERPUNK UI STYLING INJECTION
+        st.markdown("""
+        <style>
+        .metric-box {
+            background-color: #111111;
+            border-left: 4px solid #00FFAA;
+            padding: 15px;
+            border-radius: 5px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            margin-bottom: 15px;
+        }
+        .metric-title { color: #888888; font-size: 14px; text-transform: uppercase; letter-spacing: 1px; font-weight: bold;}
+        .metric-value { color: #FFFFFF; font-size: 32px; font-weight: 800; margin-top: 5px;}
+        .warning-box { border-left: 4px solid #FF4444 !important; }
+        </style>
+        """, unsafe_allow_html=True)
 
-        if not blueprints:
-            st.warning("⚠️ Vault Empty: Pehle Tab 1 mein script generate karein.")
+        creator_handle = st.session_state.get("creator_handle")
+        
+        if not creator_handle:
+            st.warning("⚠️ Security Lock: Please connect your accounts in Tab 1 first.")
         else:
-            # 2. Dropdown UI to Select Blueprint
-            blueprint_options = {f"{item['niche_topic']} ({item['target_platform']})": item for item in blueprints}
-            selected_bp_name = st.selectbox("Select a Blueprint to Audit:", options=list(blueprint_options.keys()))
-            selected_bp = blueprint_options[selected_bp_name]
+            # 🧠 HEADER & SYNC CONTROLS
+            col_head1, col_head2 = st.columns([3, 1])
+            with col_head1:
+                st.markdown("#### 🧠 AI Manager Confidence Monitor")
+                # Yeh AI text abhi static hai, aage chalkar Groq se dynamically likhwayenge
+                st.info("💡 **System Insight:** YouTube matrix is establishing. Meta ecosystem is standing by. Hit 'Live Sync' to fetch initial baseline data.")
+            with col_head2:
+                # ⚡ THE PREMIUM SYNC BUTTON
+                if st.button("⚡ Live Sync (Premium)", use_container_width=True):
+                    with st.spinner("Establishing secure connection to Meta & Google APIs..."):
+                        success = sync_platform_analytics()
+                        if success:
+                            st.toast("✅ Data successfully synced to cache matrix!")
+                            time.sleep(1)
+                            st.rerun()
+                        else:
+                            st.error("Sync Failed. Check API connections.")
 
-            # 3. Inject Metadata into Session
-            st.session_state["audit_data_ready"] = True
-            
-            st.write(f"---")
-            st.write(f"🔄 **Auditing Blueprint:** {selected_bp['niche_topic']}")
-            
-            # 4. Zero-Cost Metrics Display (Using fetched DB data)
-            m1, m2, m3 = st.columns(3)
-            with m1: st.metric("Platform", selected_bp['target_platform'])
-            with m2: st.metric("Status", selected_bp['status'])
-            with m3: st.metric("Date", selected_bp['created_at'].split('T')[0])
-            
             st.write("---")
-            st.markdown("#### 🕵️ Deep Virality Leak Diagnostics")
             
-            # Yahan hum AI ko call nahi kar rahe, DB se utha kar dikha rahe hain!
-            with st.expander("🔴 VIEW PRODUCTION ANALYSIS", expanded=True):
-                st.markdown(selected_bp['script_content'])
+            # 🗄️ FETCH CACHED DATA (Zero API Cost)
+            try:
+                cache_res = supabase.table("platform_analytics_cache").select("*").eq("creator_handle", creator_handle).execute()
+                cache_data = cache_res.data[0] if cache_res.data else None
+            except:
+                cache_data = None
+
+            if not cache_data:
+                st.info("📭 Vault Empty: No analytics data cached yet. Click 'Live Sync' to pull your first matrix.")
+            else:
+                # Time formatting (T hatana)
+                raw_time = cache_data.get('last_synced_at', 'Unknown')
+                clean_time = raw_time.replace('T', ' ')[:16] if raw_time != 'Unknown' else raw_time
+                
+                st.caption(f"🕒 **Last Auto-Sync:** {clean_time} (UTC) | **System Status:** {cache_data.get('sync_status', 'Unknown')}")
+                
+                # 🚨 GRACEFUL ERROR HANDLING
+                if "Auth_Failed" in cache_data.get('sync_status', ''):
+                    st.error("⚠️ Token Integrity Alert: One or more platform tokens expired. Please re-link in the Secure Hub (Tab 1).")
+
+                # 📺 YOUTUBE UI GRID
+                yt = cache_data.get("youtube_data", {})
+                if yt and yt.get("status") == "connected":
+                    st.markdown("##### 📺 YouTube Mainframe")
+                    y1, y2, y3 = st.columns(3)
+                    with y1:
+                        st.markdown(f'<div class="metric-box"><div class="metric-title">Total Views</div><div class="metric-value">{yt.get("views", 0):,}</div></div>', unsafe_allow_html=True)
+                    with y2:
+                        st.markdown(f'<div class="metric-box"><div class="metric-title">Subscribers</div><div class="metric-value">{yt.get("subscribers", 0):,}</div></div>', unsafe_allow_html=True)
+                    with y3:
+                        st.markdown(f'<div class="metric-box"><div class="metric-title">Video Count</div><div class="metric-value">{yt.get("video_count", 0):,}</div></div>', unsafe_allow_html=True)
+                else:
+                    st.warning("📺 YouTube Node Offline: Data missing or account not linked.")
+                
+                st.write(" ")
+                
+                # 🩷 META UI GRID (Placeholder mapping for next phase)
+                st.markdown("##### 🩷 Meta Ecosystem (IG / FB)")
+                m1, m2 = st.columns(2)
+                with m1:
+                    st.markdown(f'<div class="metric-box warning-box"><div class="metric-title">IG Reach (7D)</div><div class="metric-value" style="color: #FF4444;">Awaiting Node...</div></div>', unsafe_allow_html=True)
+                with m2:
+                    st.markdown(f'<div class="metric-box warning-box"><div class="metric-title">FB Interactions</div><div class="metric-value" style="color: #FF4444;">Awaiting Node...</div></div>', unsafe_allow_html=True)
 
     # PILL SECTION C: AUTOMATED PUBLISHER DEPLOYMENT PIPELINE
     elif selected_auditor_section == "🚀 3. Omnichannel Media Publisher Node":
