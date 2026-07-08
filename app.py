@@ -1269,24 +1269,46 @@ else:
                 st.markdown(f"<div style='margin-bottom: 16px;'><a href='{meta_threads_link}' target='_blank' style='text-decoration: none;'><button style='width:100%; background-color:#000000; color:white; border: 1px solid #333; padding:10px; border-radius:5px; font-weight:bold; cursor:pointer; height:42px; font-size:14px; box-shadow: 0px 2px 4px rgba(0,0,0,0.1);'>🧵 Connect Meta Threads</button></a></div>", unsafe_allow_html=True)
 
         with col2:
-            st.subheader("📸 Instagram")
-            if st.session_state.get("ig_connected"):
-                st.success("✅ Connected: Instagram Business")
-                if st.button("❌ Disconnect Instagram", use_container_width=True):
-                    disconnect_platform("instagram_token", "ig_connected")
-            else:
-                meta_login_link = get_meta_oauth_url()
-                st.markdown(f"<div style='margin-bottom: 16px;'><a href='{meta_login_link}' target='_blank' style='text-decoration: none;'><button style='width:100%; background-color:#E1306C; color:white; border:none; padding:10px; border-radius:5px; font-weight:bold; cursor:pointer; height:42px; font-size:14px; box-shadow: 0px 2px 4px rgba(0,0,0,0.1);'>🩷 Connect Instagram Business</button></a></div>", unsafe_allow_html=True)    
+            st.subheader("♾️ Meta Ecosystem (FB & IG)")
+            
+            # 1. The Pre-Flight Warning
+            st.caption("⚠️ **SYSTEM REQUIREMENT:** To fetch Instagram data, your IG account MUST be linked to a Facebook Page.")
+            
+            # 2. The "How To" UX Guide
+            with st.expander("📖 How to link Instagram to Facebook?"):
+                st.markdown("""
+                **📱 From Mobile App (Fastest):**
+                1. Open Instagram > Go to your Profile.
+                2. Tap Menu (☰) > Settings and privacy.
+                3. Go to 'Business tools and controls'.
+                4. Tap 'Connect or create a Facebook Page' and follow the steps.
+                
+                **💻 From Desktop:**
+                1. Open **Meta Business Suite**.
+                2. Go to **Settings** > **Business Assets**.
+                3. Add your Instagram account to the same asset group as your Facebook Page.
+                """)
                 
             st.write(" ")
-            st.subheader("🔵 Facebook")
+            
+            # 3. The Single Master Button
+            # (Backend mein fb_connected hi hamara Meta status hai)
             if st.session_state.get("fb_connected"):
-                st.success("✅ Connected: Facebook Page")
-                if st.button("❌ Disconnect Facebook", use_container_width=True):
-                    disconnect_platform("facebook_token", "fb_connected")
+                st.success("✅ Connected: Meta Ecosystem")
+                if st.button("❌ Disconnect Meta", use_container_width=True):
+                    # Disconnect karte waqt dono tokens DB se uda do secure measure ke liye
+                    if st.session_state.get("creator_handle"):
+                        supabase.table("creator_profiles").update({
+                            "facebook_token": None,
+                            "instagram_token": None
+                        }).eq("creator_handle", st.session_state["creator_handle"]).execute()
+                    st.session_state["fb_connected"] = False
+                    st.session_state["ig_connected"] = False
+                    st.rerun()
             else:
-                fb_login_link = get_facebook_oauth_url()
-                st.markdown(f"<a href='{fb_login_link}' target='_blank' style='text-decoration: none;'><button style='width:100%; background-color:#1877F2; color:white; border:none; padding:10px; border-radius:5px; font-weight:bold; cursor:pointer; height:38px; font-size:14px; box-shadow: 0px 2px 4px rgba(0,0,0,0.1);'>💙 Connect Facebook Page</button></a>", unsafe_allow_html=True)
+                # Hum Facebook wala Graph API route hi use kar rahe hain
+                meta_login_link = get_facebook_oauth_url()
+                st.markdown(f"<a href='{meta_login_link}' target='_blank' style='text-decoration: none;'><button style='width:100%; background-color:#0668E1; color:white; border:none; padding:10px; border-radius:5px; font-weight:bold; cursor:pointer; height:42px; font-size:14px; box-shadow: 0px 2px 4px rgba(0,0,0,0.1);'>♾️ Connect Meta Ecosystem</button></a>", unsafe_allow_html=True)
             # 💼 NEW: LINKEDIN UI CONNECT NODE
             st.write(" ")
             st.subheader("💼 LinkedIn")
