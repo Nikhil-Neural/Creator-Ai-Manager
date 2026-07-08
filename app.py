@@ -131,6 +131,51 @@ def fetch_youtube_analytics(access_token):
     except Exception as e:
         print(f"[YT ANALYTICS ERROR] {str(e)}")
         return {"error": str(e), "status": "failed"}
+def fetch_meta_analytics(access_token):
+    """
+    Ek hi Meta token se Facebook Page aur us se linked Instagram Business ka data nikalta hai.
+    """
+    base_url = "https://graph.facebook.com/v18.0"
+    
+    try:
+        # 1. User ke connected Facebook Pages nikalo
+        pages_url = f"{base_url}/me/accounts?access_token={access_token}"
+        pages_res = requests.get(pages_url).json()
+        
+        if "error" in pages_res:
+            return {"error": pages_res["error"]["message"], "status": "auth_failed"}
+            
+        fb_data = {"followers": 0, "status": "offline"}
+        ig_data = {"followers": 0, "status": "offline"}
+        
+        # 2. Page loop karke data aur linked IG account fetch karo
+        if "data" in pages_res and len(pages_res["data"]) > 0:
+            first_page = pages_res["data"][0]
+            page_id = first_page.get("id")
+            page_token = first_page.get("access_token")
+            
+            # FB Page Details (Followers)
+            fb_page_url = f"{base_url}/{page_id}?fields=followers_count&access_token={page_token}"
+            fb_details = requests.get(fb_page_url).json()
+            fb_data["followers"] = fb_details.get("followers_count", 0)
+            fb_data["status"] = "connected"
+            
+            # Connected IG Account Details
+            ig_link_url = f"{base_url}/{page_id}?fields=instagram_business_account&access_token={page_token}"
+            ig_link_res = requests.get(ig_link_url).json()
+            
+            if "instagram_business_account" in ig_link_res:
+                ig_id = ig_link_res["instagram_business_account"]["id"]
+                ig_user_url = f"{base_url}/{ig_id}?fields=followers_count&access_token={access_token}"
+                ig_details = requests.get(ig_user_url).json()
+                ig_data["followers"] = ig_details.get("followers_count", 0)
+                ig_data["status"] = "connected"
+        
+        return {"facebook": fb_data, "instagram": ig_data, "status": "connected"}
+        
+    except Exception as e:
+        print(f"[META ANALYTICS ERROR] {str(e)}")
+        return {"error": str(e), "status": "failed"}
 # ==============================================================
 # 🔄 MASTER SYNC ENGINE (API to Supabase Cache)
 # ==============================================================
@@ -155,29 +200,38 @@ def sync_platform_analytics():
         yt_data = {}
         sync_health = "Healthy"
         
-        # 2. YouTube Data Pull karo (Agar connected hai)
+        # 2. YouTube Data Pull karo
         if yt_token:
             yt_data = fetch_youtube_analytics(yt_token)
             if yt_data.get("status") == "auth_failed":
                 sync_health = "YT_Auth_Failed"
                 
-        # (Future mein Meta aur Threads ke fetchers bhi yahan aayenge)
-        
-        # 3. Supabase Cache Matrix mein Inject karo (Check if exists)
+        # 3. META Data Pull (FB & IG Ek Saath)
+        fb_token = user_tokens.get("facebook_token") or user_tokens.get("instagram_token")
+        meta_results = {}
+        if fb_token:
+            meta_results = fetch_meta_analytics(fb_token)
+            if meta_results.get("status") == "auth_failed":
+                sync_health = "Meta_Auth_Failed"
+                
+        # 4. Supabase Cache Matrix mein Inject karo
         cache_res = supabase.table("platform_analytics_cache").select("id").eq("creator_handle", creator_handle).execute()
         
         if cache_res.data:
-            # Puraana data mila, toh UPDATE karo
+            # UPDATE
             supabase.table("platform_analytics_cache").update({
                 "youtube_data": yt_data,
+                "facebook_data": meta_results.get("facebook", {}),
+                "instagram_data": meta_results.get("instagram", {}),
                 "sync_status": sync_health,
-                # last_synced_at automatically update ho jayega default function se ya hum manual bhej sakte hain
             }).eq("creator_handle", creator_handle).execute()
         else:
-            # Naya user hai, toh INSERT karo
+            # INSERT
             supabase.table("platform_analytics_cache").insert({
                 "creator_handle": creator_handle,
                 "youtube_data": yt_data,
+                "facebook_data": meta_results.get("facebook", {}),
+                "instagram_data": meta_results.get("instagram", {}),
                 "sync_status": sync_health
             }).execute()
             
@@ -1367,13 +1421,22 @@ else:
                 
                 st.write(" ")
                 
-                # 🩷 META UI GRID (Placeholder mapping for next phase)
+                # 🩷 META UI GRID
                 st.markdown("##### 🩷 Meta Ecosystem (IG / FB)")
+                fb = cache_data.get("facebook_data", {})
+                ig = cache_data.get("instagram_data", {})
+                
                 m1, m2 = st.columns(2)
                 with m1:
-                    st.markdown(f'<div class="metric-box warning-box"><div class="metric-title">IG Reach (7D)</div><div class="metric-value" style="color: #FF4444;">Awaiting Node...</div></div>', unsafe_allow_html=True)
+                    if ig and ig.get("status") == "connected":
+                        st.markdown(f'<div class="metric-box"><div class="metric-title">IG Followers</div><div class="metric-value">{ig.get("followers", 0):,}</div></div>', unsafe_allow_html=True)
+                    else:
+                        st.markdown(f'<div class="metric-box warning-box"><div class="metric-title">IG Node</div><div class="metric-value" style="color: #FF4444;">Offline</div></div>', unsafe_allow_html=True)
                 with m2:
-                    st.markdown(f'<div class="metric-box warning-box"><div class="metric-title">FB Interactions</div><div class="metric-value" style="color: #FF4444;">Awaiting Node...</div></div>', unsafe_allow_html=True)
+                    if fb and fb.get("status") == "connected":
+                        st.markdown(f'<div class="metric-box"><div class="metric-title">FB Page Followers</div><div class="metric-value">{fb.get("followers", 0):,}</div></div>', unsafe_allow_html=True)
+                    else:
+                        st.markdown(f'<div class="metric-box warning-box"><div class="metric-title">FB Node</div><div class="metric-value" style="color: #FF4444;">Offline</div></div>', unsafe_allow_html=True)
 
     # PILL SECTION C: AUTOMATED PUBLISHER DEPLOYMENT PIPELINE
     elif selected_auditor_section == "🚀 3. Omnichannel Media Publisher Node":
