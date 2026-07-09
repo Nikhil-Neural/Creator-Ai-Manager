@@ -597,7 +597,7 @@ def get_facebook_oauth_url():
     
     # Facebook ke specific permissions (Scopes)
     # Yeh permissions aapko page ki list dekhne aur uspar post karne ki power dengi
-    scopes = ["pages_show_list", "pages_read_engagement", "pages_manage_posts"]
+    scopes = ["pages_show_list", "pages_read_engagement", "pages_manage_posts", "instagram_business_basic", "instagram_business_content_publish", "instagram_business_manage_insights"]
     scope_str = ",".join(scopes)
     
     # Facebook ka direct authorization endpoint
@@ -949,9 +949,14 @@ if "code" in st.query_params:
     platform_state = st.query_params.get("state", "instagram") 
     
     if platform_state == "facebook":
-        st.success("🎉 Facebook Page Successfully Linked! 💙")
+        # ✨ UI Par dono ka naam chamkega ab!
+        st.success("🎉 Meta Ecosystem (Facebook + Instagram) Successfully Linked! ♾️")
+        
         save_platform_token("facebook_token", auth_code)
+        save_platform_token("instagram_token", auth_code) # Dono jagah same token secure kar do
+        
         st.session_state["fb_connected"] = True
+        st.session_state["ig_connected"] = True          # 🔥 Insta node ko bhi turant active karo
         st.session_state["channels_synced"] = True
         
     elif platform_state == "youtube":
