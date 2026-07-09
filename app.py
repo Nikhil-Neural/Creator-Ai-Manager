@@ -618,7 +618,7 @@ def get_facebook_oauth_url():
     
     # Facebook ke specific permissions (Scopes)
     # Yeh permissions aapko page ki list dekhne aur uspar post karne ki power dengi
-    scopes = ["pages_show_list", "pages_read_engagement", "pages_manage_posts", "instagram_business_basic", "instagram_business_content_publish", "instagram_business_manage_insights"]
+    scopes = ["pages_show_list", "pages_read_engagement", "pages_manage_posts", "instagram_basic", "instagram_content_publish", "instagram_manage_insights"]
     scope_str = ",".join(scopes)
     
     # Facebook ka direct authorization endpoint
