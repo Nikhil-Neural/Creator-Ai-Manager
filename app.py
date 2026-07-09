@@ -267,6 +267,27 @@ def get_youtube_access_token(auth_code):
     except Exception as e:
         print(f"[YT TOKEN EXCEPTION] {str(e)}")
         return None
+def get_meta_access_token(auth_code):
+    """
+    Kachhe Auth Code ko Meta API par bhej kar asli Access Token laata hai.
+    """
+    client_id = st.secrets.get("META_APP_ID", "")
+    client_secret = st.secrets.get("META_APP_SECRET", "") # ⚠️ YEH NAYA SECRET CHAHIYE HOGA
+    redirect_uri = "https://creator-ai-manager-tgrh5ifkgfqme6kdomcvxb.streamlit.app/" 
+    
+    url = f"https://graph.facebook.com/v18.0/oauth/access_token?client_id={client_id}&redirect_uri={redirect_uri}&client_secret={client_secret}&code={auth_code}"
+    
+    try:
+        response = requests.get(url)
+        data = response.json()
+        if "access_token" in data:
+            return data["access_token"]
+        else:
+            print(f"[META TOKEN ERROR] API rejected code: {data}")
+            return None
+    except Exception as e:
+        print(f"[META TOKEN EXCEPTION] {str(e)}")
+        return None
 
 def parse_blueprint_metadata(raw_text):
     """
@@ -949,15 +970,21 @@ if "code" in st.query_params:
     platform_state = st.query_params.get("state", "instagram") 
     
     if platform_state == "facebook":
-        # ✨ UI Par dono ka naam chamkega ab!
-        st.success("🎉 Meta Ecosystem (Facebook + Instagram) Successfully Linked! ♾️")
+        st.info("🔄 Authenticating secure connection with Meta...")
+        # Kachhe code ko oven mein dalo
+        real_access_token = get_meta_access_token(auth_code)
         
-        save_platform_token("facebook_token", auth_code)
-        save_platform_token("instagram_token", auth_code) # Dono jagah same token secure kar do
-        
-        st.session_state["fb_connected"] = True
-        st.session_state["ig_connected"] = True          # 🔥 Insta node ko bhi turant active karo
-        st.session_state["channels_synced"] = True
+        if real_access_token:
+            st.success("🎉 Meta Ecosystem (Facebook + Instagram) Successfully Linked! ♾️")
+            # Asli token ko DB mein save karo
+            save_platform_token("facebook_token", real_access_token)
+            save_platform_token("instagram_token", real_access_token)
+            
+            st.session_state["fb_connected"] = True
+            st.session_state["ig_connected"] = True
+            st.session_state["channels_synced"] = True
+        else:
+            st.error("❌ Meta Auth Failed. Check your Meta App Secret or URL.")
         
     elif platform_state == "youtube":
         st.info("🔄 Authenticating secure connection with Google...")
