@@ -980,17 +980,19 @@ if "code" in st.query_params:
         real_access_token = get_meta_access_token(auth_code)
         
         if real_access_token:
-            # ✨ UI par dono ka naam chamkega ab!
-            st.success("🎉 Meta Ecosystem (Facebook + Instagram) Successfully Linked! ♾️")
-            
-            # Dono jagah same unified master token save karo
-            save_platform_token("facebook_token", real_access_token)
-            save_platform_token("instagram_token", real_access_token)
-            
-            # 🔥 Dono flags ko instantly turn ON karo taaki UI turant change ho jaye
+            # 1. State flags update karo
             st.session_state["fb_connected"] = True
             st.session_state["ig_connected"] = True
             st.session_state["channels_synced"] = True
+            
+            # 2. Database mein tokens secure karo
+            save_platform_token("facebook_token", real_access_token)
+            save_platform_token("instagram_token", real_access_token)
+            
+            st.success("🎉 Meta Ecosystem (Facebook + Instagram) Successfully Linked! ♾️")
+            
+            # 🔥 THE CRITICAL JUMP: Rerun se PEHLE URL params ko nuke karo taaki double trigger na ho
+            st.query_params.clear()
             time.sleep(1)
             st.rerun()
         else:
