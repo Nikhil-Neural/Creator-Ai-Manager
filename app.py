@@ -137,48 +137,60 @@ def fetch_youtube_analytics(access_token):
 # ==============================================================
 def fetch_meta_analytics(access_token):
     """
-    Ek hi Meta Graph token se Facebook Page aur us se linked Instagram Business ke
-    REAL FOLLOWERS ka combined analytics data nikalta hai.
+    X-RAY MODE: Har ek Meta API level ka asli error pakad kar UI par bhejta hai.
     """
     base_url = "https://graph.facebook.com/v18.0"
     try:
+        # 1. Accounts Fetch Check
         pages_url = f"{base_url}/me/accounts?access_token={access_token}"
         pages_res = requests.get(pages_url).json()
         
         if "error" in pages_res:
-            return {"error": pages_res["error"]["message"], "status": "auth_failed"}
+            return {"error": f"Meta Token Rejected: {pages_res['error']['message']}", "status": "failed"}
             
-        fb_data = {"followers": 0, "status": "offline"}
-        ig_data = {"followers": 0, "status": "offline"}
+        fb_data = {"followers": 0, "status": "offline", "debug_msg": "No Pages Found"}
+        ig_data = {"followers": 0, "status": "offline", "debug_msg": "No Connected IG Found"}
         
         if "data" in pages_res and len(pages_res["data"]) > 0:
             first_page = pages_res["data"][0]
             page_id = first_page.get("id")
             page_token = first_page.get("access_token")
             
-            # FB Analytics Data Pull
+            # FB Page Details Pull
             fb_page_url = f"{base_url}/{page_id}?fields=followers_count&access_token={page_token}"
             fb_details = requests.get(fb_page_url).json()
-            fb_data["followers"] = fb_details.get("followers_count", 0)
-            fb_data["status"] = "connected"
             
-            # Connected Instagram Business Node Pull
+            if "error" in fb_details:
+                fb_data["debug_msg"] = f"FB API Error: {fb_details['error']['message']}"
+            else:
+                fb_data["followers"] = fb_details.get("followers_count", 0)
+                fb_data["status"] = "connected"
+                fb_data["debug_msg"] = "Successfully Connected"
+            
+            # Connected IG Account Details Pull
             ig_link_url = f"{base_url}/{page_id}?fields=instagram_business_account&access_token={page_token}"
             ig_link_res = requests.get(ig_link_url).json()
             
-            if "instagram_business_account" in ig_link_res:
+            if "error" in ig_link_res:
+                ig_data["debug_msg"] = f"IG Link Discovery Failed: {ig_link_res['error']['message']}"
+            elif "instagram_business_account" in ig_link_res:
                 ig_id = ig_link_res["instagram_business_account"]["id"]
-                # 🪐 ROAD 2 TRIUMPH: Pulling actual IG followers using whitelisted dev dashboard token
                 ig_user_url = f"{base_url}/{ig_id}?fields=followers_count&access_token={access_token}"
                 ig_details = requests.get(ig_user_url).json()
-                ig_data["followers"] = ig_details.get("followers_count", 0)
-                ig_data["status"] = "connected"
+                
+                if "error" in ig_details:
+                    ig_data["debug_msg"] = f"IG Data Pull Blocked: {ig_details['error']['message']}"
+                else:
+                    ig_data["followers"] = ig_details.get("followers_count", 0)
+                    ig_data["status"] = "connected"
+                    ig_data["debug_msg"] = "Successfully Connected"
+            else:
+                ig_data["debug_msg"] = "Critical: This Facebook Page has NO Instagram Business Account linked to it inside Meta Suite!"
         
         return {"facebook": fb_data, "instagram": ig_data, "status": "connected"}
         
     except Exception as e:
-        print(f"[META ANALYTICS ERROR] {str(e)}")
-        return {"error": str(e), "status": "failed"}
+        return {"error": f"System Crash: {str(e)}", "status": "failed"}
 
 # ==============================================================
 # 🔐 META TOKEN EXCHANGE OVEN (FUNCTION A)
@@ -1451,78 +1463,62 @@ else:
 
             st.write("---")
 
-            # ♾️ META NODES SECTION (FB & IG Isolated Buttons)
-            st.markdown("#### 📱 Meta Ecosystem Independent Nodes")
-            meta_token = user_tokens.get("facebook_token") or user_tokens.get("instagram_token")
-
+            # 📱 INDEPENDENT SOCIAL NODES MATRIX
+            st.markdown("##### 📱 Independent Social Nodes (IG / FB)")
             fb = cache_data.get("facebook_data", {})
             ig = cache_data.get("instagram_data", {})
-
+                
+            # 🔥 TOKEN LOCK ENCRYPTED (Yahi chahiye!)
+            meta_token = user_tokens.get("facebook_token") or user_tokens.get("instagram_token")
+                
             m1, m2 = st.columns(2)
-            
             with m1:
                 st.markdown("##### 📸 Instagram Node")
                 if st.button("🔄 Sync Instagram Only", key="sync_ig_alone", use_container_width=True):
                     if meta_token:
-                        with st.spinner("Scanning Meta Graph for Instagram Meta-data..."):
+                        with st.spinner("Scanning Meta Graph..."):
                             meta_results = fetch_meta_analytics(meta_token)
                             ig_final_data = meta_results.get("instagram", {"status": "offline"})
-                            
-                            # Safe Check: Check if row already exists
                             check_res = supabase.table("platform_analytics_cache").select("id").eq("creator_handle", creator_handle).execute()
-                            
                             if check_res.data:
-                                supabase.table("platform_analytics_cache").update({
-                                    "instagram_data": ig_final_data
-                                }).eq("creator_handle", creator_handle).execute()
+                                supabase.table("platform_analytics_cache").update({"instagram_data": ig_final_data}).eq("creator_handle", creator_handle).execute()
                             else:
-                                supabase.table("platform_analytics_cache").insert({
-                                    "creator_handle": creator_handle,
-                                    "instagram_data": ig_final_data
-                                }).execute()
-                                
+                                supabase.table("platform_analytics_cache").insert({"creator_handle": creator_handle, "instagram_data": ig_final_data}).execute()
                             st.toast("✅ Instagram Cache updated!")
                             time.sleep(0.5)
                             st.rerun()
                     else:
                         st.error("Meta Token Missing!")
-
+                    
                 if ig and ig.get("status") == "connected":
                     st.markdown(f'<div class="metric-box"><div class="metric-title">IG Followers</div><div class="metric-value">{ig.get("followers", 0):,}</div></div>', unsafe_allow_html=True)
                 else:
                     st.markdown('<div class="metric-box warning-box"><div class="metric-title">IG Node</div><div class="metric-value" style="color: #FF4444;">Offline</div></div>', unsafe_allow_html=True)
+                    st.error(f"🕵️ IG Diagnostics Log: {ig.get('debug_msg', 'Token empty or never synced.')}")
 
             with m2:
                 st.markdown("##### 🔵 Facebook Node")
                 if st.button("🔄 Sync Facebook Only", key="sync_fb_alone", use_container_width=True):
                     if meta_token:
-                        with st.spinner("Extracting Facebook Edge Page Insights..."):
+                        with st.spinner("Extracting Facebook Insights..."):
                             meta_results = fetch_meta_analytics(meta_token)
                             fb_final_data = meta_results.get("facebook", {"status": "offline"})
-                            
-                            # Safe Check: Check if row already exists
                             check_res = supabase.table("platform_analytics_cache").select("id").eq("creator_handle", creator_handle).execute()
-                            
                             if check_res.data:
-                                supabase.table("platform_analytics_cache").update({
-                                    "facebook_data": fb_final_data
-                                }).eq("creator_handle", creator_handle).execute()
+                                supabase.table("platform_analytics_cache").update({"facebook_data": fb_final_data}).eq("creator_handle", creator_handle).execute()
                             else:
-                                supabase.table("platform_analytics_cache").insert({
-                                    "creator_handle": creator_handle,
-                                    "facebook_data": fb_final_data
-                                }).execute()
-                                
+                                supabase.table("platform_analytics_cache").insert({"creator_handle": creator_handle, "facebook_data": fb_final_data}).execute()
                             st.toast("✅ Facebook Cache updated!")
                             time.sleep(0.5)
                             st.rerun()
                     else:
                         st.error("Meta Token Missing!")
-
+                    
                 if fb and fb.get("status") == "connected":
                     st.markdown(f'<div class="metric-box"><div class="metric-title">FB Page Followers</div><div class="metric-value">{fb.get("followers", 0):,}</div></div>', unsafe_allow_html=True)
                 else:
                     st.markdown('<div class="metric-box warning-box"><div class="metric-title">FB Node</div><div class="metric-value" style="color: #FF4444;">Offline</div></div>', unsafe_allow_html=True)
+                    st.error(f"🕵️ FB Diagnostics Log: {fb.get('debug_msg', 'Token empty or never synced.')}")
 
     # PILL SECTION C: AUTOMATED PUBLISHER DEPLOYMENT PIPELINE
     elif selected_auditor_section == "🚀 3. Omnichannel Media Publisher Node":
