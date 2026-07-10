@@ -470,7 +470,7 @@ if "db_checked" not in st.session_state and st.session_state.get("creator_handle
             st.session_state["li_connected"] = bool(user_data.get("linkedin_token")) # 💼 LinkedIn Memory Load
             st.session_state["th_connected"] = bool(user_data.get("threads_token")) # Threads Memory Load
 
-            if any([st.session_state.get(k) for k in ["yt_connected", "tw_connected", "ig_connected", "fb_connected", "li_connected"]]):
+            if any([st.session_state.get(k) for k in ["yt_connected", "tw_connected", "ig_connected", "fb_connected", "li_connected", "th_connected"]]):
                 st.session_state["channels_synced"] = True
                 
         st.session_state["db_checked"] = True
@@ -976,16 +976,25 @@ if "code" in st.query_params:
     platform_state = st.query_params.get("state", "instagram") 
     
     if platform_state == "facebook":
-        st.info("🔄 Authenticating secure connection with Meta...")
-        real_access_token = get_meta_access_token(auth_code) # Yeh ab sirf FB token handle karega
+        st.info("🔄 Authenticating secure connection with Meta Ecosystem...")
+        real_access_token = get_meta_access_token(auth_code)
         
         if real_access_token:
-            st.success("🎉 Facebook Page Successfully Linked! 💙")
+            # ✨ UI par dono ka naam chamkega ab!
+            st.success("🎉 Meta Ecosystem (Facebook + Instagram) Successfully Linked! ♾️")
+            
+            # Dono jagah same unified master token save karo
             save_platform_token("facebook_token", real_access_token)
+            save_platform_token("instagram_token", real_access_token)
+            
+            # 🔥 Dono flags ko instantly turn ON karo taaki UI turant change ho jaye
             st.session_state["fb_connected"] = True
+            st.session_state["ig_connected"] = True
             st.session_state["channels_synced"] = True
+            time.sleep(1)
+            st.rerun()
         else:
-            st.error("❌ Facebook Auth Failed. Check your Meta App Secret or URL.")
+            st.error("❌ Meta Auth Failed. Check your Meta App Secret or URL.")
         
     elif platform_state == "youtube":
         st.info("🔄 Authenticating secure connection with Google...")
