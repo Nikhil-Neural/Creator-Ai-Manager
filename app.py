@@ -176,6 +176,16 @@ def fetch_meta_analytics(access_token):
     except Exception as e:
         print(f"[META ANALYTICS ERROR] {str(e)}")
         return {"error": str(e), "status": "failed"}
+def fetch_instagram_analytics(access_token):
+    """Direct IG API se username aur total posts nikalta hai."""
+    url = f"https://graph.instagram.com/me?fields=username,media_count&access_token={access_token}"
+    try:
+        res = requests.get(url).json()
+        if "username" in res:
+            return {"posts": res.get("media_count", 0), "status": "connected"}
+    except Exception as e:
+        print(f"[IG ANALYTICS ERROR] {str(e)}")
+    return {"status": "offline"}
 # ==============================================================
 # 🔄 MASTER SYNC ENGINE (API to Supabase Cache)
 # ==============================================================
@@ -207,12 +217,17 @@ def sync_platform_analytics():
                 sync_health = "YT_Auth_Failed"
                 
         # 3. META Data Pull (FB & IG Ek Saath)
-        fb_token = user_tokens.get("facebook_token") or user_tokens.get("instagram_token")
+        fb_token = user_tokens.get("facebook_token")
+        ig_token = user_tokens.get("instagram_token") # 👈 NAYA: IG Token alag nikala
+        
         meta_results = {}
         if fb_token:
             meta_results = fetch_meta_analytics(fb_token)
             if meta_results.get("status") == "auth_failed":
                 sync_health = "Meta_Auth_Failed"
+                
+        # 👈 NAYA: IG data direct fetch kiya
+        ig_data = fetch_instagram_analytics(ig_token) if ig_token else {"status": "offline"}
                 
         # 4. Supabase Cache Matrix mein Inject karo
         cache_res = supabase.table("platform_analytics_cache").select("id").eq("creator_handle", creator_handle).execute()
@@ -222,7 +237,7 @@ def sync_platform_analytics():
             supabase.table("platform_analytics_cache").update({
                 "youtube_data": yt_data,
                 "facebook_data": meta_results.get("facebook", {}),
-                "instagram_data": meta_results.get("instagram", {}),
+                "instagram_data": ig_data, # 👈 NAYA: IG variable pass kiya
                 "sync_status": sync_health,
             }).eq("creator_handle", creator_handle).execute()
         else:
@@ -231,7 +246,7 @@ def sync_platform_analytics():
                 "creator_handle": creator_handle,
                 "youtube_data": yt_data,
                 "facebook_data": meta_results.get("facebook", {}),
-                "instagram_data": meta_results.get("instagram", {}),
+                "instagram_data": ig_data, # 👈 NAYA: IG variable pass kiya
                 "sync_status": sync_health
             }).execute()
             
@@ -1452,7 +1467,8 @@ else:
                 m1, m2 = st.columns(2)
                 with m1:
                     if ig and ig.get("status") == "connected":
-                        st.markdown(f'<div class="metric-box"><div class="metric-title">IG Followers</div><div class="metric-value">{ig.get("followers", 0):,}</div></div>', unsafe_allow_html=True)
+                        # 👈 NAYA: 'IG Followers' ki jagah 'IG Total Posts' aur 'ig.get("posts")'
+                        st.markdown(f'<div class="metric-box"><div class="metric-title">IG Total Posts</div><div class="metric-value">{ig.get("posts", 0):,}</div></div>', unsafe_allow_html=True)
                     else:
                         st.markdown(f'<div class="metric-box warning-box"><div class="metric-title">IG Node</div><div class="metric-value" style="color: #FF4444;">Offline</div></div>', unsafe_allow_html=True)
                 with m2:
