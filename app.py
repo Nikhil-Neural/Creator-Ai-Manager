@@ -1376,10 +1376,9 @@ else:
 
     # PILL SECTION B: ANALYSIS ENGINE CODES MATRIX
     elif selected_auditor_section == "📈 2. Real-Time Performance Audit":
-        st.markdown("### 📈 Omnichannel Smart Analytics Matrix")
-        st.write("Real-time aggregated performance data across your linked platforms.")
+        st.markdown("### 📈 Omnichannel Granular Analytics Radar")
+        st.write("Independently sync and monitor live parameters for each social node.")
         
-        # 🎨 CYBERPUNK UI STYLING INJECTION
         st.markdown("""
         <style>
         .metric-box {
@@ -1401,83 +1400,97 @@ else:
         if not creator_handle:
             st.warning("⚠️ Security Lock: Please connect your accounts in Tab 1 first.")
         else:
-            # 🧠 HEADER & SYNC CONTROLS
-            col_head1, col_head2 = st.columns([3, 1])
-            with col_head1:
-                st.markdown("#### 🧠 AI Manager Confidence Monitor")
-                # Yeh AI text abhi static hai, aage chalkar Groq se dynamically likhwayenge
-                st.info("💡 **System Insight:** YouTube matrix is establishing. Meta ecosystem is standing by. Hit 'Live Sync' to fetch initial baseline data.")
-            with col_head2:
-                # ⚡ THE PREMIUM SYNC BUTTON
-                if st.button("⚡ Live Sync (Premium)", use_container_width=True):
-                    with st.spinner("Bypassing security layers... Extracting matrix data..."):
-                        sync_result = sync_platform_analytics()
-                        
-                        if sync_result is True:
-                            st.toast("✅ Data successfully synced to cache matrix!")
-                            time.sleep(1)
-                            st.rerun()
-                        elif sync_result is False:
-                            st.error("❌ Sync Failed: User data not found. Please re-login.")
-                        else:
-                            # 🚨 THE X-RAY VISION (Asli error yahan dikhega)
-                            st.error(f"⚠️ SYSTEM REJECTED: {sync_result}")
-
-            st.write("---")
-            
-            # 🗄️ FETCH CACHED DATA (Zero API Cost)
+            # 🗄️ FETCH CURRENT CACHE
             try:
                 cache_res = supabase.table("platform_analytics_cache").select("*").eq("creator_handle", creator_handle).execute()
-                cache_data = cache_res.data[0] if cache_res.data else None
+                cache_data = cache_res.data[0] if cache_res.data else {}
             except:
-                cache_data = None
+                cache_data = {}
 
-            if not cache_data:
-                st.info("📭 Vault Empty: No analytics data cached yet. Click 'Live Sync' to pull your first matrix.")
+            profile_res = supabase.table("creator_profiles").select("*").eq("creator_handle", creator_handle).execute()
+            user_tokens = profile_res.data[0] if profile_res.data else {}
+
+            # 📺 YOUTUBE SECTION
+            st.write(" ")
+            st.markdown("#### 📺 YouTube Mainframe")
+            yt_col_btn, yt_col_blank = st.columns([1, 3])
+            with yt_col_btn:
+                if st.button("🔄 Sync YouTube Only", key="sync_yt_alone", use_container_width=True):
+                    yt_token = user_tokens.get("youtube_token")
+                    if yt_token:
+                        with st.spinner("Pinging Google Mainframe..."):
+                            yt_data = fetch_youtube_analytics(yt_token)
+                            supabase.table("platform_analytics_cache").upsert({
+                                "creator_handle": creator_handle,
+                                "youtube_data": yt_data
+                            }, on_conflict="creator_handle").execute()
+                            st.toast("✅ YouTube Cache updated!")
+                            time.sleep(0.5)
+                            st.rerun()
+                    else:
+                        st.error("YouTube Token Missing!")
+
+            yt = cache_data.get("youtube_data", {})
+            if yt and yt.get("status") == "connected":
+                y1, y2, y3 = st.columns(3)
+                with y1: st.markdown(f'<div class="metric-box"><div class="metric-title">Total Views</div><div class="metric-value">{yt.get("views", 0):,}</div></div>', unsafe_allow_html=True)
+                with y2: st.markdown(f'<div class="metric-box"><div class="metric-title">Subscribers</div><div class="metric-value">{yt.get("subscribers", 0):,}</div></div>', unsafe_allow_html=True)
+                with y3: st.markdown(f'<div class="metric-box"><div class="metric-title">Video Count</div><div class="metric-value">{yt.get("video_count", 0):,}</div></div>', unsafe_allow_html=True)
             else:
-                # Time formatting (T hatana)
-                raw_time = cache_data.get('last_synced_at', 'Unknown')
-                clean_time = raw_time.replace('T', ' ')[:16] if raw_time != 'Unknown' else raw_time
-                
-                st.caption(f"🕒 **Last Auto-Sync:** {clean_time} (UTC) | **System Status:** {cache_data.get('sync_status', 'Unknown')}")
-                
-                # 🚨 GRACEFUL ERROR HANDLING
-                if "Auth_Failed" in cache_data.get('sync_status', ''):
-                    st.error("⚠️ Token Integrity Alert: One or more platform tokens expired. Please re-link in the Secure Hub (Tab 1).")
+                st.markdown('<div class="metric-box warning-box"><div class="metric-title">YouTube Node</div><div class="metric-value" style="color: #FF4444;">Offline</div></div>', unsafe_allow_html=True)
 
-                # 📺 YOUTUBE UI GRID
-                yt = cache_data.get("youtube_data", {})
-                if yt and yt.get("status") == "connected":
-                    st.markdown("##### 📺 YouTube Mainframe")
-                    y1, y2, y3 = st.columns(3)
-                    with y1:
-                        st.markdown(f'<div class="metric-box"><div class="metric-title">Total Views</div><div class="metric-value">{yt.get("views", 0):,}</div></div>', unsafe_allow_html=True)
-                    with y2:
-                        st.markdown(f'<div class="metric-box"><div class="metric-title">Subscribers</div><div class="metric-value">{yt.get("subscribers", 0):,}</div></div>', unsafe_allow_html=True)
-                    with y3:
-                        st.markdown(f'<div class="metric-box"><div class="metric-title">Video Count</div><div class="metric-value">{yt.get("video_count", 0):,}</div></div>', unsafe_allow_html=True)
+            st.write("---")
+
+            # ♾️ META NODES SECTION (FB & IG Isolated Buttons)
+            st.markdown("#### 📱 Meta Ecosystem Independent Nodes")
+            meta_token = user_tokens.get("facebook_token") or user_tokens.get("instagram_token")
+
+            fb = cache_data.get("facebook_data", {})
+            ig = cache_data.get("instagram_data", {})
+
+            m1, m2 = st.columns(2)
+            
+            with m1:
+                st.markdown("##### 📸 Instagram Node")
+                if st.button("🔄 Sync Instagram Only", key="sync_ig_alone", use_container_width=True):
+                    if meta_token:
+                        with st.spinner("Scanning Meta Graph for Instagram Meta-data..."):
+                            meta_results = fetch_meta_analytics(meta_token)
+                            supabase.table("platform_analytics_cache").upsert({
+                                "creator_handle": creator_handle,
+                                "instagram_data": meta_results.get("instagram", {"status": "offline"})
+                            }, on_conflict="creator_handle").execute()
+                            st.toast("✅ Instagram Cache updated!")
+                            time.sleep(0.5)
+                            st.rerun()
+                    else:
+                        st.error("Meta Token Missing!")
+
+                if ig and ig.get("status") == "connected":
+                    st.markdown(f'<div class="metric-box"><div class="metric-title">IG Followers</div><div class="metric-value">{ig.get("followers", 0):,}</div></div>', unsafe_allow_html=True)
                 else:
-                    st.warning("📺 YouTube Node Offline: Data missing or account not linked.")
-                
-                st.write(" ")
-                
-                # 📱 INDEPENDENT SOCIAL NODES MATRIX
-                st.markdown("##### 📱 Independent Social Nodes (IG / FB)")
-                fb = cache_data.get("facebook_data", {})
-                ig = cache_data.get("instagram_data", {})
-                
-                m1, m2 = st.columns(2)
-                with m1:
-                    if ig and ig.get("status") == "connected":
-                        # 👈 ROAD 2 TRIUMPH: Custom unified layout pulling real followers!
-                        st.markdown(f'<div class="metric-box"><div class="metric-title">IG Followers</div><div class="metric-value">{ig.get("followers", 0):,}</div></div>', unsafe_allow_html=True)
+                    st.markdown('<div class="metric-box warning-box"><div class="metric-title">IG Node</div><div class="metric-value" style="color: #FF4444;">Offline</div></div>', unsafe_allow_html=True)
+
+            with m2:
+                st.markdown("##### 🔵 Facebook Node")
+                if st.button("🔄 Sync Facebook Only", key="sync_fb_alone", use_container_width=True):
+                    if meta_token:
+                        with st.spinner("Extracting Facebook Edge Page Insights..."):
+                            meta_results = fetch_meta_analytics(meta_token)
+                            supabase.table("platform_analytics_cache").upsert({
+                                "creator_handle": creator_handle,
+                                "facebook_data": meta_results.get("facebook", {"status": "offline"})
+                            }, on_conflict="creator_handle").execute()
+                            st.toast("✅ Facebook Cache updated!")
+                            time.sleep(0.5)
+                            st.rerun()
                     else:
-                        st.markdown(f'<div class="metric-box warning-box"><div class="metric-title">IG Node</div><div class="metric-value" style="color: #FF4444;">Offline</div></div>', unsafe_allow_html=True)
-                with m2:
-                    if fb and fb.get("status") == "connected":
-                        st.markdown(f'<div class="metric-box"><div class="metric-title">FB Page Followers</div><div class="metric-value">{fb.get("followers", 0):,}</div></div>', unsafe_allow_html=True)
-                    else:
-                        st.markdown(f'<div class="metric-box warning-box"><div class="metric-title">FB Node</div><div class="metric-value" style="color: #FF4444;">Offline</div></div>', unsafe_allow_html=True)
+                        st.error("Meta Token Missing!")
+
+                if fb and fb.get("status") == "connected":
+                    st.markdown(f'<div class="metric-box"><div class="metric-title">FB Page Followers</div><div class="metric-value">{fb.get("followers", 0):,}</div></div>', unsafe_allow_html=True)
+                else:
+                    st.markdown('<div class="metric-box warning-box"><div class="metric-title">FB Node</div><div class="metric-value" style="color: #FF4444;">Offline</div></div>', unsafe_allow_html=True)
 
     # PILL SECTION C: AUTOMATED PUBLISHER DEPLOYMENT PIPELINE
     elif selected_auditor_section == "🚀 3. Omnichannel Media Publisher Node":
