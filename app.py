@@ -131,14 +131,17 @@ def fetch_youtube_analytics(access_token):
     except Exception as e:
         print(f"[YT ANALYTICS ERROR] {str(e)}")
         return {"error": str(e), "status": "failed"}
+
+# ==============================================================
+# 📊 METRICS RADAR ENGINE (FUNCTION B)
+# ==============================================================
 def fetch_meta_analytics(access_token):
     """
-    Ek hi Meta token se Facebook Page aur us se linked Instagram Business ka data nikalta hai.
+    Ek hi Meta Graph token se Facebook Page aur us se linked Instagram Business ke
+    REAL FOLLOWERS ka combined analytics data nikalta hai.
     """
     base_url = "https://graph.facebook.com/v18.0"
-    
     try:
-        # 1. User ke connected Facebook Pages nikalo
         pages_url = f"{base_url}/me/accounts?access_token={access_token}"
         pages_res = requests.get(pages_url).json()
         
@@ -148,24 +151,24 @@ def fetch_meta_analytics(access_token):
         fb_data = {"followers": 0, "status": "offline"}
         ig_data = {"followers": 0, "status": "offline"}
         
-        # 2. Page loop karke data aur linked IG account fetch karo
         if "data" in pages_res and len(pages_res["data"]) > 0:
             first_page = pages_res["data"][0]
             page_id = first_page.get("id")
             page_token = first_page.get("access_token")
             
-            # FB Page Details (Followers)
+            # FB Analytics Data Pull
             fb_page_url = f"{base_url}/{page_id}?fields=followers_count&access_token={page_token}"
             fb_details = requests.get(fb_page_url).json()
             fb_data["followers"] = fb_details.get("followers_count", 0)
             fb_data["status"] = "connected"
             
-            # Connected IG Account Details
+            # Connected Instagram Business Node Pull
             ig_link_url = f"{base_url}/{page_id}?fields=instagram_business_account&access_token={page_token}"
             ig_link_res = requests.get(ig_link_url).json()
             
             if "instagram_business_account" in ig_link_res:
                 ig_id = ig_link_res["instagram_business_account"]["id"]
+                # 🪐 ROAD 2 TRIUMPH: Pulling actual IG followers using whitelisted dev dashboard token
                 ig_user_url = f"{base_url}/{ig_id}?fields=followers_count&access_token={access_token}"
                 ig_details = requests.get(ig_user_url).json()
                 ig_data["followers"] = ig_details.get("followers_count", 0)
@@ -176,16 +179,29 @@ def fetch_meta_analytics(access_token):
     except Exception as e:
         print(f"[META ANALYTICS ERROR] {str(e)}")
         return {"error": str(e), "status": "failed"}
-def fetch_instagram_analytics(access_token):
-    """Direct IG API se username aur total posts nikalta hai."""
-    url = f"https://graph.instagram.com/me?fields=username,media_count&access_token={access_token}"
+
+# ==============================================================
+# 🔐 META TOKEN EXCHANGE OVEN (FUNCTION A)
+# ==============================================================
+def get_meta_access_token(auth_code):
+    """
+    Kachhe OAuth code string ko secure token matrix key mein convert karta hai.
+    """
+    client_id = st.secrets.get("META_APP_ID", "")
+    client_secret = st.secrets.get("META_APP_SECRET", "")
+    redirect_uri = "https://creator-ai-manager-tgrh5ifkgfqme6kdomcvxb.streamlit.app/" 
+    
+    url = f"https://graph.facebook.com/v18.0/oauth/access_token?client_id={client_id}&redirect_uri={redirect_uri}&client_secret={client_secret}&code={auth_code}"
+    
     try:
-        res = requests.get(url).json()
-        if "username" in res:
-            return {"posts": res.get("media_count", 0), "status": "connected"}
+        response = requests.get(url)
+        data = response.json()
+        if "access_token" in data:
+            return data["access_token"]
+        return None
     except Exception as e:
-        print(f"[IG ANALYTICS ERROR] {str(e)}")
-    return {"status": "offline"}
+        print(f"[META TOKEN EXCEPTION] {str(e)}")
+        return None
 # ==============================================================
 # 🔄 MASTER SYNC ENGINE (API to Supabase Cache)
 # ==============================================================
@@ -216,9 +232,8 @@ def sync_platform_analytics():
             if yt_data.get("status") == "auth_failed":
                 sync_health = "YT_Auth_Failed"
                 
-        # 3. META Data Pull (FB & IG Ek Saath)
-        fb_token = user_tokens.get("facebook_token")
-        ig_token = user_tokens.get("instagram_token") # 👈 NAYA: IG Token alag nikala
+        # 3. META Data Pull (Pure Unified Meta Graph API Route)
+        fb_token = user_tokens.get("facebook_token") or user_tokens.get("instagram_token")
         
         meta_results = {}
         if fb_token:
@@ -226,10 +241,7 @@ def sync_platform_analytics():
             if meta_results.get("status") == "auth_failed":
                 sync_health = "Meta_Auth_Failed"
                 
-        # 👈 NAYA: IG data direct fetch kiya
-        ig_data = fetch_instagram_analytics(ig_token) if ig_token else {"status": "offline"}
-                
-        # 4. Supabase Cache Matrix mein Inject karo
+        # 4. Supabase Cache Matrix mein Inject karo (No Garbage Functions!)
         cache_res = supabase.table("platform_analytics_cache").select("id").eq("creator_handle", creator_handle).execute()
         
         if cache_res.data:
@@ -237,7 +249,7 @@ def sync_platform_analytics():
             supabase.table("platform_analytics_cache").update({
                 "youtube_data": yt_data,
                 "facebook_data": meta_results.get("facebook", {}),
-                "instagram_data": ig_data, # 👈 NAYA: IG variable pass kiya
+                "instagram_data": meta_results.get("instagram", {}), # 👈 Unified Graph API data directly injected
                 "sync_status": sync_health,
             }).eq("creator_handle", creator_handle).execute()
         else:
@@ -246,7 +258,7 @@ def sync_platform_analytics():
                 "creator_handle": creator_handle,
                 "youtube_data": yt_data,
                 "facebook_data": meta_results.get("facebook", {}),
-                "instagram_data": ig_data, # 👈 NAYA: IG variable pass kiya
+                "instagram_data": meta_results.get("instagram", {}),
                 "sync_status": sync_health
             }).execute()
             
@@ -583,22 +595,6 @@ def get_linkedin_oauth_url():
     
     # LinkedIn ka official authorization URL
     auth_url = f"https://www.linkedin.com/oauth/v2/authorization?response_type=code&client_id={client_id}&redirect_uri={redirect_uri}&state={state}&scope={scope_str}"
-    
-    return auth_url
-def get_meta_oauth_url():
-    client_id = st.secrets.get("INSTAGRAM_APP_ID", "")
-    
-    if not client_id:
-        print("[AUTH ERROR] Instagram App ID missing in secrets!")
-        return "#error_missing_client_id"
-
-    # YAHAN UPDATE KIYA HAI: http ko https kar diya hai (exact match with Meta dashboard)
-    redirect_uri = "https://creator-ai-manager-tgrh5ifkgfqme6kdomcvxb.streamlit.app/" 
-    
-    scopes = ["instagram_business_basic", "instagram_business_manage_insights", "instagram_business_content_publish"]
-    scope_str = ",".join(scopes)
-    
-    auth_url = f"https://www.instagram.com/oauth/authorize?enable_fb_login=0&client_id={client_id}&redirect_uri={redirect_uri}&scope={scope_str}&response_type=code&state=instagram"
     
     return auth_url
 # ==============================================================
@@ -1016,12 +1012,6 @@ if "code" in st.query_params:
         st.session_state["th_connected"] = True
         st.session_state["channels_synced"] = True
 
-    elif platform_state == "instagram":
-        st.success("🎉 Instagram Account Successfully Linked! 🩷")
-        save_platform_token("instagram_token", auth_code)
-        st.session_state["ig_connected"] = True
-        st.session_state["channels_synced"] = True
-
     else:
         # 🟢 THE TWITTER SUPABASE FIX 🟢
         response = supabase.table("twitter_auth_states").select("code_verifier").eq("state", platform_state).execute()
@@ -1306,24 +1296,25 @@ else:
                 st.markdown(f"<div style='margin-bottom: 16px;'><a href='{meta_threads_link}' target='_blank' style='text-decoration: none;'><button style='width:100%; background-color:#000000; color:white; border: 1px solid #333; padding:10px; border-radius:5px; font-weight:bold; cursor:pointer; height:42px; font-size:14px; box-shadow: 0px 2px 4px rgba(0,0,0,0.1);'>🧵 Connect Meta Threads</button></a></div>", unsafe_allow_html=True)
 
         with col2:
-            st.subheader("📸 Instagram")
-            if st.session_state.get("ig_connected"):
-                st.success("✅ Connected: Instagram Business")
-                if st.button("❌ Disconnect Instagram", use_container_width=True):
-                    disconnect_platform("instagram_token", "ig_connected")
+            st.subheader("♾️ Meta Ecosystem (FB & IG)")
+            
+            if st.session_state.get("fb_connected") and st.session_state.get("ig_connected"):
+                st.success("✅ Connected: Meta Ecosystem (Facebook + Instagram)")
+                if st.button("❌ Disconnect Meta Ecosystem", use_container_width=True):
+                    # Dono tokens ko ek sath securely nullify karo
+                    if st.session_state.get("creator_handle"):
+                        supabase.table("creator_profiles").update({
+                            "facebook_token": None,
+                            "instagram_token": None
+                        }).eq("creator_handle", st.session_state["creator_handle"]).execute()
+                    st.session_state["fb_connected"] = False
+                    st.session_state["ig_connected"] = False
+                    st.rerun()
             else:
-                meta_login_link = get_meta_oauth_url()
-                st.markdown(f"<div style='margin-bottom: 16px;'><a href='{meta_login_link}' target='_blank' style='text-decoration: none;'><button style='width:100%; background-color:#E1306C; color:white; border:none; padding:10px; border-radius:5px; font-weight:bold; cursor:pointer; height:42px; font-size:14px; box-shadow: 0px 2px 4px rgba(0,0,0,0.1);'>🩷 Connect Instagram Business</button></a></div>", unsafe_allow_html=True)    
-                
-            st.write(" ")
-            st.subheader("🔵 Facebook")
-            if st.session_state.get("fb_connected"):
-                st.success("✅ Connected: Facebook Page")
-                if st.button("❌ Disconnect Facebook", use_container_width=True):
-                    disconnect_platform("facebook_token", "fb_connected")
-            else:
-                fb_login_link = get_facebook_oauth_url()
-                st.markdown(f"<a href='{fb_login_link}' target='_blank' style='text-decoration: none;'><button style='width:100%; background-color:#1877F2; color:white; border:none; padding:10px; border-radius:5px; font-weight:bold; cursor:pointer; height:38px; font-size:14px; box-shadow: 0px 2px 4px rgba(0,0,0,0.1);'>💙 Connect Facebook Page</button></a>", unsafe_allow_html=True)
+                # 🚀 Unified Gateway URL call ho raha hai ab bina kisi error ke
+                meta_login_link = get_facebook_oauth_url()
+                st.markdown(f"<a href='{meta_login_link}' target='_blank' style='text-decoration: none;'><button style='width:100%; background-color:#0668E1; color:white; border:none; padding:10px; border-radius:5px; font-weight:bold; cursor:pointer; height:42px; font-size:14px; box-shadow: 0px 2px 4px rgba(0,0,0,0.1);'>♾️ Connect Meta Ecosystem</button></a>", unsafe_allow_html=True)
+                st.caption("💡 Note: This will securely link your Facebook Pages and its connected Instagram Business account simultaneously using the new approved developer scopes.")
 
             # 💼 NEW: LINKEDIN UI CONNECT NODE
             st.write(" ")
@@ -1459,16 +1450,16 @@ else:
                 
                 st.write(" ")
                 
-                # 🩷 META UI GRID
-                st.markdown("##### 🩷 Meta Ecosystem (IG / FB)")
+                # 📱 INDEPENDENT SOCIAL NODES MATRIX
+                st.markdown("##### 📱 Independent Social Nodes (IG / FB)")
                 fb = cache_data.get("facebook_data", {})
                 ig = cache_data.get("instagram_data", {})
                 
                 m1, m2 = st.columns(2)
                 with m1:
                     if ig and ig.get("status") == "connected":
-                        # 👈 NAYA: 'IG Followers' ki jagah 'IG Total Posts' aur 'ig.get("posts")'
-                        st.markdown(f'<div class="metric-box"><div class="metric-title">IG Total Posts</div><div class="metric-value">{ig.get("posts", 0):,}</div></div>', unsafe_allow_html=True)
+                        # 👈 ROAD 2 TRIUMPH: Custom unified layout pulling real followers!
+                        st.markdown(f'<div class="metric-box"><div class="metric-title">IG Followers</div><div class="metric-value">{ig.get("followers", 0):,}</div></div>', unsafe_allow_html=True)
                     else:
                         st.markdown(f'<div class="metric-box warning-box"><div class="metric-title">IG Node</div><div class="metric-value" style="color: #FF4444;">Offline</div></div>', unsafe_allow_html=True)
                 with m2:
