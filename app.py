@@ -1420,10 +1420,20 @@ else:
                     if yt_token:
                         with st.spinner("Pinging Google Mainframe..."):
                             yt_data = fetch_youtube_analytics(yt_token)
-                            supabase.table("platform_analytics_cache").upsert({
-                                "creator_handle": creator_handle,
-                                "youtube_data": yt_data
-                            }, on_conflict="creator_handle").execute()
+                            
+                            # Future-Proof Safe Check: Verify if row exists before database injection
+                            check_res = supabase.table("platform_analytics_cache").select("id").eq("creator_handle", creator_handle).execute()
+                            
+                            if check_res.data:
+                                supabase.table("platform_analytics_cache").update({
+                                    "youtube_data": yt_data
+                                }).eq("creator_handle", creator_handle).execute()
+                            else:
+                                supabase.table("platform_analytics_cache").insert({
+                                    "creator_handle": creator_handle,
+                                    "youtube_data": yt_data
+                                }).execute()
+                                
                             st.toast("✅ YouTube Cache updated!")
                             time.sleep(0.5)
                             st.rerun()
@@ -1456,10 +1466,21 @@ else:
                     if meta_token:
                         with st.spinner("Scanning Meta Graph for Instagram Meta-data..."):
                             meta_results = fetch_meta_analytics(meta_token)
-                            supabase.table("platform_analytics_cache").upsert({
-                                "creator_handle": creator_handle,
-                                "instagram_data": meta_results.get("instagram", {"status": "offline"})
-                            }, on_conflict="creator_handle").execute()
+                            ig_final_data = meta_results.get("instagram", {"status": "offline"})
+                            
+                            # Safe Check: Check if row already exists
+                            check_res = supabase.table("platform_analytics_cache").select("id").eq("creator_handle", creator_handle).execute()
+                            
+                            if check_res.data:
+                                supabase.table("platform_analytics_cache").update({
+                                    "instagram_data": ig_final_data
+                                }).eq("creator_handle", creator_handle).execute()
+                            else:
+                                supabase.table("platform_analytics_cache").insert({
+                                    "creator_handle": creator_handle,
+                                    "instagram_data": ig_final_data
+                                }).execute()
+                                
                             st.toast("✅ Instagram Cache updated!")
                             time.sleep(0.5)
                             st.rerun()
@@ -1477,10 +1498,21 @@ else:
                     if meta_token:
                         with st.spinner("Extracting Facebook Edge Page Insights..."):
                             meta_results = fetch_meta_analytics(meta_token)
-                            supabase.table("platform_analytics_cache").upsert({
-                                "creator_handle": creator_handle,
-                                "facebook_data": meta_results.get("facebook", {"status": "offline"})
-                            }, on_conflict="creator_handle").execute()
+                            fb_final_data = meta_results.get("facebook", {"status": "offline"})
+                            
+                            # Safe Check: Check if row already exists
+                            check_res = supabase.table("platform_analytics_cache").select("id").eq("creator_handle", creator_handle).execute()
+                            
+                            if check_res.data:
+                                supabase.table("platform_analytics_cache").update({
+                                    "facebook_data": fb_final_data
+                                }).eq("creator_handle", creator_handle).execute()
+                            else:
+                                supabase.table("platform_analytics_cache").insert({
+                                    "creator_handle": creator_handle,
+                                    "facebook_data": fb_final_data
+                                }).execute()
+                                
                             st.toast("✅ Facebook Cache updated!")
                             time.sleep(0.5)
                             st.rerun()
