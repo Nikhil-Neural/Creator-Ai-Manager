@@ -640,7 +640,7 @@ def get_facebook_oauth_url():
 
     redirect_uri = "https://creator-ai-manager-tgrh5ifkgfqme6kdomcvxb.streamlit.app/" 
     
-    # 🔥 FULL OMNICHANNEL SCOPES RESTORED
+    # 🔥 FULL OMNICHANNEL SCOPES (Instagram API unlocked)
     scopes = [
         "pages_show_list", 
         "pages_read_engagement", 
@@ -651,7 +651,7 @@ def get_facebook_oauth_url():
     ]
     scope_str = ",".join(scopes)
     
-    # ⚡ MAGIC PARAMETER ADDED: auth_type=rerequest forces the page selection screen to reappear
+    # ⚡ MAGIC PARAMETER: auth_type=rerequest forces the page selection UI every single time!
     auth_url = f"https://www.facebook.com/v18.0/dialog/oauth?client_id={client_id}&redirect_uri={redirect_uri}&scope={scope_str}&response_type=code&state=facebook&auth_type=rerequest"
     
     return auth_url
