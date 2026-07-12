@@ -1001,31 +1001,41 @@ if "code" in st.query_params:
         user_access_token = get_meta_access_token(auth_code)
         
         if user_access_token:
-            # 🔥 THE FOUNDATION FIX: Extract real Page Token from User Token before saving
             base_url = "https://graph.facebook.com/v18.0"
             pages_url = f"{base_url}/me/accounts?access_token={user_access_token}"
             try:
+                # 📡 Fetching Data from Meta
                 pages_res = requests.get(pages_url).json()
-                if "data" in pages_res and len(pages_res["data"]) > 0:
-                    # Extract the VIP page-level token approved by Meta
+                
+                # 🚨 X-RAY VISION: Agar Meta Error deta hai
+                if "error" in pages_res:
+                    st.error("🚨 META CORE ERROR DETECTED:")
+                    st.json(pages_res) # Yeh Meta ki asli gaali (error) UI par chhaap dega
+                
+                # ✅ SUCCESS: Agar pages mil gaye
+                elif "data" in pages_res and len(pages_res["data"]) > 0:
                     page_access_token = pages_res["data"][0].get("access_token")
                     
-                    # Store this authorized token for both FB and IG routing operations
                     save_platform_token("facebook_token", page_access_token)
-                    save_platform_token("instagram_token", user_access_token) # User token kept for direct IG queries
+                    save_platform_token("instagram_token", user_access_token) 
                     
                     st.session_state["fb_connected"] = True
                     st.session_state["ig_connected"] = True
                     st.session_state["channels_synced"] = True
                     st.success("🎉 Meta Ecosystem (Facebook + Instagram) Successfully Linked! ♾️")
+                    
+                    st.query_params.clear()
+                    time.sleep(1)
+                    st.rerun()
+                
+                # 📭 EMPTY: Agar sach mein page missing hai
                 else:
-                    st.error("❌ Linkage Failed: No authorized Facebook Pages found on this account.")
+                    st.error("❌ Linkage Failed: The API returned an empty list of pages.")
+                    st.warning("🕵️ RAW API RESPONSE FROM META:")
+                    st.json(pages_res) # Hum check karenge ki kya sach mein array [] empty aa raha hai!
+                    
             except Exception as e:
                 st.error(f"❌ Core Router Error: {str(e)}")
-            
-            st.query_params.clear()
-            time.sleep(1)
-            st.rerun()
         else:
             st.warning("⚠️ Meta session token already rotated or validated. Please refresh your granular analytics dashboard below.")
             st.query_params.clear()
