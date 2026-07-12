@@ -137,60 +137,64 @@ def fetch_youtube_analytics(access_token):
 # ==============================================================
 def fetch_meta_analytics(access_token):
     """
-    X-RAY MODE: Har ek Meta API level ka asli error pakad kar UI par bhejta hai.
+    X-RAY MODE V2: Directly queries the Graph nodes using pre-authenticated page scope keys.
     """
     base_url = "https://graph.facebook.com/v18.0"
     try:
-        # 1. Accounts Fetch Check
+        # Check if token is valid by hitting the profile node
+        debug_url = f"{base_url}/me?fields=id,name&access_token={access_token}"
+        debug_res = requests.get(debug_url).json()
+        if "error" in debug_res:
+            return {"error": f"Meta Token Expired/Rejected: {debug_res['error']['message']}", "status": "failed"}
+
+        fb_data = {"followers": 0, "status": "offline", "debug_msg": "Initializing..."}
+        ig_data = {"followers": 0, "status": "offline", "debug_msg": "Initializing..."}
+        
+        # 1. Fetching Facebook Page details directly since token is now page-scoped
         pages_url = f"{base_url}/me/accounts?access_token={access_token}"
         pages_res = requests.get(pages_url).json()
         
-        if "error" in pages_res:
-            return {"error": f"Meta Token Rejected: {pages_res['error']['message']}", "status": "failed"}
-            
-        fb_data = {"followers": 0, "status": "offline", "debug_msg": "No Pages Found"}
-        ig_data = {"followers": 0, "status": "offline", "debug_msg": "No Connected IG Found"}
-        
         if "data" in pages_res and len(pages_res["data"]) > 0:
-            first_page = pages_res["data"][0]
-            page_id = first_page.get("id")
-            page_token = first_page.get("access_token")
+            page_id = pages_res["data"][0].get("id")
+            page_token = pages_res["data"][0].get("access_token")
             
-            # FB Page Details Pull
+            # Extract FB Page Followers Count
             fb_page_url = f"{base_url}/{page_id}?fields=followers_count&access_token={page_token}"
             fb_details = requests.get(fb_page_url).json()
             
             if "error" in fb_details:
-                fb_data["debug_msg"] = f"FB API Error: {fb_details['error']['message']}"
+                fb_data["debug_msg"] = f"FB API Refusal: {fb_details['error']['message']}"
             else:
                 fb_data["followers"] = fb_details.get("followers_count", 0)
                 fb_data["status"] = "connected"
                 fb_data["debug_msg"] = "Successfully Connected"
-            
-            # Connected IG Account Details Pull
+                
+            # 2. Extract Linked Instagram Business Account Node
             ig_link_url = f"{base_url}/{page_id}?fields=instagram_business_account&access_token={page_token}"
             ig_link_res = requests.get(ig_link_url).json()
             
-            if "error" in ig_link_res:
-                ig_data["debug_msg"] = f"IG Link Discovery Failed: {ig_link_res['error']['message']}"
-            elif "instagram_business_account" in ig_link_res:
+            if "instagram_business_account" in ig_link_res:
                 ig_id = ig_link_res["instagram_business_account"]["id"]
                 ig_user_url = f"{base_url}/{ig_id}?fields=followers_count&access_token={access_token}"
                 ig_details = requests.get(ig_user_url).json()
                 
                 if "error" in ig_details:
-                    ig_data["debug_msg"] = f"IG Data Pull Blocked: {ig_details['error']['message']}"
+                    ig_data["debug_msg"] = f"IG Data Blocked: {ig_details['error']['message']}"
                 else:
                     ig_data["followers"] = ig_details.get("followers_count", 0)
                     ig_data["status"] = "connected"
                     ig_data["debug_msg"] = "Successfully Connected"
             else:
-                ig_data["debug_msg"] = "Critical: This Facebook Page has NO Instagram Business Account linked to it inside Meta Suite!"
-        
+                ig_data["debug_msg"] = "Critical Configuration Notice: No Instagram Business Account linked to this page in Meta Business Suite!"
+        else:
+            # Fallback if query returns empty accounts array
+            fb_data["debug_msg"] = "Meta Graph reports zero accounts mapped under this token scope."
+            ig_data["debug_msg"] = "Meta Graph reports zero accounts mapped under this token scope."
+            
         return {"facebook": fb_data, "instagram": ig_data, "status": "connected"}
         
     except Exception as e:
-        return {"error": f"System Crash: {str(e)}", "status": "failed"}
+        return {"error": f"System Engine Crash: {str(e)}", "status": "failed"}
 
 # ==============================================================
 # 🔐 META TOKEN EXCHANGE OVEN (FUNCTION A)
@@ -964,20 +968,17 @@ with st.sidebar:
     st.caption("Architecture Framework: CrewAI + Gemini + Groq Matrix")
 # ── Main Content Gateway Router ──────────────────────────
 def save_platform_token(platform_column_name, auth_code):
-    current_user = st.session_state.get("creator_handle")
+    current_user = st.session_state.get("user_email") # 👈 FIXED: Swapped handle to explicit user_email session key
     if not current_user:
-        return # Agar user login nahi hai toh kuch mat karo
+        return 
         
-    # Check karo ki kya is user ka profile pehle se database mein hai
     response = supabase.table("creator_profiles").select("id").eq("creator_handle", current_user).execute()
     
     if response.data:
-        # User pehle se hai, toh bas us naye platform ka token update kar do
         supabase.table("creator_profiles").update({
             platform_column_name: auth_code
         }).eq("creator_handle", current_user).execute()
     else:
-        # Naya user hai, toh naya row banao aur token save karo
         supabase.table("creator_profiles").insert({
             "creator_handle": current_user,
             platform_column_name: auth_code
@@ -989,25 +990,35 @@ if "code" in st.query_params:
     
     if platform_state == "facebook":
         st.info("🔄 Authenticating secure connection with Meta Ecosystem...")
-        real_access_token = get_meta_access_token(auth_code)
+        user_access_token = get_meta_access_token(auth_code)
         
-        if real_access_token:
-            # 1. State flags turn ON instantly
-            st.session_state["fb_connected"] = True
-            st.session_state["ig_connected"] = True
-            st.session_state["channels_synced"] = True
+        if user_access_token:
+            # 🔥 THE FOUNDATION FIX: Extract real Page Token from User Token before saving
+            base_url = "https://graph.facebook.com/v18.0"
+            pages_url = f"{base_url}/me/accounts?access_token={user_access_token}"
+            try:
+                pages_res = requests.get(pages_url).json()
+                if "data" in pages_res and len(pages_res["data"]) > 0:
+                    # Extract the VIP page-level token approved by Meta
+                    page_access_token = pages_res["data"][0].get("access_token")
+                    
+                    # Store this authorized token for both FB and IG routing operations
+                    save_platform_token("facebook_token", page_access_token)
+                    save_platform_token("instagram_token", user_access_token) # User token kept for direct IG queries
+                    
+                    st.session_state["fb_connected"] = True
+                    st.session_state["ig_connected"] = True
+                    st.session_state["channels_synced"] = True
+                    st.success("🎉 Meta Ecosystem (Facebook + Instagram) Successfully Linked! ♾️")
+                else:
+                    st.error("❌ Linkage Failed: No authorized Facebook Pages found on this account.")
+            except Exception as e:
+                st.error(f"❌ Core Router Error: {str(e)}")
             
-            # 2. Secure tokens in database
-            save_platform_token("facebook_token", real_access_token)
-            save_platform_token("instagram_token", real_access_token)
-            
-            st.success("🎉 Meta Ecosystem (Facebook + Instagram) Successfully Linked! ♾️")
-            
-            # 🔥 THE BULLETPROOF JUMP: Clear URL params and state parameters IMMEDIATELY before rerun
             st.query_params.clear()
+            time.sleep(1)
             st.rerun()
         else:
-            # Agar code already use ho chuka hai toh screen par purana crash dikhane ki jagah silent validation fail karega
             st.warning("⚠️ Meta session token already rotated or validated. Please refresh your granular analytics dashboard below.")
             st.query_params.clear()
         
