@@ -640,11 +640,19 @@ def get_facebook_oauth_url():
 
     redirect_uri = "https://creator-ai-manager-tgrh5ifkgfqme6kdomcvxb.streamlit.app/" 
     
-    # 🔥 THE FIX: Removed all Instagram scopes. Pure Facebook permissions only.
-    scopes = ["pages_show_list", "pages_read_engagement", "pages_manage_posts"]
+    # 🔥 FULL OMNICHANNEL SCOPES RESTORED
+    scopes = [
+        "pages_show_list", 
+        "pages_read_engagement", 
+        "pages_manage_posts",
+        "instagram_basic",
+        "instagram_manage_insights",
+        "instagram_content_publish"
+    ]
     scope_str = ",".join(scopes)
     
-    auth_url = f"https://www.facebook.com/v18.0/dialog/oauth?client_id={client_id}&redirect_uri={redirect_uri}&scope={scope_str}&response_type=code&state=facebook"
+    # ⚡ MAGIC PARAMETER ADDED: auth_type=rerequest forces the page selection screen to reappear
+    auth_url = f"https://www.facebook.com/v18.0/dialog/oauth?client_id={client_id}&redirect_uri={redirect_uri}&scope={scope_str}&response_type=code&state=facebook&auth_type=rerequest"
     
     return auth_url
 
