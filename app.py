@@ -673,11 +673,11 @@ def get_facebook_oauth_url():
     redirect_uri = "https://creator-ai-manager-tgrh5ifkgfqme6kdomcvxb.streamlit.app/"
     
     # ✅ Updated scopes
+    # ✅ Fixed Scopes: Removed the restricted 'pages_read_user_content'
     scopes = [
         "public_profile",
         "pages_show_list",
         "pages_read_engagement",
-        "pages_read_user_content",
         "business_management",
         "instagram_basic",
         "instagram_manage_insights"
