@@ -137,64 +137,96 @@ def fetch_youtube_analytics(access_token):
 # ==============================================================
 def fetch_meta_analytics(access_token):
     """
-    X-RAY MODE V2: Directly queries the Graph nodes using pre-authenticated page scope keys.
+    Correct 3-step chain:
+    User Token → Page Token → Instagram Business ID → Analytics
     """
-    base_url = "https://graph.facebook.com/v18.0"
+    base_url = "https://graph.facebook.com/v20.0"
+    
+    fb_data = {"followers": 0, "status": "offline"}
+    ig_data = {"followers": 0, "status": "offline"}
+    
     try:
-        # Check if token is valid by hitting the profile node
-        debug_url = f"{base_url}/me?fields=id,name&access_token={access_token}"
-        debug_res = requests.get(debug_url).json()
-        if "error" in debug_res:
-            return {"error": f"Meta Token Expired/Rejected: {debug_res['error']['message']}", "status": "failed"}
-
-        fb_data = {"followers": 0, "status": "offline", "debug_msg": "Initializing..."}
-        ig_data = {"followers": 0, "status": "offline", "debug_msg": "Initializing..."}
+        # ── Step 1: Token valid hai? ──────────────────────
+        me_res = requests.get(
+            f"{base_url}/me?fields=id,name&access_token={access_token}"
+        ).json()
         
-        # 1. Fetching Facebook Page details directly since token is now page-scoped
-        pages_url = f"{base_url}/me/accounts?access_token={access_token}"
-        pages_res = requests.get(pages_url).json()
+        if "error" in me_res:
+            error_msg = me_res['error']['message']
+            return {
+                "facebook": {"status": "failed", "error": error_msg},
+                "instagram": {"status": "failed", "error": error_msg}
+            }
+        
+        # ── Step 2: Facebook Pages + Page Token nikalo ───
+        pages_res = requests.get(
+            f"{base_url}/me/accounts?access_token={access_token}"
+        ).json()
         
         if "data" in pages_res and len(pages_res["data"]) > 0:
-            page_id = pages_res["data"][0].get("id")
-            page_token = pages_res["data"][0].get("access_token")
+            page = pages_res["data"][0]  # Pehla page
+            page_id = page["id"]
+            page_token = page["access_token"]  # ← Ye Page Token hai
+            page_name = page.get("name", "Your Page")
             
-            # Extract FB Page Followers Count
-            fb_page_url = f"{base_url}/{page_id}?fields=followers_count&access_token={page_token}"
-            fb_details = requests.get(fb_page_url).json()
+            # Facebook Page followers
+            page_res = requests.get(
+                f"{base_url}/{page_id}?fields=followers_count,fan_count&access_token={page_token}"
+            ).json()
             
-            if "error" in fb_details:
-                fb_data["debug_msg"] = f"FB API Refusal: {fb_details['error']['message']}"
-            else:
-                fb_data["followers"] = fb_details.get("followers_count", 0)
-                fb_data["status"] = "connected"
-                fb_data["debug_msg"] = "Successfully Connected"
+            fb_data = {
+                "name": page_name,
+                "followers": page_res.get("followers_count", 
+                             page_res.get("fan_count", 0)),
+                "status": "connected"
+            }
+            
+            # ── Step 3: Instagram Business Account ID nikalo
+            ig_account_res = requests.get(
+                f"{base_url}/{page_id}?fields=instagram_business_account&access_token={page_token}"
+            ).json()
+            
+            ig_account = ig_account_res.get("instagram_business_account")
+            
+            if ig_account:
+                ig_id = ig_account["id"]
                 
-            # 2. Extract Linked Instagram Business Account Node
-            ig_link_url = f"{base_url}/{page_id}?fields=instagram_business_account&access_token={page_token}"
-            ig_link_res = requests.get(ig_link_url).json()
-            
-            if "instagram_business_account" in ig_link_res:
-                ig_id = ig_link_res["instagram_business_account"]["id"]
-                ig_user_url = f"{base_url}/{ig_id}?fields=followers_count&access_token={access_token}"
-                ig_details = requests.get(ig_user_url).json()
+                # Instagram analytics fetch karo
+                ig_res = requests.get(
+                    f"{base_url}/{ig_id}?fields=username,followers_count,media_count,profile_picture_url&access_token={page_token}"
+                ).json()
                 
-                if "error" in ig_details:
-                    ig_data["debug_msg"] = f"IG Data Blocked: {ig_details['error']['message']}"
+                if "error" not in ig_res:
+                    ig_data = {
+                        "username": ig_res.get("username", ""),
+                        "followers": ig_res.get("followers_count", 0),
+                        "media_count": ig_res.get("media_count", 0),
+                        "status": "connected"
+                    }
                 else:
-                    ig_data["followers"] = ig_details.get("followers_count", 0)
-                    ig_data["status"] = "connected"
-                    ig_data["debug_msg"] = "Successfully Connected"
+                    ig_data = {
+                        "status": "failed",
+                        "error": ig_res["error"]["message"]
+                    }
             else:
-                ig_data["debug_msg"] = "Critical Configuration Notice: No Instagram Business Account linked to this page in Meta Business Suite!"
+                ig_data = {
+                    "status": "failed",
+                    "error": "No Instagram Business account linked to this Facebook Page. Instagram ko Facebook Page se link karo Business Manager mein."
+                }
         else:
-            # Fallback if query returns empty accounts array
-            fb_data["debug_msg"] = "Meta Graph reports zero accounts mapped under this token scope."
-            ig_data["debug_msg"] = "Meta Graph reports zero accounts mapped under this token scope."
+            fb_data = {
+                "status": "failed", 
+                "error": "No Facebook Page found. Make sure you have a Facebook Page (not personal profile)."
+            }
+            ig_data = {"status": "failed", "error": "Facebook Page required first."}
             
-        return {"facebook": fb_data, "instagram": ig_data, "status": "connected"}
-        
     except Exception as e:
-        return {"error": f"System Engine Crash: {str(e)}", "status": "failed"}
+        return {
+            "facebook": {"status": "failed", "error": str(e)},
+            "instagram": {"status": "failed", "error": str(e)}
+        }
+    
+    return {"facebook": fb_data, "instagram": ig_data}
 
 # ==============================================================
 # 🔐 META TOKEN EXCHANGE OVEN (FUNCTION A)
@@ -640,18 +672,17 @@ def get_facebook_oauth_url():
 
     redirect_uri = "https://creator-ai-manager-tgrh5ifkgfqme6kdomcvxb.streamlit.app/" 
     
-    # 🔥 FULL OMNICHANNEL SCOPES (Instagram API unlocked)
+    # 🔥 THE ULTIMATE SCOPES: Added 'business_management' to unlock hidden Business Pages
     scopes = [
-        "pages_show_list", 
-        "pages_read_engagement", 
-        "pages_manage_posts",
-        "instagram_basic",
-        "instagram_manage_insights",
-        "instagram_content_publish"
-    ]
+    "pages_show_list",
+    "pages_read_engagement", 
+    "pages_manage_posts",
+    "instagram_basic",           # ← Instagram data ke liye
+    "instagram_manage_insights"  # ← Instagram analytics ke liye
+]
     scope_str = ",".join(scopes)
     
-    # ⚡ MAGIC PARAMETER: auth_type=rerequest forces the page selection UI every single time!
+    # auth_type=rerequest is compulsory here
     auth_url = f"https://www.facebook.com/v18.0/dialog/oauth?client_id={client_id}&redirect_uri={redirect_uri}&scope={scope_str}&response_type=code&state=facebook&auth_type=rerequest"
     
     return auth_url
