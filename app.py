@@ -670,20 +670,22 @@ def get_facebook_oauth_url():
     if not client_id:
         return "#error_missing_fb_client_id"
 
-    redirect_uri = "https://creator-ai-manager-tgrh5ifkgfqme6kdomcvxb.streamlit.app/" 
+    redirect_uri = "https://creator-ai-manager-tgrh5ifkgfqme6kdomcvxb.streamlit.app/"
     
-    # 🔥 THE ULTIMATE SCOPES: Added 'business_management' to unlock hidden Business Pages
+    # ✅ Updated scopes
     scopes = [
-    "pages_show_list",
-    "pages_read_engagement", 
-    "pages_manage_posts",
-    "instagram_basic",           # ← Instagram data ke liye
-    "instagram_manage_insights"  # ← Instagram analytics ke liye
-]
+        "public_profile",
+        "pages_show_list",
+        "pages_read_engagement",
+        "pages_read_user_content",
+        "business_management",
+        "instagram_basic",
+        "instagram_manage_insights"
+    ]
     scope_str = ",".join(scopes)
     
-    # auth_type=rerequest is compulsory here
-    auth_url = f"https://www.facebook.com/v18.0/dialog/oauth?client_id={client_id}&redirect_uri={redirect_uri}&scope={scope_str}&response_type=code&state=facebook&auth_type=rerequest"
+    # ⚡ MAGIC FIX 1: Added '&auth_type=rerequest' so Meta FORCES the page selection screen to appear!
+    auth_url = f"https://www.facebook.com/v20.0/dialog/oauth?client_id={client_id}&redirect_uri={redirect_uri}&scope={scope_str}&response_type=code&state=facebook&auth_type=rerequest"
     
     return auth_url
 
@@ -1032,7 +1034,7 @@ if "code" in st.query_params:
         user_access_token = get_meta_access_token(auth_code)
         
         if user_access_token:
-            base_url = "https://graph.facebook.com/v18.0"
+            base_url = "https://graph.facebook.com/v20.0"
             pages_url = f"{base_url}/me/accounts?access_token={user_access_token}"
             try:
                 # 📡 Fetching Data from Meta
@@ -1041,13 +1043,14 @@ if "code" in st.query_params:
                 # 🚨 X-RAY VISION: Agar Meta Error deta hai
                 if "error" in pages_res:
                     st.error("🚨 META CORE ERROR DETECTED:")
-                    st.json(pages_res) # Yeh Meta ki asli gaali (error) UI par chhaap dega
+                    st.json(pages_res) 
                 
                 # ✅ SUCCESS: Agar pages mil gaye
                 elif "data" in pages_res and len(pages_res["data"]) > 0:
-                    page_access_token = pages_res["data"][0].get("access_token")
                     
-                    save_platform_token("facebook_token", page_access_token)
+                    # ⚡ MAGIC FIX 2: Claude's function requires the USER Token. 
+                    # Pehle hum yahan Page Token extract kar rahe the, jisse clash ho raha tha.
+                    save_platform_token("facebook_token", user_access_token)
                     save_platform_token("instagram_token", user_access_token) 
                     
                     st.session_state["fb_connected"] = True
@@ -1063,7 +1066,7 @@ if "code" in st.query_params:
                 else:
                     st.error("❌ Linkage Failed: The API returned an empty list of pages.")
                     st.warning("🕵️ RAW API RESPONSE FROM META:")
-                    st.json(pages_res) # Hum check karenge ki kya sach mein array [] empty aa raha hai!
+                    st.json(pages_res) 
                     
             except Exception as e:
                 st.error(f"❌ Core Router Error: {str(e)}")
