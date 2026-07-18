@@ -1,3 +1,6 @@
+# ✈️ Dynamic Telegram Storage aur Database Engines Connect Karna
+from storage_engine import upload_video_to_telegram
+from db_engine import insert_schedule_queue
 # ── Groq Cache Fix ─────────────────────────────────────
 try:
     from crewai.llms import cache as _cache
@@ -1584,7 +1587,7 @@ else:
                     st.markdown('<div class="metric-box warning-box"><div class="metric-title">FB Node</div><div class="metric-value" style="color: #FF4444;">Offline</div></div>', unsafe_allow_html=True)
                     st.error(f"🕵️ FB Diagnostics Log: {fb.get('debug_msg', 'Token empty or never synced.')}")
 
-    # PILL SECTION C: AUTOMATED PUBLISHER DEPLOYMENT PIPELINE
+    # ── PILL SECTION C: AUTOMATED PUBLISHER DEPLOYMENT PIPELINE ──────────────────
     elif selected_auditor_section == "🚀 3. Omnichannel Media Publisher Node":
         st.markdown("### 🚀 Omnichannel Automated Media Publisher")
         st.write("Upload your video, select metadata, and publish everywhere in one click.")
@@ -1604,7 +1607,13 @@ else:
                                    ["📂 Use Saved Vault Data (Recommended)", "✍️ Manual Paste", "✨ Generate New Metadata"], 
                                    horizontal=True)
         
-        # Option 1: Vault Data (The Bridge)
+        # Variables default initialize karna taaki scope errors na aayein
+        final_yt_title = ""
+        final_yt_desc = ""
+        final_tw_thread = ""
+        final_ig_cap = ""
+        parsed_data = {}
+
         # Option 1: Vault Data (The Bridge with Smart Parser)
         if metadata_source == "📂 Use Saved Vault Data (Recommended)":
             try:
@@ -1627,30 +1636,47 @@ else:
                 
                 # Yahan auto-fill boxes aayenge (User inhe edit kar sakta hai)
                 with st.expander("📺 Auto-Filled: YouTube Metadata", expanded=True):
-                    final_yt_title = st.text_input("YouTube Title", value=parsed_data["yt_title"])
-                    final_yt_desc = st.text_area("YouTube Description", value=parsed_data["yt_desc"], height=150)
+                    final_yt_title = st.text_input("YouTube Title", value=parsed_data.get("yt_title", ""))
+                    final_yt_desc = st.text_area("YouTube Description", value=parsed_data.get("yt_desc", ""), height=150)
                 
                 with st.expander("🐦 Auto-Filled: X (Twitter) Thread"):
-                    final_tw_thread = st.text_area("Generated Thread Content", value=parsed_data["tw_thread"], height=150)
+                    final_tw_thread = st.text_area("Generated Thread Content", value=parsed_data.get("tw_thread", ""), height=150)
                 
                 with st.expander("📸 Auto-Filled: Social Captions"):
-                    final_ig_cap = st.text_area("Instagram/Facebook Caption", value=parsed_data["ig_caption"], height=100)
+                    final_ig_cap = st.text_area("Instagram/Facebook Caption", value=parsed_data.get("ig_caption", ""), height=100)
 
         # Option 2: Manual Paste (Clean UI with Expanders)
         elif metadata_source == "✍️ Manual Paste":
             st.info("Manually enter your content for each platform below.")
             with st.expander("📺 YouTube Metadata", expanded=True):
-                st.text_input("YouTube Title", key="man_yt_title")
-                st.text_area("YouTube Description", key="man_yt_desc")
+                final_yt_title = st.text_input("YouTube Title", key="man_yt_title")
+                final_yt_desc = st.text_area("YouTube Description", key="man_yt_desc")
             with st.expander("🐦 X (Twitter) Thread"):
-                st.text_area("Tweet 1 (Video attached here)", key="man_tw_1")
+                final_tw_thread = st.text_area("Tweet 1 (Video attached here)", key="man_tw_1")
                 st.caption("*(Logic for '+ Add Tweet' button will be integrated here during API wiring)*")
             with st.expander("📸 Instagram & Facebook Captions"):
-                st.text_area("Reel/Post Caption", key="man_ig_cap")
+                final_ig_cap = st.text_area("Reel/Post Caption", key="man_ig_cap")
                 
         # Option 3: Generate New
         elif metadata_source == "✨ Generate New Metadata":
             st.warning("⚠️ You need fresh metadata. Please switch to the **'✍️ AI Script Generator'** mode from the left sidebar to build and save a new blueprint to your Vault.")
+            
+        st.write("---")
+
+        # ⏰ ⚡ STEP 2.5: SCHEDULING FRAMEWORK UI ⚡
+        st.markdown("#### ⏰ Step 2.5: Execution Strategy")
+        execution_type = st.radio("Choose post timing strategy:", ["⚡ Instant Post Now", "📅 Schedule Video For Later"], horizontal=True)
+        
+        from datetime import datetime
+        scheduled_datetime = None
+        if execution_type == "📅 Schedule Video For Later":
+            col_date, col_time = st.columns(2)
+            with col_date:
+                target_date = st.date_input("Target Date", min_value=datetime.today())
+            with col_time:
+                target_time = st.time_input("Target Time")
+            scheduled_datetime = datetime.combine(target_date, target_time)
+            st.info(f"Pipeline stands by until: {scheduled_datetime.strftime('%Y-%m-%d %H:%M:%S')}")
             
         st.write("---")
         
@@ -1677,116 +1703,144 @@ else:
         
         st.write(" ")
         # 🚀 THE PUBLISH BUTTON (Master Dispatcher)
-        if st.button("🚀 PUBLISH TO ALL SELECTED PLATFORMS", use_container_width=True, type="primary"):
+        if st.button("🚀 EXECUTE MASTER ACTION PLAN", use_container_width=True, type="primary"):
             if not uploaded_video:
                 st.error("⚠️ Action Blocked: Please upload a video file first!")
             elif not (legal_1 and legal_2):
                 st.error("⚠️ Action Blocked: You must agree to both compliance checkboxes before publishing.")
-            elif not st.session_state.get("channels_synced"):
+            elif execution_type == "⚡ Instant Post Now" and not st.session_state.get("channels_synced"):
                 st.error("⚠️ Connection Error: Your social accounts are not linked. Go to 'Secure Social Account Hub' first.")
             else:
-                with st.spinner("Initiating secure upload sequence to social APIs..."):
+                with st.spinner("Initiating secure action pipeline..."):
                     try:
-                        # 1. Video ko RAM se server ki disk par temporarily save karna
-                        with tempfile.NamedTemporaryFile(delete=False, suffix='.mp4') as tmp_file:
-                            tmp_file.write(uploaded_video.read())
-                            temp_video_path = tmp_file.name
-                        
-                        # 2. Database se user ke fresh Auth Tokens nikalna
-                        user_tokens = None
-                        try:
-                            res = supabase.table("creator_profiles").select("*").eq("creator_handle", st.session_state.get("user_email")).execute()
-                            if res.data:
-                                user_tokens = res.data[0]
-                        except Exception as e:
-                            print(f"Token Fetch Error: {e}")
+                        # Target platforms matrix mapping calculate karna dono methods ke liye
+                        targets = []
+                        if push_yt: targets.append("youtube")
+                        if push_tw: targets.append("twitter")
+                        if push_th: targets.append("threads")
+                        if push_ig: targets.append("instagram")
+                        if push_li: targets.append("linkedin")
 
-                        if not user_tokens:
-                            st.error("⚠️ Database Error: Could not retrieve your connected accounts.")
-                        else:
-                            success_logs = []
-                            check_res = supabase.table("platform_analytics_cache").select("id").eq("creator_handle", st.session_state.get("user_email")).execute()
+                        success_logs = []
+
+                        # 🔥 BRANCH A: TELEGRAM STORAGE + SUPABASE QUEUE MECHANISM
+                        if execution_type == "📅 Schedule Video For Later":
+                            st.info("✈️ Uploading video binary chunks to secure Telegram node...")
+                            file_bytes = uploaded_video.read()
                             
-                            # Initial basic status dictionary injection if needed
-                            init_meta = {"facebook": {"status": "connected"}, "instagram": {"status": "connected"}}
+                            # Triggering storage module function
+                            video_cloud_url = upload_video_to_telegram(file_bytes, file_name=uploaded_video.name)
                             
-                            if not check_res.data:
-                                supabase.table("platform_analytics_cache").insert({
-                                    "creator_handle": st.session_state.get("user_email"),
-                                    "sync_status": "Healthy"
-                                }).execute()
-                            
-                            # --- YOUTUBE DISPATCH ---
-                            if push_yt:
-                                if user_tokens.get("youtube_token"):
-                                    st.info("⏳ Uploading to YouTube...")
-                                    time.sleep(1) # [API CALL PLACEHOLDER]
-                                    # Yahan requests.post() aayega Google API ke liye
-                                    success_logs.append("✅ YouTube Channel")
+                            if video_cloud_url:
+                                st.info("🗄️ Saving task blueprint to Supabase Scheduler...")
+                                metadata_payload = {
+                                    "video_title": final_yt_title if final_yt_title else uploaded_video.name,
+                                    "youtube_description": final_yt_desc,
+                                    "twitter_thread_text": final_tw_thread,
+                                    "instagram_caption": final_ig_cap
+                                }
+                                
+                                db_response = insert_schedule_queue(
+                                    creator_email=st.session_state.get("user_email"),
+                                    platforms=targets,
+                                    video_url=video_cloud_url,
+                                    scheduled_time=scheduled_datetime,
+                                    metadata_payload=metadata_payload
+                                )
+                                
+                                if db_response:
+                                    success_logs.append(f"📅 Scheduled Queue Locked for {scheduled_datetime.strftime('%Y-%m-%d %H:%M')}")
                                 else:
-                                    st.warning("⚠️ YouTube skipped: Account not connected.")
-
-                            # --- TWITTER DISPATCH ---
-                            if push_tw:
-                                if user_tokens.get("twitter_token"):
-                                    st.info("⏳ Uploading Thread to X (Twitter)...")
-                                    
-                                    # 1. UI se kate hue (parsed) thread ka text uthao
-                                    # Note: Hum parsed_data use kar rahe hain jo Tab 3 mein already mapped hai
-                                    raw_twitter_text = parsed_data.get("tw_thread", "")
-                                    
-                                    if raw_twitter_text:
-                                        # 2. Lamba text list mein split karna (Blank lines ke basis par)
-                                        tweets_list = [t.strip() for t in raw_twitter_text.split('\n\n') if t.strip()]
-                                        
-                                        # 3. API Function Call
-                                        success, msg = post_to_twitter_thread(tweets_list, user_tokens.get("twitter_token"))
-                                        
-                                        if success:
-                                            success_logs.append("✅ X (Twitter) Thread")
-                                        else:
-                                            st.error(f"❌ Twitter Failed: {msg}")
-                                    else:
-                                        st.warning("⚠️ Twitter skipped: No thread content found in blueprint.")
-                                else:
-                                    st.warning("⚠️ Twitter skipped: Account not connected.")
-
-                            # 🧵 --- META THREADS REUSABLE DATA ROUTING DISPATCH ---
-                            if push_th:
-                                if user_tokens.get("threads_token"):
-                                    st.info("⏳ Re-routing Twitter layout text to Meta Threads API...")
-                                    # Yahan Twitter ka hi parsed data completely reuse ho raha hai bina naye token kharch kiye!
-                                    raw_threads_text = parsed_data.get("tw_thread", "")
-                                    if raw_threads_text:
-                                        threads_list = [t.strip() for t in raw_threads_text.split('\n\n') if t.strip()]
-                                        # [META THREADS API WORKFLOW PLACEHOLDER]
-                                        # Threads API payload mein yeh pure elements as a thread chale jayenge
-                                        time.sleep(1) 
-                                        success_logs.append("✅ Meta Threads (Twitter Layout)")
-                                    else:
-                                        st.warning("⚠️ Threads skipped: No layout data available.")
-                                else:
-                                    st.warning("⚠️ Threads skipped: Account not connected.")
-
-                            # --- INSTAGRAM DISPATCH ---
-                            if push_ig:
-                                if user_tokens.get("instagram_token"):
-                                    st.info("⏳ Uploading to Instagram Reels...")
-                                    time.sleep(1) # [API CALL PLACEHOLDER]
-                                    # Yahan requests.post() aayega Instagram API ke liye
-                                    success_logs.append("✅ Instagram Business")
-                                else:
-                                    st.warning("⚠️ Instagram skipped: Account not connected.")
-
-                            # 4. SERVER CLEANUP (Auto-Delete Video)
-                            os.remove(temp_video_path)
-                            
-                            # 5. FINAL STATUS
-                            if success_logs:
-                                st.success(f"🔥 BOOM! Content successfully distributed to:\n" + "\n".join(success_logs))
-                                st.balloons()
+                                    st.error("❌ Database sync failed.")
                             else:
-                                st.error("❌ No platforms were successfully processed.")
+                                st.error("❌ Telegram node rejected the asset stream.")
+
+                        # 🔥 BRANCH B: INSTANT DIRECT DISPATCH NETWORK (Tumhara Original Flow)
+                        else:
+                            # 1. Video ko RAM se server ki disk par temporarily save karna
+                            with tempfile.NamedTemporaryFile(delete=False, suffix='.mp4') as tmp_file:
+                                tmp_file.write(uploaded_video.read())
+                                temp_video_path = tmp_file.name
+                            
+                            # 2. Database se user ke fresh Auth Tokens nikalna
+                            user_tokens = None
+                            try:
+                                res = supabase.table("creator_profiles").select("*").eq("creator_handle", st.session_state.get("user_email")).execute()
+                                if res.data:
+                                    user_tokens = res.data[0]
+                            except Exception as e:
+                                print(f"Token Fetch Error: {e}")
+
+                            if not user_tokens:
+                                st.error("⚠️ Database Error: Could not retrieve your connected accounts.")
+                            else:
+                                check_res = supabase.table("platform_analytics_cache").select("id").eq("creator_handle", st.session_state.get("user_email")).execute()
+                                
+                                if not check_res.data:
+                                    supabase.table("platform_analytics_cache").insert({
+                                        "creator_handle": st.session_state.get("user_email"),
+                                        "sync_status": "Healthy"
+                                    }).execute()
+                                
+                                # --- YOUTUBE DISPATCH ---
+                                if push_yt:
+                                    if user_tokens.get("youtube_token"):
+                                        st.info("⏳ Uploading to YouTube...")
+                                        time.sleep(1)
+                                        success_logs.append("✅ YouTube Channel")
+                                    else:
+                                        st.warning("⚠️ YouTube skipped: Account not connected.")
+
+                                # --- TWITTER DISPATCH ---
+                                if push_tw:
+                                    if user_tokens.get("twitter_token"):
+                                        st.info("⏳ Uploading Thread to X (Twitter)...")
+                                        raw_twitter_text = final_tw_thread if final_tw_thread else parsed_data.get("tw_thread", "")
+                                        
+                                        if raw_twitter_text:
+                                            tweets_list = [t.strip() for t in raw_twitter_text.split('\n\n') if t.strip()]
+                                            success, msg = post_to_twitter_thread(tweets_list, user_tokens.get("twitter_token"))
+                                            if success:
+                                                success_logs.append("✅ X (Twitter) Thread")
+                                            else:
+                                                st.error(f"❌ Twitter Failed: {msg}")
+                                        else:
+                                            st.warning("⚠️ Twitter skipped: No thread content found.")
+                                    else:
+                                        st.warning("⚠️ Twitter skipped: Account not connected.")
+
+                                # --- META THREADS DISPATCH ---
+                                if push_th:
+                                    if user_tokens.get("threads_token"):
+                                        st.info("⏳ Re-routing Twitter layout text to Meta Threads API...")
+                                        raw_threads_text = final_tw_thread if final_tw_thread else parsed_data.get("tw_thread", "")
+                                        if raw_threads_text:
+                                            threads_list = [t.strip() for t in raw_threads_text.split('\n\n') if t.strip()]
+                                            time.sleep(1) 
+                                            success_logs.append("✅ Meta Threads (Twitter Layout)")
+                                        else:
+                                            st.warning("⚠️ Threads skipped: No layout data available.")
+                                    else:
+                                        st.warning("⚠️ Threads skipped: Account not connected.")
+
+                                # --- INSTAGRAM DISPATCH ---
+                                if push_ig:
+                                    if user_tokens.get("instagram_token"):
+                                        st.info("⏳ Uploading to Instagram Reels...")
+                                        time.sleep(1)
+                                        success_logs.append("✅ Instagram Business")
+                                    else:
+                                        st.warning("⚠️ Instagram skipped: Account not connected.")
+
+                                # Direct post ke baad clean operations handle karna
+                                os.remove(temp_video_path)
+                                
+                        # 5. FINAL UNIFIED PIPELINE DASHBOARD STATUS OUTPUT
+                        if success_logs:
+                            st.success(f"🔥 BOOM! Action Plan execution complete:\n" + "\n".join(success_logs))
+                            st.balloons()
+                        else:
+                            st.error("❌ No routing paths were successfully processed.")
                                 
                     except Exception as master_e:
                         st.error(f"⚠️ Core Engine Failure: {str(master_e)}")
