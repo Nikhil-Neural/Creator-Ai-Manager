@@ -1612,6 +1612,8 @@ else:
         final_yt_desc = ""
         final_tw_thread = ""
         final_ig_cap = ""
+        final_th_content = ""
+        final_li_post = ""
         parsed_data = {}
 
         # Option 1: Vault Data (The Bridge with Smart Parser)
@@ -1680,16 +1682,55 @@ else:
             
         st.write("---")
         
-        # 🌍 STEP 3: PLATFORM ROUTING
-        st.markdown("#### 🌍 Step 3: Distribution Routing")
-        st.write("Select the platforms you want to publish this video to:")
-        
-        col_p1, col_p2, col_p3, col_p4, col_p5 = st.columns(5) # 5 Columns kar diye
-        with col_p1: push_yt = st.checkbox("📺 YouTube", value=True)
-        with col_p2: push_tw = st.checkbox("🐦 X (Twitter)")
-        with col_p3: push_th = st.checkbox("🧵 Meta Threads") # Naya Checkbox
-        with col_p4: push_ig = st.checkbox("📸 Instagram")
-        with col_p5: push_li = st.checkbox("💼 LinkedIn")
+        # 🌍 STEP 3: OMNICHANNEL DISTRIBUTION & INDEPENDENT TIMING MATRIX
+st.markdown("#### 🌍 Step 3: Distribution Routing & Custom Timings")
+st.write("Select the platforms and set independent times for each:")
+
+# Har platform ke liye settings hold karne ke liye dictionary
+platform_schedule_map = {}
+
+# 5 Columns for all 5 platforms
+col_p1, col_p2, col_p3, col_p4, col_p5 = st.columns(5)
+
+with col_p1:
+    push_yt = st.checkbox("📺 YouTube", value=True)
+    if push_yt:
+        with st.expander("⏰ YT Timing", expanded=True):
+            yt_date = st.date_input("YT Date", min_value=datetime.today(), key="yt_d")
+            yt_time = st.time_input("YT Time", key="yt_t")
+            platform_schedule_map["youtube"] = datetime.combine(yt_date, yt_time)
+
+with col_p2:
+    push_tw = st.checkbox("🐦 X (Twitter)")
+    if push_tw:
+        with st.expander("⏰ X Timing", expanded=True):
+            tw_date = st.date_input("X Date", min_value=datetime.today(), key="tw_d")
+            tw_time = st.time_input("X Time", key="tw_t")
+            platform_schedule_map["twitter"] = datetime.combine(tw_date, tw_time)
+
+with col_p3:
+    push_ig = st.checkbox("📸 Instagram")
+    if push_ig:
+        with st.expander("⏰ IG Timing", expanded=True):
+            ig_date = st.date_input("IG Date", min_value=datetime.today(), key="ig_d")
+            ig_time = st.time_input("IG Time", key="ig_t")
+            platform_schedule_map["instagram"] = datetime.combine(ig_date, ig_time)
+
+with col_p4:
+    push_th = st.checkbox("🧵 Threads")
+    if push_th:
+        with st.expander("⏰ Threads Timing", expanded=True):
+            th_date = st.date_input("TH Date", min_value=datetime.today(), key="th_d")
+            th_time = st.time_input("TH Time", key="th_t")
+            platform_schedule_map["threads"] = datetime.combine(th_date, th_time)
+
+with col_p5:
+    push_li = st.checkbox("💼 LinkedIn")
+    if push_li:
+        with st.expander("⏰ LinkedIn Timing", expanded=True):
+            li_date = st.date_input("LI Date", min_value=datetime.today(), key="li_d")
+            li_time = st.time_input("LI Time", key="li_t")
+            platform_schedule_map["linkedin"] = datetime.combine(li_date, li_time)
         
         if push_yt:
             st.caption("*Note: YouTube API does not support custom thumbnails for Shorts. A frame will be auto-selected.*")
@@ -1725,35 +1766,47 @@ else:
 
                         # 🔥 BRANCH A: TELEGRAM STORAGE + SUPABASE QUEUE MECHANISM
                         if execution_type == "📅 Schedule Video For Later":
-                            st.info("✈️ Uploading video binary chunks to secure Telegram node...")
-                            file_bytes = uploaded_video.read()
-                            
-                            # Triggering storage module function
-                            video_cloud_url = upload_video_to_telegram(file_bytes, file_name=uploaded_video.name)
-                            
-                            if video_cloud_url:
-                                st.info("🗄️ Saving task blueprint to Supabase Scheduler...")
-                                metadata_payload = {
-                                    "video_title": final_yt_title if final_yt_title else uploaded_video.name,
-                                    "youtube_description": final_yt_desc,
-                                    "twitter_thread_text": final_tw_thread,
-                                    "instagram_caption": final_ig_cap
-                                }
-                                
-                                db_response = insert_schedule_queue(
-                                    creator_email=st.session_state.get("user_email"),
-                                    platforms=targets,
-                                    video_url=video_cloud_url,
-                                    scheduled_time=scheduled_datetime,
-                                    metadata_payload=metadata_payload
-                                )
-                                
-                                if db_response:
-                                    success_logs.append(f"📅 Scheduled Queue Locked for {scheduled_datetime.strftime('%Y-%m-%d %H:%M')}")
-                                else:
-                                    st.error("❌ Database sync failed.")
+                            if not platform_schedule_map:
+                                st.warning("⚠️ Please select at least one platform to schedule.")
                             else:
-                                st.error("❌ Telegram node rejected the asset stream.")
+                                st.info("✈️ Uploading video binary chunks to secure Telegram node...")
+                                file_bytes = uploaded_video.read()
+                                
+                                # Triggering storage module function
+                                video_cloud_url = upload_video_to_telegram(file_bytes, file_name=uploaded_video.name)
+                                
+                                if video_cloud_url:
+                                    st.info("🗄️ Splitting blueprints & Syncing with Supabase Cluster...")
+                                    
+                                    metadata_payload = {
+                                        "video_title": final_yt_title if final_yt_title else uploaded_video.name,
+                                        "youtube_description": final_yt_desc if final_yt_desc else "",
+                                        "twitter_thread_text": final_tw_thread if final_tw_thread else "",
+                                        "instagram_caption": final_ig_cap if final_ig_cap else "",
+                                        "threads_content": final_th_content if 'final_th_content' in locals() and final_th_content else "",
+                                        "linkedin_post_text": final_li_post if 'final_li_post' in locals() and final_li_post else ""
+                                    }
+                                    
+                                    # LOOP FOR MULTI-TIME OMNICHANNEL DISTRIBUTION
+                                    scheduling_errors = 0
+                                    for platform_name, target_datetime in platform_schedule_map.items():
+                                        db_response = insert_schedule_queue(
+                                            creator_email=st.session_state.get("user_email"),
+                                            platforms=[platform_name],  # Array goes with single platform name
+                                            video_url=video_cloud_url,
+                                            scheduled_time=target_datetime, # Individual target time
+                                            metadata_payload=metadata_payload
+                                        )
+                                        
+                                        if db_response:
+                                            success_logs.append(f"📅 Locked: {platform_name.upper()} queue for {target_datetime.strftime('%Y-%m-%d %H:%M')}")
+                                        else:
+                                            scheduling_errors += 1
+                                    
+                                    if scheduling_errors > 0:
+                                        st.error(f"❌ {scheduling_errors} platform schedules failed to sync with Database.")
+                                else:
+                                    st.error("❌ Telegram node rejected the asset stream.")
 
                         # 🔥 BRANCH B: INSTANT DIRECT DISPATCH NETWORK (Tumhara Original Flow)
                         else:
