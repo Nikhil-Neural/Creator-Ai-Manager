@@ -1,3 +1,4 @@
+from datetime import datetime
 # ✈️ Dynamic Telegram Storage aur Database Engines Connect Karna
 from storage_engine import upload_video_to_telegram
 from db_engine import insert_schedule_queue
@@ -1662,20 +1663,6 @@ else:
         # Option 3: Generate New
         elif metadata_source == "✨ Generate New Metadata":
             st.warning("⚠️ You need fresh metadata. Please switch to the **'✍️ AI Script Generator'** mode from the left sidebar to build and save a new blueprint to your Vault.")
-            
-        st.write("---")
-        execution_type = "📅 Schedule Video For Later"
-        
-        from datetime import datetime
-        scheduled_datetime = None
-        if execution_type == "📅 Schedule Video For Later":
-            col_date, col_time = st.columns(2)
-            with col_date:
-                target_date = st.date_input("Target Date", min_value=datetime.today())
-            with col_time:
-                target_time = st.time_input("Target Time")
-            scheduled_datetime = datetime.combine(target_date, target_time)
-            st.info(f"Pipeline stands by until: {scheduled_datetime.strftime('%Y-%m-%d %H:%M:%S')}")
             
         st.write("---")
         
