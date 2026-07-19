@@ -1664,10 +1664,7 @@ else:
             st.warning("⚠️ You need fresh metadata. Please switch to the **'✍️ AI Script Generator'** mode from the left sidebar to build and save a new blueprint to your Vault.")
             
         st.write("---")
-
-        # ⏰ ⚡ STEP 2.5: SCHEDULING FRAMEWORK UI ⚡
-        st.markdown("#### ⏰ Step 2.5: Execution Strategy")
-        execution_type = st.radio("Choose post timing strategy:", ["⚡ Instant Post Now", "📅 Schedule Video For Later"], horizontal=True)
+        execution_type = "📅 Schedule Video For Later"
         
         from datetime import datetime
         scheduled_datetime = None
@@ -1683,217 +1680,122 @@ else:
         st.write("---")
         
         # 🌍 STEP 3: OMNICHANNEL DISTRIBUTION & INDEPENDENT TIMING MATRIX
-st.markdown("#### 🌍 Step 3: Distribution Routing & Custom Timings")
-st.write("Select the platforms and set independent times for each:")
+        st.markdown("#### 🌍 Step 3: Distribution Routing & Custom Timings")
+        st.write("Select the platforms and set independent times for each:")
 
-# Har platform ke liye settings hold karne ke liye dictionary
-platform_schedule_map = {}
+        # Har platform ke liye settings hold karne ke liye dictionary
+        platform_schedule_map = {}
 
-# 5 Columns for all 5 platforms
-col_p1, col_p2, col_p3, col_p4, col_p5 = st.columns(5)
+        # 5 Columns for all 5 platforms - Strictly Independent
+        col_p1, col_p2, col_p3, col_p4, col_p5 = st.columns(5)
 
-with col_p1:
-    push_yt = st.checkbox("📺 YouTube", value=True)
-    if push_yt:
-        with st.expander("⏰ YT Timing", expanded=True):
-            yt_date = st.date_input("YT Date", min_value=datetime.today(), key="yt_d")
-            yt_time = st.time_input("YT Time", key="yt_t")
-            platform_schedule_map["youtube"] = datetime.combine(yt_date, yt_time)
+        with col_p1:
+            push_yt = st.checkbox("📺 YouTube", value=True)
+            if push_yt:
+                with st.expander("⏰ YT Timing", expanded=True):
+                    yt_date = st.date_input("YT Date", min_value=datetime.today(), key="yt_d")
+                    yt_time = st.time_input("YT Time", key="yt_t")
+                    platform_schedule_map["youtube"] = datetime.combine(yt_date, yt_time)
 
-with col_p2:
-    push_tw = st.checkbox("🐦 X (Twitter)")
-    if push_tw:
-        with st.expander("⏰ X Timing", expanded=True):
-            tw_date = st.date_input("X Date", min_value=datetime.today(), key="tw_d")
-            tw_time = st.time_input("X Time", key="tw_t")
-            platform_schedule_map["twitter"] = datetime.combine(tw_date, tw_time)
+        with col_p2:
+            push_tw = st.checkbox("🐦 X (Twitter)")
+            if push_tw:
+                with st.expander("⏰ X Timing", expanded=True):
+                    tw_date = st.date_input("X Date", min_value=datetime.today(), key="tw_d")
+                    tw_time = st.time_input("X Time", key="tw_t")
+                    platform_schedule_map["twitter"] = datetime.combine(tw_date, tw_time)
 
-with col_p3:
-    push_ig = st.checkbox("📸 Instagram")
-    if push_ig:
-        with st.expander("⏰ IG Timing", expanded=True):
-            ig_date = st.date_input("IG Date", min_value=datetime.today(), key="ig_d")
-            ig_time = st.time_input("IG Time", key="ig_t")
-            platform_schedule_map["instagram"] = datetime.combine(ig_date, ig_time)
+        with col_p3:
+            push_ig = st.checkbox("📸 Instagram")
+            if push_ig:
+                with st.expander("⏰ IG Timing", expanded=True):
+                    ig_date = st.date_input("IG Date", min_value=datetime.today(), key="ig_d")
+                    ig_time = st.time_input("IG Time", key="ig_t")
+                    platform_schedule_map["instagram"] = datetime.combine(ig_date, ig_time)
 
-with col_p4:
-    push_th = st.checkbox("🧵 Threads")
-    if push_th:
-        with st.expander("⏰ Threads Timing", expanded=True):
-            th_date = st.date_input("TH Date", min_value=datetime.today(), key="th_d")
-            th_time = st.time_input("TH Time", key="th_t")
-            platform_schedule_map["threads"] = datetime.combine(th_date, th_time)
+        with col_p4:
+            push_th = st.checkbox("🧵 Threads")
+            if push_th:
+                with st.expander("⏰ Threads Timing", expanded=True):
+                    th_date = st.date_input("TH Date", min_value=datetime.today(), key="th_d")
+                    th_time = st.time_input("TH Time", key="th_t")
+                    platform_schedule_map["threads"] = datetime.combine(th_date, th_time)
 
-with col_p5:
-    push_li = st.checkbox("💼 LinkedIn")
-    if push_li:
-        with st.expander("⏰ LinkedIn Timing", expanded=True):
-            li_date = st.date_input("LI Date", min_value=datetime.today(), key="li_d")
-            li_time = st.time_input("LI Time", key="li_t")
-            platform_schedule_map["linkedin"] = datetime.combine(li_date, li_time)
+        with col_p5:
+            push_li = st.checkbox("💼 LinkedIn")
+            if push_li:
+                with st.expander("⏰ LinkedIn Timing", expanded=True):
+                    li_date = st.date_input("LI Date", min_value=datetime.today(), key="li_d")
+                    li_time = st.time_input("LI Time", key="li_t")
+                    platform_schedule_map["linkedin"] = datetime.combine(li_date, li_time)
         
         if push_yt:
             st.caption("*Note: YouTube API does not support custom thumbnails for Shorts. A frame will be auto-selected.*")
             
         st.write("---")
         
-        # 🛡️ STEP 4: COMPLIANCE & KILL-SWITCH
+        # 🛡️ STEP 4: COMPLIANCE & KILL-SWITCH (Brought out of LinkedIn scope!)
         st.markdown("#### 🛡️ Step 4: Compliance & Safety")
         legal_1 = st.checkbox("I have reviewed and edited the AI-generated content and confirm it is ready for publishing.")
         legal_2 = st.checkbox("I take full responsibility for this posting. I understand that Creator AI OS is not liable for account strikes, spam bans, or TOS violations.")
         
         st.write(" ")
-        # 🚀 THE PUBLISH BUTTON (Master Dispatcher)
+        
+        # 🚀 THE PUBLISH BUTTON (Master Dispatcher Matrix)
         if st.button("🚀 EXECUTE MASTER ACTION PLAN", use_container_width=True, type="primary"):
             if not uploaded_video:
                 st.error("⚠️ Action Blocked: Please upload a video file first!")
             elif not (legal_1 and legal_2):
                 st.error("⚠️ Action Blocked: You must agree to both compliance checkboxes before publishing.")
-            elif execution_type == "⚡ Instant Post Now" and not st.session_state.get("channels_synced"):
-                st.error("⚠️ Connection Error: Your social accounts are not linked. Go to 'Secure Social Account Hub' first.")
+            elif not platform_schedule_map:
+                st.warning("⚠️ Please select at least one platform to schedule.")
             else:
                 with st.spinner("Initiating secure action pipeline..."):
                     try:
-                        # Target platforms matrix mapping calculate karna dono methods ke liye
-                        targets = []
-                        if push_yt: targets.append("youtube")
-                        if push_tw: targets.append("twitter")
-                        if push_th: targets.append("threads")
-                        if push_ig: targets.append("instagram")
-                        if push_li: targets.append("linkedin")
-
                         success_logs = []
-
-                        # 🔥 BRANCH A: TELEGRAM STORAGE + SUPABASE QUEUE MECHANISM
-                        if execution_type == "📅 Schedule Video For Later":
-                            if not platform_schedule_map:
-                                st.warning("⚠️ Please select at least one platform to schedule.")
-                            else:
-                                st.info("✈️ Uploading video binary chunks to secure Telegram node...")
-                                file_bytes = uploaded_video.read()
-                                
-                                # Triggering storage module function
-                                video_cloud_url = upload_video_to_telegram(file_bytes, file_name=uploaded_video.name)
-                                
-                                if video_cloud_url:
-                                    st.info("🗄️ Splitting blueprints & Syncing with Supabase Cluster...")
-                                    
-                                    metadata_payload = {
-                                        "video_title": final_yt_title if final_yt_title else uploaded_video.name,
-                                        "youtube_description": final_yt_desc if final_yt_desc else "",
-                                        "twitter_thread_text": final_tw_thread if final_tw_thread else "",
-                                        "instagram_caption": final_ig_cap if final_ig_cap else "",
-                                        "threads_content": final_th_content if 'final_th_content' in locals() and final_th_content else "",
-                                        "linkedin_post_text": final_li_post if 'final_li_post' in locals() and final_li_post else ""
-                                    }
-                                    
-                                    # LOOP FOR MULTI-TIME OMNICHANNEL DISTRIBUTION
-                                    scheduling_errors = 0
-                                    for platform_name, target_datetime in platform_schedule_map.items():
-                                        db_response = insert_schedule_queue(
-                                            creator_email=st.session_state.get("user_email"),
-                                            platforms=[platform_name],  # Array goes with single platform name
-                                            video_url=video_cloud_url,
-                                            scheduled_time=target_datetime, # Individual target time
-                                            metadata_payload=metadata_payload
-                                        )
-                                        
-                                        if db_response:
-                                            success_logs.append(f"📅 Locked: {platform_name.upper()} queue for {target_datetime.strftime('%Y-%m-%d %H:%M')}")
-                                        else:
-                                            scheduling_errors += 1
-                                    
-                                    if scheduling_errors > 0:
-                                        st.error(f"❌ {scheduling_errors} platform schedules failed to sync with Database.")
-                                else:
-                                    st.error("❌ Telegram node rejected the asset stream.")
-
-                        # 🔥 BRANCH B: INSTANT DIRECT DISPATCH NETWORK (Tumhara Original Flow)
-                        else:
-                            # 1. Video ko RAM se server ki disk par temporarily save karna
-                            with tempfile.NamedTemporaryFile(delete=False, suffix='.mp4') as tmp_file:
-                                tmp_file.write(uploaded_video.read())
-                                temp_video_path = tmp_file.name
+                        st.info("✈️ Uploading video binary chunks to secure Telegram node...")
+                        file_bytes = uploaded_video.read()
+                        
+                        # Triggering storage module function
+                        video_cloud_url = upload_video_to_telegram(file_bytes, file_name=uploaded_video.name)
+                        
+                        if video_cloud_url:
+                            st.info("🗄️ Splitting blueprints & Syncing with Supabase Cluster...")
                             
-                            # 2. Database se user ke fresh Auth Tokens nikalna
-                            user_tokens = None
-                            try:
-                                res = supabase.table("creator_profiles").select("*").eq("creator_handle", st.session_state.get("user_email")).execute()
-                                if res.data:
-                                    user_tokens = res.data[0]
-                            except Exception as e:
-                                print(f"Token Fetch Error: {e}")
-
-                            if not user_tokens:
-                                st.error("⚠️ Database Error: Could not retrieve your connected accounts.")
-                            else:
-                                check_res = supabase.table("platform_analytics_cache").select("id").eq("creator_handle", st.session_state.get("user_email")).execute()
+                            # Clean Variable mapping matrix safely resolving states
+                            metadata_payload = {
+                                "video_title": final_yt_title if final_yt_title else uploaded_video.name,
+                                "youtube_description": final_yt_desc if final_yt_desc else "",
+                                "twitter_thread_text": final_tw_thread if final_tw_thread else "",
+                                "instagram_caption": final_ig_cap if final_ig_cap else "",
+                                "threads_content": final_th_content if final_th_content else "",
+                                "linkedin_post_text": final_li_post if final_li_post else ""
+                            }
+                            
+                            # LOOP FOR MULTI-TIME OMNICHANNEL DISTRIBUTION
+                            scheduling_errors = 0
+                            for platform_name, target_datetime in platform_schedule_map.items():
+                                db_response = insert_schedule_queue(
+                                    creator_email=st.session_state.get("user_email"),
+                                    platforms=[platform_name],  # Array containing single target platform
+                                    video_url=video_cloud_url,
+                                    scheduled_time=target_datetime, # Pure dynamic per-platform time matrix
+                                    metadata_payload=metadata_payload
+                                )
                                 
-                                if not check_res.data:
-                                    supabase.table("platform_analytics_cache").insert({
-                                        "creator_handle": st.session_state.get("user_email"),
-                                        "sync_status": "Healthy"
-                                    }).execute()
+                                if db_response:
+                                    success_logs.append(f"📅 Locked: {platform_name.upper()} queue for {target_datetime.strftime('%Y-%m-%d %H:%M')}")
+                                else:
+                                    scheduling_errors += 1
+                            
+                            if scheduling_errors > 0:
+                                st.error(f"❌ {scheduling_errors} platform schedules failed to sync with Database.")
                                 
-                                # --- YOUTUBE DISPATCH ---
-                                if push_yt:
-                                    if user_tokens.get("youtube_token"):
-                                        st.info("⏳ Uploading to YouTube...")
-                                        time.sleep(1)
-                                        success_logs.append("✅ YouTube Channel")
-                                    else:
-                                        st.warning("⚠️ YouTube skipped: Account not connected.")
-
-                                # --- TWITTER DISPATCH ---
-                                if push_tw:
-                                    if user_tokens.get("twitter_token"):
-                                        st.info("⏳ Uploading Thread to X (Twitter)...")
-                                        raw_twitter_text = final_tw_thread if final_tw_thread else parsed_data.get("tw_thread", "")
-                                        
-                                        if raw_twitter_text:
-                                            tweets_list = [t.strip() for t in raw_twitter_text.split('\n\n') if t.strip()]
-                                            success, msg = post_to_twitter_thread(tweets_list, user_tokens.get("twitter_token"))
-                                            if success:
-                                                success_logs.append("✅ X (Twitter) Thread")
-                                            else:
-                                                st.error(f"❌ Twitter Failed: {msg}")
-                                        else:
-                                            st.warning("⚠️ Twitter skipped: No thread content found.")
-                                    else:
-                                        st.warning("⚠️ Twitter skipped: Account not connected.")
-
-                                # --- META THREADS DISPATCH ---
-                                if push_th:
-                                    if user_tokens.get("threads_token"):
-                                        st.info("⏳ Re-routing Twitter layout text to Meta Threads API...")
-                                        raw_threads_text = final_tw_thread if final_tw_thread else parsed_data.get("tw_thread", "")
-                                        if raw_threads_text:
-                                            threads_list = [t.strip() for t in raw_threads_text.split('\n\n') if t.strip()]
-                                            time.sleep(1) 
-                                            success_logs.append("✅ Meta Threads (Twitter Layout)")
-                                        else:
-                                            st.warning("⚠️ Threads skipped: No layout data available.")
-                                    else:
-                                        st.warning("⚠️ Threads skipped: Account not connected.")
-
-                                # --- INSTAGRAM DISPATCH ---
-                                if push_ig:
-                                    if user_tokens.get("instagram_token"):
-                                        st.info("⏳ Uploading to Instagram Reels...")
-                                        time.sleep(1)
-                                        success_logs.append("✅ Instagram Business")
-                                    else:
-                                        st.warning("⚠️ Instagram skipped: Account not connected.")
-
-                                # Direct post ke baad clean operations handle karna
-                                os.remove(temp_video_path)
-                                
-                        # 5. FINAL UNIFIED PIPELINE DASHBOARD STATUS OUTPUT
-                        if success_logs:
-                            st.success(f"🔥 BOOM! Action Plan execution complete:\n" + "\n".join(success_logs))
-                            st.balloons()
+                            if success_logs:
+                                st.success(f"🔥 BOOM! Action Plan execution complete:\n" + "\n".join(success_logs))
+                                st.balloons()
                         else:
-                            st.error("❌ No routing paths were successfully processed.")
+                            st.error("❌ Telegram node rejected the asset stream.")
                                 
                     except Exception as master_e:
                         st.error(f"⚠️ Core Engine Failure: {str(master_e)}")
