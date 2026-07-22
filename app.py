@@ -1437,6 +1437,13 @@ else:
                                 "linkedin_token": None,
                                 "threads_token": None
                             }).eq("creator_handle", st.session_state["creator_handle"]).execute()
+                        # 👉 1.5 NEW: Twitter Auth States ka anonymous kachra (garbage data) delete karo
+                        try:
+                            # Note: Agar tumne admin client is file mein import kiya hai toh 'supabase_admin' likho
+                            # Warna normal 'supabase' rehne do (kyunki humne SQL mein anon delete permission de di thi)
+                            supabase.table("twitter_auth_states").delete().neq("id", "00000000-0000-0000-0000-000000000000").execute()
+                        except Exception as e:
+                            pass # Agar table pehle se khali hai, toh error ignore karega
                         
                         # 2. App ki memory (RAM) se sab reset kar do
                         st.session_state["yt_connected"] = False
