@@ -1,3 +1,4 @@
+from db_engine import supabase_admin
 from datetime import datetime
 # ✈️ Dynamic Telegram Storage aur Database Engines Connect Karna
 from storage_engine import upload_video_to_telegram
@@ -738,7 +739,8 @@ def get_twitter_oauth_url():
     state = str(uuid.uuid4())
     
     # 3. Streamlit memory ki jagah SUPABASE mein save karein
-    supabase.table("twitter_auth_states").insert({
+    # Naya Code (supabase ki jagah supabase_admin lagao)
+    supabase_admin.table("twitter_auth_states").insert({
         "state": state,
         "code_verifier": code_verifier
     }).execute()
