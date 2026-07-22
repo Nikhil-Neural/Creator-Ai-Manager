@@ -1,4 +1,7 @@
-from db_engine import supabase_admin
+# 1. Pehle sahi function ko import karo
+from db_engine import get_supabase_admin_client
+# 2. Phir us function ko call karke apna supabase_admin variable bana lo
+supabase_admin = get_supabase_admin_client()
 from datetime import datetime
 # ✈️ Dynamic Telegram Storage aur Database Engines Connect Karna
 from storage_engine import upload_video_to_telegram
