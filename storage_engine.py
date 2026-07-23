@@ -11,7 +11,7 @@ def upload_video_to_telegram(video_file_bytes, file_name="video.mp4"):
     chat_id = st.secrets["TELEGRAM_CHAT_ID"]
     
     # Telegram API Endpoint for sending video documents
-    url = f"https://api.telegram.org/bot{bot_token}/sendDocument"
+    url = f"https://api.telegram.org/bot{bot_token}/sendVideo"
     
     # Payload metrics setup mapping
     payload = {
@@ -21,17 +21,16 @@ def upload_video_to_telegram(video_file_bytes, file_name="video.mp4"):
     
     # Continuous network byte-stream pipeline injection
     files = {
-        'document': (file_name, video_file_bytes, 'video/mp4')
+        'video': (file_name, video_file_bytes, 'video/mp4')
     }
     
     try:
-        # High speed server post method execute runtime
         response = requests.post(url, data=payload, files=files)
         response_data = response.json()
         
         if response_data.get("ok"):
-            # Telegram Server File Path Extract matrix
-            file_id = response_data["result"]["document"]["file_id"]
+            # 3. Yahan bhi 'document' hata kar 'video' lagao
+            file_id = response_data["result"]["video"]["file_id"]
             
             # File absolute path generation logic via bot gateway
             file_path_url = f"https://api.telegram.org/bot{bot_token}/getFile?file_id={file_id}"
