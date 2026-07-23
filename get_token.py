@@ -25,7 +25,7 @@ def main():
     flow = InstalledAppFlow.from_client_config(client_config, SCOPES)
     
     # Local server chalu karke token fetch karna (prompt='consent' force karega refresh token dene ke liye)
-    credentials = flow.run_local_server(port=0, prompt='consent')
+    credentials = flow.run_local_server(port=8080, prompt='consent')
     
     print("\n" + "="*50)
     print("SUCCESS! 🎉 Yahan se niche wala REFRESH TOKEN copy karo:")
