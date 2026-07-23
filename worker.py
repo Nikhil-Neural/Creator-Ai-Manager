@@ -2,7 +2,7 @@ import os
 import time
 import requests
 import tempfile
-from datetime import datetime
+from datetime import datetime, timezone
 import streamlit as st
 from supabase import create_client, Client
 
@@ -13,7 +13,7 @@ from googleapiclient.http import MediaFileUpload
 
 # 1. Supabase Connection Setup
 url = st.secrets["SUPABASE_URL"]
-key = st.secrets["SUPABASE_KEY"] 
+key = st.secrets["SUPABASE_SERVICE_KEY"] 
 supabase: Client = create_client(url, key)
 
 def upload_to_youtube(video_path, title, description):
@@ -51,7 +51,8 @@ def upload_to_youtube(video_path, title, description):
 
 def process_queue():
     """Database check karta hai aur pending videos upload karta hai"""
-    print(f"[{datetime.now()}] 🔍 Checking database for pending YouTube videos...")
+    current_utc_time = datetime.now(timezone.utc).isoformat()
+    print(f"[{datetime.now()}] 🔍 Checking database for pending videos scheduled up to now...")
     
     # 2. Database se pending YouTube tasks uthana (RLS bypass ke liye supabase client admin role pe hona chahiye)
     try:
@@ -97,7 +98,7 @@ def process_queue():
             print(f"✅ Success! YouTube Video ID: {yt_id}")
             
             # Step C: Database mein status update karna (Taki dobara upload na ho)
-            supabase.table("master_scheduler_queue").update({"status": "published"}).eq("id", task["id"]).execute()
+            supabase.table("master_scheduler_queue").delete().eq("id", task["id"]).execute()
             print("🗄️ Database status updated to 'published'.")
             
         except Exception as e:
