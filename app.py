@@ -1741,7 +1741,7 @@ else:
         st.write(" ")
         
         # Bas 'disabled=not (legal_1 and legal_2)' add karna hai
-if st.button("🚀 EXECUTE MASTER ACTION PLAN", use_container_width=True, type="primary", disabled=not (legal_1 and legal_2)):
+        if st.button("🚀 EXECUTE MASTER ACTION PLAN", use_container_width=True, type="primary", disabled=not (legal_1 and legal_2)):
             if not uploaded_video:
                 st.error("⚠️ Action Blocked: Please upload a video file first!")
             elif not (legal_1 and legal_2):
