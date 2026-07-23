@@ -742,8 +742,8 @@ def get_twitter_oauth_url():
     state = str(uuid.uuid4())
     
     # 3. Streamlit memory ki jagah SUPABASE mein save karein
-    # Naya Code (supabase ki jagah supabase_admin lagao)
-    supabase_admin.table("twitter_auth_states").insert({
+    # Aisa HONA chahiye:
+    response = supabase_admin.table("twitter_auth_states").insert({
         "state": state,
         "code_verifier": code_verifier
     }).execute()
