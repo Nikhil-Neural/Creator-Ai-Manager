@@ -69,7 +69,7 @@ def process_queue():
     for task in tasks:
         # Platform check (Sirf YouTube process karega abhi)
         # Note: Hum array (JSON) se strictly platform match kar rahe hain
-        platforms = task.get('platforms', [])
+        platforms = task.get('target_platforms', [])
         if "youtube" not in [p.lower() for p in platforms]:
             continue
 
