@@ -113,4 +113,15 @@ def process_queue():
                 print("🧹 Temporary files cleaned up.")
 
 if __name__ == "__main__":
-    process_queue()
+    print("🚀 Creator OS Background Worker started! Polling database every 60 seconds...")
+    
+    # Ye 'while True' loop script ko hamesha zinda rakhega
+    while True:
+        try:
+            process_queue()
+        except Exception as e:
+            print(f"⚠️ Unexpected error in main loop: {e}")
+            
+        # Har check ke baad 60 seconds (1 minute) ka rest lo, fir dobara check karo
+        # Tum isko 300 (5 minutes) bhi kar sakte ho database bachaane ke liye
+        time.sleep(60)
