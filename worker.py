@@ -56,7 +56,11 @@ def process_queue():
     
     # 2. Database se pending YouTube tasks uthana (RLS bypass ke liye supabase client admin role pe hona chahiye)
     try:
-        response = supabase.table("master_scheduler_queue").select("*").eq("status", "pending").execute()
+        response = supabase.table("master_scheduler_queue") \
+            .select("*") \
+            .eq("status", "pending") \
+            .lte("scheduled_time", current_utc_time) \
+            .execute()
         tasks = response.data
     except Exception as e:
         print(f"Database error: {e}")
