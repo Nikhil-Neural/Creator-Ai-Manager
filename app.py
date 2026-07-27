@@ -1495,10 +1495,13 @@ else:
             st.warning("⚠️ Security Lock: Please connect your accounts in Tab 1 first.")
         else:
             # 🗄️ FETCH CURRENT CACHE
+            # 🗄️ FETCH CURRENT CACHE
             try:
-                cache_res = supabase.table("platform_analytics_cache").select("*").eq("creator_handle", creator_handle).execute()
+                # 🚀 YAHAN supabase KO supabase_admin BANA DIYA
+                cache_res = supabase_admin.table("platform_analytics_cache").select("*").eq("creator_handle", creator_handle).execute()
                 cache_data = cache_res.data[0] if cache_res.data else {}
-            except:
+            except Exception as e:
+                st.error(f"Cache Fetch Error: {str(e)}") # Achhi practice ke liye error bhi print karwa diya
                 cache_data = {}
 
             profile_res = supabase.table("creator_profiles").select("*").eq("creator_handle", creator_handle).execute()
