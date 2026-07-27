@@ -19,7 +19,7 @@ import uuid
 
 # Supabase se connect karna
 url = st.secrets["SUPABASE_URL"]
-key = st.secrets["SUPABASE_KEY"]
+key = st.secrets["SUPABASE_SERVICE_KEY"]
 supabase: Client = create_client(url, key)
 import urllib.parse
 import tempfile
