@@ -1515,15 +1515,15 @@ else:
                         with st.spinner("Pinging Google Mainframe..."):
                             yt_data = fetch_youtube_analytics(yt_token)
                             
-                            # Future-Proof Safe Check: Verify if row exists before database injection
-                            check_res = supabase.table("platform_analytics_cache").select("id").eq("creator_handle", creator_handle).execute()
-                            
+                            # Normal 'supabase' ko 'supabase_admin' se replace kar diya gaya hai
+                            check_res = supabase_admin.table("platform_analytics_cache").select("id").eq("creator_handle", creator_handle).execute()
+
                             if check_res.data:
-                                supabase.table("platform_analytics_cache").update({
+                                supabase_admin.table("platform_analytics_cache").update({
                                     "youtube_data": yt_data
                                 }).eq("creator_handle", creator_handle).execute()
                             else:
-                                supabase.table("platform_analytics_cache").insert({
+                                supabase_admin.table("platform_analytics_cache").insert({
                                     "creator_handle": creator_handle,
                                     "youtube_data": yt_data
                                 }).execute()
