@@ -1514,7 +1514,7 @@ else:
                     if yt_token:
                         with st.spinner("Pinging Google Mainframe..."):
                             yt_data = fetch_youtube_analytics(yt_token)
-                            
+                            st.warning(f"🔍 GOOGLE NE KYA BHEJA: {yt_data}")
                             # Normal 'supabase' ko 'supabase_admin' se replace kar diya gaya hai
                             check_res = supabase_admin.table("platform_analytics_cache").select("id").eq("creator_handle", creator_handle).execute()
 
