@@ -328,7 +328,7 @@ def get_youtube_access_token(auth_code):
     Kachhe Auth Code ko Google ke server par bhej kar asli Access Token laata hai.
     """
     client_id = st.secrets.get("YOUTUBE_CLIENT_ID", "")
-    client_secret = st.secrets.get("YOUTUBE_CLIENT_SECRET", "") # ⚠️ Yeh secret chahiye hoga!
+    client_secret = st.secrets.get("YOUTUBE_CLIENT_SECRET", "") 
     redirect_uri = "https://creator-ai-manager-tgrh5ifkgfqme6kdomcvxb.streamlit.app/"
     
     token_url = "https://oauth2.googleapis.com/token"
@@ -345,11 +345,10 @@ def get_youtube_access_token(auth_code):
         if response.status_code == 200:
             return response.json().get("access_token")
         else:
-            print(f"[YT TOKEN ERROR] Google rejected the code: {response.text}")
-            return None
+            # 🛑 ERROR KO CHHUPANA NAHI HAI, SEEDHA BHEJNA HAI
+            return f"GOOGLE_ERROR: {response.text}" 
     except Exception as e:
-        print(f"[YT TOKEN EXCEPTION] {str(e)}")
-        return None
+        return f"SYSTEM_ERROR: {str(e)}"
 def get_meta_access_token(auth_code):
     """
     Kachhe Auth Code ko Meta API par bhej kar asli Access Token laata hai.
@@ -1087,13 +1086,16 @@ if "code" in st.query_params:
         st.info("🔄 Authenticating secure connection with Google...")
         real_access_token = get_youtube_access_token(auth_code)
         
-        if real_access_token:
+        # Agar error string aayi hai, toh directly print karo
+        if isinstance(real_access_token, str) and ("GOOGLE_ERROR" in real_access_token or "SYSTEM_ERROR" in real_access_token):
+            st.error(f"❌ YouTube Auth Failed. Reason: {real_access_token}")
+        elif real_access_token:
             st.success("🎉 YouTube Channel Successfully Linked! ❤️")
-            save_platform_token("youtube_token", real_access_token) # Yahan asli token save ho raha hai!
+            save_platform_token("youtube_token", real_access_token) 
             st.session_state["yt_connected"] = True
             st.session_state["channels_synced"] = True
         else:
-            st.error("❌ YouTube Auth Failed. Please try connecting again.")
+            st.error("❌ Unknown Error. Token is empty.")
     
     elif platform_state.startswith("linkedin"):
         st.success("🎉 LinkedIn Profile Successfully Linked! 💼")
