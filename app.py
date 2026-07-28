@@ -1694,44 +1694,64 @@ else:
         col_p1, col_p2, col_p3, col_p4, col_p5 = st.columns(5)
 
         with col_p1:
-            push_yt = st.checkbox("📺 YouTube", value=True)
-            if push_yt:
-                with st.expander("⏰ YT Timing", expanded=True):
-                    yt_date = st.date_input("YT Date", min_value=datetime.today(), key="yt_d")
-                    yt_time = st.time_input("YT Time", key="yt_t")
-                    platform_schedule_map["youtube"] = datetime.combine(yt_date, yt_time)
+            push_yt = False
+            if st.session_state.get("yt_connected"):
+                push_yt = st.checkbox("📺 YouTube", value=True)
+                if push_yt:
+                    with st.expander("⏰ YT Timing", expanded=True):
+                        yt_date = st.date_input("YT Date", min_value=datetime.today(), key="yt_d")
+                        yt_time = st.time_input("YT Time", key="yt_t")
+                        platform_schedule_map["youtube"] = datetime.combine(yt_date, yt_time)
+            else:
+                st.caption("📺 YouTube\n(Not Connected)")
 
         with col_p2:
-            push_tw = st.checkbox("🐦 X (Twitter)")
-            if push_tw:
-                with st.expander("⏰ X Timing", expanded=True):
-                    tw_date = st.date_input("X Date", min_value=datetime.today(), key="tw_d")
-                    tw_time = st.time_input("X Time", key="tw_t")
-                    platform_schedule_map["twitter"] = datetime.combine(tw_date, tw_time)
+            push_tw = False
+            if st.session_state.get("tw_connected"):
+                push_tw = st.checkbox("🐦 X (Twitter)", value=True)
+                if push_tw:
+                    with st.expander("⏰ X Timing", expanded=True):
+                        tw_date = st.date_input("X Date", min_value=datetime.today(), key="tw_d")
+                        tw_time = st.time_input("X Time", key="tw_t")
+                        platform_schedule_map["twitter"] = datetime.combine(tw_date, tw_time)
+            else:
+                st.caption("🐦 X (Twitter)\n(Not Connected)")
 
         with col_p3:
-            push_ig = st.checkbox("📸 Instagram")
-            if push_ig:
-                with st.expander("⏰ IG Timing", expanded=True):
-                    ig_date = st.date_input("IG Date", min_value=datetime.today(), key="ig_d")
-                    ig_time = st.time_input("IG Time", key="ig_t")
-                    platform_schedule_map["instagram"] = datetime.combine(ig_date, ig_time)
+            push_ig = False
+            if st.session_state.get("ig_connected"):
+                push_ig = st.checkbox("📸 Instagram", value=True)
+                if push_ig:
+                    with st.expander("⏰ IG Timing", expanded=True):
+                        ig_date = st.date_input("IG Date", min_value=datetime.today(), key="ig_d")
+                        ig_time = st.time_input("IG Time", key="ig_t")
+                        platform_schedule_map["instagram"] = datetime.combine(ig_date, ig_time)
+            else:
+                st.caption("📸 Instagram\n(Not Connected)")
 
         with col_p4:
-            push_th = st.checkbox("🧵 Threads")
-            if push_th:
-                with st.expander("⏰ Threads Timing", expanded=True):
-                    th_date = st.date_input("TH Date", min_value=datetime.today(), key="th_d")
-                    th_time = st.time_input("TH Time", key="th_t")
-                    platform_schedule_map["threads"] = datetime.combine(th_date, th_time)
+            push_th = False
+            if st.session_state.get("th_connected"):
+                push_th = st.checkbox("🧵 Threads", value=True)
+                if push_th:
+                    with st.expander("⏰ Threads Timing", expanded=True):
+                        th_date = st.date_input("TH Date", min_value=datetime.today(), key="th_d")
+                        th_time = st.time_input("TH Time", key="th_t")
+                        platform_schedule_map["threads"] = datetime.combine(th_date, th_time)
+            else:
+                st.caption("🧵 Threads\n(Not Connected)")
 
         with col_p5:
-            push_li = st.checkbox("💼 LinkedIn")
-            if push_li:
-                with st.expander("⏰ LinkedIn Timing", expanded=True):
-                    li_date = st.date_input("LI Date", min_value=datetime.today(), key="li_d")
-                    li_time = st.time_input("LI Time", key="li_t")
-                    platform_schedule_map["linkedin"] = datetime.combine(li_date, li_time)
+            push_li = False
+            if st.session_state.get("li_connected"):
+                push_li = st.checkbox("💼 LinkedIn", value=True)
+                if push_li:
+                    with st.expander("⏰ LinkedIn Timing", expanded=True):
+                        li_date = st.date_input("LI Date", min_value=datetime.today(), key="li_d")
+                        li_time = st.time_input("LI Time", key="li_t")
+                        platform_schedule_map["linkedin"] = datetime.combine(li_date, li_time)
+            else:
+                st.caption("💼 LinkedIn\n(Not Connected)")
         
         if push_yt:
             st.caption("*Note: YouTube API does not support custom thumbnails for Shorts. A frame will be auto-selected.*")
