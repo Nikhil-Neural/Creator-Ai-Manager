@@ -241,10 +241,10 @@ def fetch_meta_analytics(access_token):
 # ==============================================================
 def get_meta_access_token(auth_code):
     """
-    Kachhe OAuth code string ko secure token matrix key mein convert karta hai.
+    Kachhe Auth Code ko Meta API par bhej kar asli Access Token laata hai.
     """
     client_id = st.secrets.get("META_APP_ID", "")
-    client_secret = st.secrets.get("META_APP_SECRET", "")
+    client_secret = st.secrets.get("META_APP_SECRET", "") # ⚠️ YEH NAYA SECRET CHAHIYE HOGA
     redirect_uri = "https://creator-ai-manager-tgrh5ifkgfqme6kdomcvxb.streamlit.app/" 
     
     url = f"https://graph.facebook.com/v18.0/oauth/access_token?client_id={client_id}&redirect_uri={redirect_uri}&client_secret={client_secret}&code={auth_code}"
@@ -254,7 +254,9 @@ def get_meta_access_token(auth_code):
         data = response.json()
         if "access_token" in data:
             return data["access_token"]
-        return None
+        else:
+            print(f"[META TOKEN ERROR] API rejected code: {data}")
+            return None
     except Exception as e:
         print(f"[META TOKEN EXCEPTION] {str(e)}")
         return None
@@ -349,27 +351,6 @@ def get_youtube_access_token(auth_code):
             return f"GOOGLE_ERROR: {response.text}" 
     except Exception as e:
         return f"SYSTEM_ERROR: {str(e)}"
-def get_meta_access_token(auth_code):
-    """
-    Kachhe Auth Code ko Meta API par bhej kar asli Access Token laata hai.
-    """
-    client_id = st.secrets.get("META_APP_ID", "")
-    client_secret = st.secrets.get("META_APP_SECRET", "") # ⚠️ YEH NAYA SECRET CHAHIYE HOGA
-    redirect_uri = "https://creator-ai-manager-tgrh5ifkgfqme6kdomcvxb.streamlit.app/" 
-    
-    url = f"https://graph.facebook.com/v18.0/oauth/access_token?client_id={client_id}&redirect_uri={redirect_uri}&client_secret={client_secret}&code={auth_code}"
-    
-    try:
-        response = requests.get(url)
-        data = response.json()
-        if "access_token" in data:
-            return data["access_token"]
-        else:
-            print(f"[META TOKEN ERROR] API rejected code: {data}")
-            return None
-    except Exception as e:
-        print(f"[META TOKEN EXCEPTION] {str(e)}")
-        return None
 
 def parse_blueprint_metadata(raw_text):
     """
