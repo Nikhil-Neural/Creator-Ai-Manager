@@ -484,13 +484,14 @@ if current_os_mode == "✍️ AI Script Generator":
                 try:
                     # CrewAI Executed with Injected Data
                     ai_output = run_my_crew_ai_agents(
-                        st.session_state["niche_data"],
-                        script_language, 
-                        meta_languages, # Naya dictionary parameter 
-                        st.session_state.get("duration", 1.0), 
-                        st.session_state["current_mode"], 
-                        st.session_state.get("pasted_script", ""), 
-                        st.session_state["selected_options"]
+                        niche_topic=st.session_state["niche_data"],
+                        social_platform="Omnichannel", # 👈 YEH THA MISSING LINK!
+                        script_language=script_language, 
+                        meta_langs=meta_languages, 
+                        video_duration=st.session_state.get("duration", 1.0), 
+                        app_mode=st.session_state["current_mode"], 
+                        user_pasted_script=st.session_state.get("pasted_script", ""), 
+                        selected_bundle_options=st.session_state["selected_options"]
                     )
                     
                     st.session_state["script_data"] = ai_output
