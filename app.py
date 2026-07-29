@@ -536,7 +536,7 @@ if current_os_mode == "✍️ AI Script Generator":
         if st.session_state.get("user_email"):
             # Database se user ki purani scripts fetch karna (Nayi sabse upar aayegi)
             try:
-                response = supabase.table("ai_blueprints_vault").select("*").eq("creator_email", st.session_state["user_email"]).order("created_at", desc=True).execute()
+                response = supabase_admin.table("ai_blueprints_vault").select("*").eq("creator_email", st.session_state["user_email"]).order("created_at", desc=True).execute()
                 
                 if response.data and len(response.data) > 0:
                     st.success(f"📦 Found {len(response.data)} saved blueprints in your secure vault.")
@@ -562,7 +562,7 @@ if current_os_mode == "✍️ AI Script Generator":
                             with col_action2:
                                 if st.button("🗑️ Delete Script", key=f"del_{item['id']}", use_container_width=True):
                                     # Supabase DB se permanent delete karna
-                                    supabase.table("ai_blueprints_vault").delete().eq("id", item['id']).execute()
+                                    supabase_admin.table("ai_blueprints_vault").delete().eq("id", item['id']).execute()
                                     st.rerun() # UI ko turant refresh karne ke liye
                 else:
                     st.info("📭 Your vault is currently empty. Generate your first script in Tab 1 to see it here!")
@@ -867,7 +867,7 @@ else:
         # Option 1: Vault Data (The Bridge with Smart Parser)
         if metadata_source == "📂 Use Saved Vault Data (Recommended)":
             try:
-                response = supabase.table("ai_blueprints_vault").select("*").eq("creator_email", st.session_state.get("user_email")).order("created_at", desc=True).execute()
+                response = supabase_admin.table("ai_blueprints_vault").select("*").eq("creator_email", st.session_state.get("user_email")).order("created_at", desc=True).execute()
                 blueprints = response.data if response.data else []
             except:
                 blueprints = []
