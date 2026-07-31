@@ -409,10 +409,11 @@ if current_os_mode == "✍️ AI Script Generator":
         if app_mode == "🚀 Complete Blueprint Mode":
             bundle_options = st.pills("🎁 Content Bundle Items: (Multi-Select)", ["🎬 Retention Script & Visual Cues", "📺 YouTube SEO: Viral Title & Description", "📸 Insta & FB Reels: Captions + Tags", "🏢 LinkedIn Post", "🐦 X & Threads: Viral Thread Format"], default=["🎬 Retention Script & Visual Cues"], selection_mode="multi")
             user_niche = st.text_input("🎯 Kis topic par video banani hai?", value=st.session_state.get("niche_data", ""))
-            video_duration = st.slider("⏱ Video duration (Seconds)", min_value=30, max_value=60, value=60, step=5)
-
+            video_duration = 60
+            
             # 🎯 CONDITIONAL LOGIC ADDED HERE
             if "🎬 Retention Script & Visual Cues" in bundle_options:
+                video_duration = st.slider("⏱ Video duration (Seconds)", min_value=30, max_value=60, value=60, step=5)
                 st.markdown("### 🧬 Viral Script Parameters")
                 col1, col2, col3 = st.columns(3)
                 with col1: selected_hook = st.selectbox("🪝 Hook", HOOK_OPTIONS)
