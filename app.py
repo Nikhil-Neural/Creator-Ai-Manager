@@ -410,7 +410,7 @@ if current_os_mode == "✍️ AI Script Generator":
             bundle_options = st.pills("🎁 Content Bundle Items: (Multi-Select)", ["🎬 Retention Script & Visual Cues", "📺 YouTube SEO: Viral Title & Description", "📸 Insta & FB Reels: Captions + Tags", "🏢 LinkedIn Post", "🐦 X & Threads: Viral Thread Format"], default=["🎬 Retention Script & Visual Cues"], selection_mode="multi")
             user_niche = st.text_input("🎯 Kis topic par video banani hai?", value=st.session_state.get("niche_data", ""))
             video_duration = 60
-            
+
             # 🎯 CONDITIONAL LOGIC ADDED HERE
             if "🎬 Retention Script & Visual Cues" in bundle_options:
                 video_duration = st.slider("⏱ Video duration (Seconds)", min_value=30, max_value=60, value=60, step=5)
@@ -880,6 +880,7 @@ else:
         parsed_data = {}
 
         # Option 1: Vault Data (The Bridge with Smart Parser)
+        # Option 1: Vault Data (The Bridge with Smart Parser)
         if metadata_source == "📂 Use Saved Vault Data (Recommended)":
             try:
                 response = supabase_admin.table("ai_blueprints_vault").select("*").eq("creator_email", st.session_state.get("user_email")).order("created_at", desc=True).execute()
@@ -897,12 +898,35 @@ else:
                 # 🧠 PARSER ACTION: Text ko tod kar variables mein badalna
                 parsed_data = parse_blueprint_metadata(selected_bp['script_content'])
                 
+                # 🚀 NAYA JADOO: Regex se Trend Research wale Hooks nikalna!
+                import re
+                raw_text = selected_bp['script_content']
+                # Yeh regex "Hook:" ke baad likhe hue text ko pakad lega
+                extracted_hooks = re.findall(r'Hook:\s*"?([^"\n]+)"?', raw_text)
+                
                 st.success(f"✅ AI Metadata successfully parsed and injected! Please review below.")
                 
-                # Yahan auto-fill boxes aayenge (User inhe edit kar sakta hai)
+                # Yahan auto-fill boxes aayenge
                 with st.expander("📺 Auto-Filled: YouTube Metadata", expanded=True):
-                    final_yt_title = st.text_input("YouTube Title", value=parsed_data.get("yt_title", ""))
-                    final_yt_desc = st.text_area("YouTube Description", value=parsed_data.get("yt_desc", ""), height=150)
+                    # Agar AI ne hooks generate kiye hain, toh user ko dropdown dikhao
+                    if extracted_hooks:
+                        chosen_hook = st.selectbox(
+                            "🎯 Select a Viral Hook for your Title (or use default):", 
+                            ["(Use Default Parsed Title)"] + extracted_hooks
+                        )
+                        
+                        # Agar user dropdown se hook select karta hai, toh text_input mein wahi aayega
+                        default_title_value = parsed_data.get("yt_title", "").replace("[YOUTUBE SHORTS TITLE]", "").replace("[", "").replace("]", "").strip()
+                        if chosen_hook != "(Use Default Parsed Title)":
+                            default_title_value = chosen_hook
+                            
+                        final_yt_title = st.text_input("YouTube Title", value=default_title_value)
+                    else:
+                        # Agar kisi wajah se hooks nahi mile, toh normal text box dikhao (safely clean karke)
+                        clean_title = parsed_data.get("yt_title", "").replace("[YOUTUBE SHORTS TITLE]", "").replace("[", "").replace("]", "").strip()
+                        final_yt_title = st.text_input("YouTube Title", value=clean_title)
+                        
+                    final_yt_desc = st.text_area("YouTube Description", value=parsed_data.get("yt_desc", "").replace("[YOUTUBE SHORTS DESCRIPTION]", "").replace("[", "").replace("]", "").strip(), height=150)
                 
                 with st.expander("🐦 Auto-Filled: X (Twitter) Thread"):
                     final_tw_thread = st.text_area("Generated Thread Content", value=parsed_data.get("tw_thread", ""), height=150)
