@@ -427,9 +427,6 @@ if current_os_mode == "✍️ AI Script Generator":
                 selected_body = "Standard"
                 selected_cta = "Standard"
                 is_ready_to_launch = True # Button unlock ho jayega!
-            
-            # Strict Validation Logic
-            is_ready_to_launch = (selected_hook != "Select a Hook..." and selected_body != "Select a Body Framework..." and selected_cta != "Select a CTA...")
         
         else:
             bundle_options = st.pills("🎁 Extraction Bundle Items: (Multi-Select)", ["📺 YouTube SEO: Viral Title & Description", "📸 Insta & FB Reels: Captions + Tags", "🏢 LinkedIn Post", "🐦 X & Threads: Viral Thread Format"], default=["📺 YouTube SEO: Viral Title & Description"], selection_mode="multi")
