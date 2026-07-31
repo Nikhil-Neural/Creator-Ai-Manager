@@ -79,11 +79,11 @@ def sync_platform_analytics():
                 sync_health = "Meta_Auth_Failed"
                 
         # 4. Supabase Cache Matrix mein Inject karo (No Garbage Functions!)
-        cache_res = supabase.table("platform_analytics_cache").select("id").eq("creator_handle", creator_handle).execute()
+        cache_res = supabase_admin.table("platform_analytics_cache").select("id").eq("creator_handle", creator_handle).execute()
         
         if cache_res.data:
             # UPDATE
-            supabase.table("platform_analytics_cache").update({
+            supabase_admin.table("platform_analytics_cache").update({
                 "youtube_data": yt_data,
                 "facebook_data": meta_results.get("facebook", {}),
                 "instagram_data": meta_results.get("instagram", {}), # 👈 Unified Graph API data directly injected
@@ -91,7 +91,7 @@ def sync_platform_analytics():
             }).eq("creator_handle", creator_handle).execute()
         else:
             # INSERT
-            supabase.table("platform_analytics_cache").insert({
+            supabase_admin.table("platform_analytics_cache").insert({
                 "creator_handle": creator_handle,
                 "youtube_data": yt_data,
                 "facebook_data": meta_results.get("facebook", {}),
@@ -410,12 +410,23 @@ if current_os_mode == "✍️ AI Script Generator":
             bundle_options = st.pills("🎁 Content Bundle Items: (Multi-Select)", ["🎬 Retention Script & Visual Cues", "📺 YouTube SEO: Viral Title & Description", "📸 Insta & FB Reels: Captions + Tags", "🏢 LinkedIn Post", "🐦 X & Threads: Viral Thread Format"], default=["🎬 Retention Script & Visual Cues"], selection_mode="multi")
             user_niche = st.text_input("🎯 Kis topic par video banani hai?", value=st.session_state.get("niche_data", ""))
             video_duration = st.slider("⏱ Video duration (Seconds)", min_value=30, max_value=60, value=60, step=5)
-            
-            st.markdown("### 🧬 Viral Script Parameters")
-            col1, col2, col3 = st.columns(3)
-            with col1: selected_hook = st.selectbox("🪝 Hook", HOOK_OPTIONS)
-            with col2: selected_body = st.selectbox("🧬 Body", BODY_OPTIONS)
-            with col3: selected_cta = st.selectbox("🎯 CTA", CTA_OPTIONS)
+
+            # 🎯 CONDITIONAL LOGIC ADDED HERE
+            if "🎬 Retention Script & Visual Cues" in bundle_options:
+                st.markdown("### 🧬 Viral Script Parameters")
+                col1, col2, col3 = st.columns(3)
+                with col1: selected_hook = st.selectbox("🪝 Hook", HOOK_OPTIONS)
+                with col2: selected_body = st.selectbox("🧬 Body", BODY_OPTIONS)
+                with col3: selected_cta = st.selectbox("🎯 CTA", CTA_OPTIONS)
+                
+                # Strict Validation Logic only if Script is selected
+                is_ready_to_launch = (selected_hook != "Select a Hook..." and selected_body != "Select a Body Framework..." and selected_cta != "Select a CTA...")
+            else:
+                # Agar user sirf Metadata/Title maang raha hai, toh background mein variables bypass kardo
+                selected_hook = "Standard"
+                selected_body = "Standard"
+                selected_cta = "Standard"
+                is_ready_to_launch = True # Button unlock ho jayega!
             
             # Strict Validation Logic
             is_ready_to_launch = (selected_hook != "Select a Hook..." and selected_body != "Select a Body Framework..." and selected_cta != "Select a CTA...")
@@ -430,12 +441,13 @@ if current_os_mode == "✍️ AI Script Generator":
         st.write("---")
         
         # 🌍 THE DYNAMIC LANGUAGE UI 🌍
-        if app_mode == "🚀 Complete Blueprint Mode":
+        # Sirf tab dikhega jab Script Blueprint mode mein ho aur Script option selected ho
+        if app_mode == "🚀 Complete Blueprint Mode" and "🎬 Retention Script & Visual Cues" in bundle_options:
             st.markdown("### 🎬 Core Script Language")
             script_language = st.selectbox("Select language for your Voiceover/Script:", ["Hinglish", "Hindi", "English"], index=0)
         else:
-            # Repurpose mode ke liye background variable (UI mein nahi dikhega)
-            script_language = "" 
+            # Repurpose mode ya 'Metadata Only' mode ke liye background variable (UI mein nahi dikhega)
+            script_language = "English" 
         
         meta_languages = {"yt": "English", "ig": "English", "li": "English", "tw": "English"}
         st.markdown("### 📱 Social Media Language Routing")
@@ -468,7 +480,12 @@ if current_os_mode == "✍️ AI Script Generator":
             else:
                 # 🧠 MAGIC INJECTION: We append the chosen frameworks directly to the topic!
                 if app_mode == "🚀 Complete Blueprint Mode":
-                    st.session_state["niche_data"] = f"{user_niche} | STRICT RULES -> Hook: {selected_hook} | Body: {selected_body} | CTA: {selected_cta}"
+                    # Check karo ki kya script actually selected hai
+                    if "🎬 Retention Script & Visual Cues" in bundle_options:
+                        st.session_state["niche_data"] = f"{user_niche} | STRICT RULES -> Hook: {selected_hook} | Body: {selected_body} | CTA: {selected_cta}"
+                    else:
+                        # Sirf title/metadata hai, toh extra rules mat add karo
+                        st.session_state["niche_data"] = user_niche
                 else:
                     st.session_state["niche_data"] = user_niche
                     
@@ -678,7 +695,7 @@ else:
                         try:
                             # Note: Agar tumne admin client is file mein import kiya hai toh 'supabase_admin' likho
                             # Warna normal 'supabase' rehne do (kyunki humne SQL mein anon delete permission de di thi)
-                            supabase.table("twitter_auth_states").delete().neq("id", "00000000-0000-0000-0000-000000000000").execute()
+                            supabase_admin.table("twitter_auth_states").delete().neq("id", "00000000-0000-0000-0000-000000000000").execute()
                         except Exception as e:
                             pass # Agar table pehle se khali hai, toh error ignore karega
                         
@@ -794,11 +811,11 @@ else:
                         with st.spinner("Scanning Meta Graph..."):
                             meta_results = fetch_meta_analytics(meta_token)
                             ig_final_data = meta_results.get("instagram", {"status": "offline"})
-                            check_res = supabase.table("platform_analytics_cache").select("id").eq("creator_handle", creator_handle).execute()
+                            check_res = supabase_admin.table("platform_analytics_cache").select("id").eq("creator_handle", creator_handle).execute()
                             if check_res.data:
-                                supabase.table("platform_analytics_cache").update({"instagram_data": ig_final_data}).eq("creator_handle", creator_handle).execute()
+                                supabase_admin.table("platform_analytics_cache").update({"instagram_data": ig_final_data}).eq("creator_handle", creator_handle).execute()
                             else:
-                                supabase.table("platform_analytics_cache").insert({"creator_handle": creator_handle, "instagram_data": ig_final_data}).execute()
+                                supabase_admin.table("platform_analytics_cache").insert({"creator_handle": creator_handle, "instagram_data": ig_final_data}).execute()
                             st.toast("✅ Instagram Cache updated!")
                             time.sleep(0.5)
                             st.rerun()
@@ -818,11 +835,11 @@ else:
                         with st.spinner("Extracting Facebook Insights..."):
                             meta_results = fetch_meta_analytics(meta_token)
                             fb_final_data = meta_results.get("facebook", {"status": "offline"})
-                            check_res = supabase.table("platform_analytics_cache").select("id").eq("creator_handle", creator_handle).execute()
+                            check_res = supabase_admin.table("platform_analytics_cache").select("id").eq("creator_handle", creator_handle).execute()
                             if check_res.data:
-                                supabase.table("platform_analytics_cache").update({"facebook_data": fb_final_data}).eq("creator_handle", creator_handle).execute()
+                                supabase_admin.table("platform_analytics_cache").update({"facebook_data": fb_final_data}).eq("creator_handle", creator_handle).execute()
                             else:
-                                supabase.table("platform_analytics_cache").insert({"creator_handle": creator_handle, "facebook_data": fb_final_data}).execute()
+                                supabase_admin.table("platform_analytics_cache").insert({"creator_handle": creator_handle, "facebook_data": fb_final_data}).execute()
                             st.toast("✅ Facebook Cache updated!")
                             time.sleep(0.5)
                             st.rerun()
