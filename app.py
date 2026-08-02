@@ -954,7 +954,13 @@ else:
         
         # 🌍 STEP 3: OMNICHANNEL DISTRIBUTION & INDEPENDENT TIMING MATRIX
         st.markdown("#### 🌍 Step 3: Distribution Routing & Custom Timings")
+
         st.write("Select the platforms and set independent times for each:")
+        import pytz
+        all_timezones = pytz.common_timezones
+        default_tz_index = all_timezones.index("Asia/Kolkata") if "Asia/Kolkata" in all_timezones else 0
+        user_timezone = st.selectbox("🌍 Select your Local Timezone:", all_timezones, index=default_tz_index)
+        local_tz = pytz.timezone(user_timezone)
 
         # Har platform ke liye settings hold karne ke liye dictionary
         platform_schedule_map = {}
@@ -970,7 +976,10 @@ else:
                     with st.expander("⏰ YT Timing", expanded=True):
                         yt_date = st.date_input("YT Date", min_value=datetime.today(), key="yt_d")
                         yt_time = st.time_input("YT Time", key="yt_t")
-                        platform_schedule_map["youtube"] = datetime.combine(yt_date, yt_time)
+                        # 🔄 NAYA: User ke time ko convert kar raha hai
+                        naive_dt = datetime.combine(yt_date, yt_time)
+                        local_aware_dt = local_tz.localize(naive_dt)
+                        platform_schedule_map["youtube"] = local_aware_dt.astimezone(pytz.utc)
             else:
                 st.caption("📺 YouTube\n(Not Connected)")
 
@@ -982,7 +991,10 @@ else:
                     with st.expander("⏰ X Timing", expanded=True):
                         tw_date = st.date_input("X Date", min_value=datetime.today(), key="tw_d")
                         tw_time = st.time_input("X Time", key="tw_t")
-                        platform_schedule_map["twitter"] = datetime.combine(tw_date, tw_time)
+                        # 🔄 NAYA: User ke time ko convert kar raha hai
+                        naive_dt = datetime.combine(tw_date, tw_time)
+                        local_aware_dt = local_tz.localize(naive_dt)
+                        platform_schedule_map["twitter"] = local_aware_dt.astimezone(pytz.utc)
             else:
                 st.caption("🐦 X (Twitter)\n(Not Connected)")
 
@@ -994,7 +1006,10 @@ else:
                     with st.expander("⏰ IG Timing", expanded=True):
                         ig_date = st.date_input("IG Date", min_value=datetime.today(), key="ig_d")
                         ig_time = st.time_input("IG Time", key="ig_t")
-                        platform_schedule_map["instagram"] = datetime.combine(ig_date, ig_time)
+                        # 🔄 NAYA: User ke time ko convert kar raha hai
+                        naive_dt = datetime.combine(ig_date, ig_time)
+                        local_aware_dt = local_tz.localize(naive_dt)
+                        platform_schedule_map["instagram"] = local_aware_dt.astimezone(pytz.utc)
             else:
                 st.caption("📸 Instagram\n(Not Connected)")
 
@@ -1006,7 +1021,10 @@ else:
                     with st.expander("⏰ Threads Timing", expanded=True):
                         th_date = st.date_input("TH Date", min_value=datetime.today(), key="th_d")
                         th_time = st.time_input("TH Time", key="th_t")
-                        platform_schedule_map["threads"] = datetime.combine(th_date, th_time)
+                        # 🔄 NAYA: User ke time ko convert kar raha hai
+                        naive_dt = datetime.combine(th_date, th_time)
+                        local_aware_dt = local_tz.localize(naive_dt)
+                        platform_schedule_map["threads"] = local_aware_dt.astimezone(pytz.utc)
             else:
                 st.caption("🧵 Threads\n(Not Connected)")
 
@@ -1018,7 +1036,10 @@ else:
                     with st.expander("⏰ LinkedIn Timing", expanded=True):
                         li_date = st.date_input("LI Date", min_value=datetime.today(), key="li_d")
                         li_time = st.time_input("LI Time", key="li_t")
-                        platform_schedule_map["linkedin"] = datetime.combine(li_date, li_time)
+                        # 🔄 NAYA: User ke time ko convert kar raha hai
+                        naive_dt = datetime.combine(li_date, li_time)
+                        local_aware_dt = local_tz.localize(naive_dt)
+                        platform_schedule_map["linkedin"] = local_aware_dt.astimezone(pytz.utc)
             else:
                 st.caption("💼 LinkedIn\n(Not Connected)")
         
