@@ -902,7 +902,7 @@ else:
                 import re
                 raw_text = selected_bp['script_content']
                 # Yeh regex "Hook:" ke baad likhe hue text ko pakad lega
-                extracted_hooks = re.findall(r'Hook:\s*"?([^"\n]+)"?', raw_text)
+                extracted_hooks = re.findall(r'(?:Hook|Retention):\s*"?([^"\n]+)"?', raw_text)
                 
                 st.success(f"✅ AI Metadata successfully parsed and injected! Please review below.")
                 
