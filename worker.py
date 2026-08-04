@@ -16,12 +16,14 @@ url = st.secrets["SUPABASE_URL"]
 key = st.secrets["SUPABASE_SERVICE_KEY"] 
 supabase: Client = create_client(url, key)
 
-def upload_to_youtube(video_path, title, description):
+# 🔄 NAYA BADLAV: Ab hum parameter mein 'user_refresh_token' le rahe hain
+def upload_to_youtube(video_path, title, description, user_refresh_token):
     """YouTube API ke through actual video upload logic"""
-    # Auto-generate fresh access token using your saved refresh token
+    
+    # 🔄 NAYA BADLAV: Ab ye kisi fixed secret se nahi balki user ke personal token se connect hoga
     creds = Credentials(
         None,
-        refresh_token=st.secrets["YOUTUBE_REFRESH_TOKEN"],
+        refresh_token=user_refresh_token, 
         token_uri="https://oauth2.googleapis.com/token",
         client_id=st.secrets["GOOGLE_CLIENT_ID"],
         client_secret=st.secrets["GOOGLE_CLIENT_SECRET"]
@@ -38,7 +40,7 @@ def upload_to_youtube(video_path, title, description):
             "categoryId": "28" # 28 = Science & Technology
         },
         "status": {
-            "privacyStatus": "private", # Testing ke liye pehle 'private' rakhte hain. Baad mein 'public' kar lenge!
+            "privacyStatus": "private", 
             "selfDeclaredMadeForKids": False
         }
     }
@@ -54,7 +56,6 @@ def process_queue():
     current_utc_time = datetime.now(timezone.utc).isoformat()
     print(f"[{datetime.now()}] 🔍 Checking database for pending videos scheduled up to now...")
     
-    # 2. Database se pending YouTube tasks uthana (RLS bypass ke liye supabase client admin role pe hona chahiye)
     try:
         response = supabase.table("master_scheduler_queue") \
             .select("*") \
@@ -70,10 +71,7 @@ def process_queue():
         print("📭 No pending videos found. All caught up!")
         return
 
-    # 3. Har pending task ko process karna
     for task in tasks:
-        # Platform check (Sirf YouTube process karega abhi)
-        # Note: Hum array (JSON) se strictly platform match kar rahe hain
         platforms = task.get('target_platforms', [])
         if "youtube" not in [p.lower() for p in platforms]:
             continue
@@ -84,8 +82,17 @@ def process_queue():
         try:
             vid_url = task['video_url']
             meta = task['metadata_payload']
+            creator_email = task['creator_handle'] 
             
-            # Step A: Telegram se file ko temporarily download karna (Server memory mein)
+            # 🔄 NAYA BADLAV: Supabase se is specific user ka YouTube Refresh Token nikalna
+            # NOTE: Agar tumhare 'creator_profiles' table mein column ka naam alag hai, toh 'youtube_token' ko change kar lena.
+            profile_res = supabase.table("creator_profiles").select("youtube_token").eq("creator_handle", creator_email).execute()
+            
+            if not profile_res.data or not profile_res.data[0].get("youtube_token"):
+                raise ValueError(f"No YouTube refresh token found in database for user: {creator_email}")
+                
+            user_specific_token = profile_res.data[0]["youtube_token"]
+
             print("📥 Downloading video from Telegram vault...")
             with tempfile.NamedTemporaryFile(delete=False, suffix=".mp4") as temp_vid:
                 r = requests.get(vid_url, stream=True)
@@ -93,39 +100,31 @@ def process_queue():
                     temp_vid.write(chunk)
                 temp_vid_path = temp_vid.name
             
-            # Step B: YouTube par upload marna
             print("☁️ Uploading to YouTube servers...")
             yt_title = meta.get("video_title", "Creator OS Generated Video")
             yt_desc = meta.get("youtube_description", "")
             
-            yt_id = upload_to_youtube(temp_vid_path, yt_title, yt_desc)
+            # 🔄 NAYA BADLAV: Function mein user ka specific token pass kar rahe hain
+            yt_id = upload_to_youtube(temp_vid_path, yt_title, yt_desc, user_specific_token)
             print(f"✅ Success! YouTube Video ID: {yt_id}")
             
-            # Step C: Database mein status update karna (Taki dobara upload na ho)
             supabase.table("master_scheduler_queue").delete().eq("id", task["id"]).execute()
             print("🗄️ Database status updated to 'published'.")
             
         except Exception as e:
             print(f"❌ Error processing task {task['id']}: {str(e)}")
-            # Agar fail ho jaye toh database ko bata do
             supabase.table("master_scheduler_queue").update({"status": "failed"}).eq("id", task["id"]).execute()
             
         finally:
-            # Step D: Kachra saaf karna (Temporary video file delete karna)
             if os.path.exists(temp_vid_path):
                 os.remove(temp_vid_path)
                 print("🧹 Temporary files cleaned up.")
 
 if __name__ == "__main__":
     print("🚀 Creator OS Background Worker started! Polling database every 60 seconds...")
-    
-    # Ye 'while True' loop script ko hamesha zinda rakhega
     while True:
         try:
             process_queue()
         except Exception as e:
             print(f"⚠️ Unexpected error in main loop: {e}")
-            
-        # Har check ke baad 60 seconds (1 minute) ka rest lo, fir dobara check karo
-        # Tum isko 300 (5 minutes) bhi kar sakte ho database bachaane ke liye
         time.sleep(60)
