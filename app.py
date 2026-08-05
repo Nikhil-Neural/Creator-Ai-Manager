@@ -342,18 +342,36 @@ if "code" in st.query_params:
     else:
         st.info(f"DEBUG: Raw platform_state is: '{platform_state}'")
         st.info(f"DEBUG: Type of platform_state is: {type(platform_state)}")
-        # 🟢 THE TWITTER SUPABASE FIX 🟢
-        response = supabase.table("twitter_auth_states").select("code_verifier").eq("state", platform_state).execute()
-        if response.data:
+        
+        # 🟢 THE REAL TWITTER SUPABASE FIX (WITH ANTI-RERUN PROTECTION) 🟢
+        
+        # Step 1: Check karo ki kya hum is session mein already connect ho chuke hain
+        if st.session_state.get("tw_connected") == True:
             st.success("🎉 X (Twitter) Account Successfully Linked! 🩵")
-            save_platform_token("twitter_token", auth_code)
-            st.session_state["tw_connected"] = True
-            st.session_state["channels_synced"] = True
-            supabase.table("twitter_auth_states").delete().eq("state", platform_state).execute()
-        else:
-            st.error("⚠️ Unknown platform state or Twitter Session Expired. Please try again.")
+            st.query_params.clear()
             
-    st.query_params.clear()
+        else:
+            # Step 2: Agar nahi hue, tabhi DB hit karo
+            response = supabase.table("twitter_auth_states").select("code_verifier").eq("state", platform_state).execute()
+            
+            if response.data:
+                st.success("🎉 X (Twitter) Account Successfully Linked! 🩵")
+                save_platform_token("twitter_token", auth_code)
+                st.session_state["tw_connected"] = True
+                st.session_state["channels_synced"] = True
+                
+                # Row ko securely delete karo
+                supabase.table("twitter_auth_states").delete().eq("state", platform_state).execute()
+                
+                # IMPORTANT: Yahan URL clear karke explicitly rerun karna zaroori hai
+                st.query_params.clear()
+                time.sleep(1)
+                st.rerun()
+                
+            else:
+                st.error("⚠️ Unknown platform state or Twitter Session Expired. Please try again.")
+                st.query_params.clear()            
+    
 st.markdown(
     """
     <div style="display: flex; align-items: baseline; gap: 10px;">
