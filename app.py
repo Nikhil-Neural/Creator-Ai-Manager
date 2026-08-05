@@ -342,7 +342,8 @@ if "code" in st.query_params:
     else:
         st.info(f"DEBUG: Raw platform_state is: '{platform_state}'")
         st.info(f"DEBUG: Type of platform_state is: {type(platform_state)}")
-        
+        all_states = supabase.table("twitter_auth_states").select("state").execute()
+        st.warning(f"🔍 DB MEIN KYA HAI: {all_states.data}")
         # 🟢 THE REAL TWITTER SUPABASE FIX (WITH ANTI-RERUN PROTECTION) 🟢
         
         # Step 1: Check karo ki kya hum is session mein already connect ho chuke hain
