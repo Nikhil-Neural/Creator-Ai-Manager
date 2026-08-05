@@ -352,26 +352,47 @@ if "code" in st.query_params:
             st.query_params.clear()
             
         else:
-            # Step 2: Agar nahi hue, tabhi DB hit karo
+            # 🟢 THE ULTIMATE PHANTOM-RERUN KILLER 🟢
             response = supabase.table("twitter_auth_states").select("code_verifier").eq("state", platform_state).execute()
-            
+        
             if response.data:
+                # 1️⃣ FIRST RUN: Data mil gaya!
                 st.success("🎉 X (Twitter) Account Successfully Linked! 🩵")
+            
+                # Token save karo aur UI variables update karo
                 save_platform_token("twitter_token", auth_code)
                 st.session_state["tw_connected"] = True
                 st.session_state["channels_synced"] = True
-                
-                # Row ko securely delete karo
+            
+                # Security ke liye verify hone ke baad state delete kar do
                 supabase.table("twitter_auth_states").delete().eq("state", platform_state).execute()
-                
-                # IMPORTANT: Yahan URL clear karke explicitly rerun karna zaroori hai
+            
+                # Rerun for clean UI
                 st.query_params.clear()
                 time.sleep(1)
                 st.rerun()
-                
+            
             else:
-                st.error("⚠️ Unknown platform state or Twitter Session Expired. Please try again.")
-                st.query_params.clear()            
+                # 2️⃣ PHANTOM RUN FALLBACK: Agar data delete ho chuka hai (DB khali hai)
+                # Toh error dene se pehle check karo ki kya token pehle hi profile mein save toh nahi ho gaya?
+                current_user = st.session_state.get("user_email")
+            
+                if current_user:
+                    check_profile = supabase.table("creator_profiles").select("twitter_token").eq("creator_handle", current_user).execute()
+                
+                    # Agar auth_code safely profile mein maujood hai, toh iska matlab yeh bas ek Phantom Rerun tha
+                    if check_profile.data and check_profile.data[0].get("twitter_token") == auth_code:
+                        st.success("🎉 X (Twitter) Account Successfully Linked! 🩵")
+                        st.session_state["tw_connected"] = True
+                        st.session_state["channels_synced"] = True
+                        st.query_params.clear()
+                    else:
+                        # Agar sach mein koi invalid state hai (e.g., purana URL)
+                        st.error("⚠️ Unknown platform state or Twitter Session Expired. Please try again.")
+                        st.query_params.clear()
+                else:
+                    st.error("⚠️ Unknown platform state or Twitter Session Expired. Please try again.")
+                    st.query_params.clear()            
     
 st.markdown(
     """
