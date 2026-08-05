@@ -340,6 +340,8 @@ if "code" in st.query_params:
         st.session_state["channels_synced"] = True
 
     else:
+        st.info(f"DEBUG: Raw platform_state is: '{platform_state}'")
+        st.info(f"DEBUG: Type of platform_state is: {type(platform_state)}")
         # 🟢 THE TWITTER SUPABASE FIX 🟢
         response = supabase.table("twitter_auth_states").select("code_verifier").eq("state", platform_state).execute()
         if response.data:
@@ -879,7 +881,6 @@ else:
         final_li_post = ""
         parsed_data = {}
 
-        # Option 1: Vault Data (The Bridge with Smart Parser)
         # Option 1: Vault Data (The Bridge with Smart Parser)
         if metadata_source == "📂 Use Saved Vault Data (Recommended)":
             try:
