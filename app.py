@@ -409,11 +409,8 @@ if "code" in st.query_params:
             st.error(f"❌ Twitter verification failed: {str(e)}")
     
     st.query_params.clear()
-    
-# Main UI ke bilkul upar — sidebar ke baad:
-user_email = st.session_state.get("user_email", "")
-if user_email:
-    restore_session_from_db(user_email)            
+
+restore_session_from_db()            
     
 st.markdown(
     """
