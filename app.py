@@ -704,7 +704,7 @@ else:
                         
                         # Browser ko turant Twitter par redirect kar do
                         st.markdown(f'<meta http-equiv="refresh" content="0; url={tw_login_link}">', unsafe_allow_html=True)
-                        st.stop() # UI ko freeze kar do taaki user ko glitch na dikhe
+
             # 🧵 NEW: META THREADS UI CONNECT NODE
             st.write(" ")
             st.subheader("🧵 Meta Threads")
