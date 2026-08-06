@@ -493,7 +493,7 @@ if current_os_mode == "✍️ AI Script Generator":
             bundle_options = st.pills("🎁 Extraction Bundle Items: (Multi-Select)", ["📺 YouTube SEO: Viral Title & Description", "📸 Insta & FB Reels: Captions + Tags", "🏢 LinkedIn Post", "🐦 X & Threads: Viral Thread Format"], default=["📺 YouTube SEO: Viral Title & Description"], selection_mode="multi")
             user_niche = st.text_input("🎯 Video Title/Topic:", value=st.session_state.get("niche_data", ""))
             st.caption("💡 60-Second Limit: A typical Short contains 150-180 words.")
-            user_pasted_script = st.text_area("📝 Script content:", height=200, max_chars=1200)
+            user_pasted_script = st.text_area("📝 Script content:", height=200, max_chars=1500)
             is_ready_to_launch = True # Repurpose mode bypasses validation
 
         st.write("---")
