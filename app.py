@@ -684,14 +684,13 @@ else:
                 if st.button("❌ Disconnect X (Twitter)", use_container_width=True):
                     disconnect_platform("twitter_token", "tw_connected")
             else:
-                # 🟢 STEP 1: Tumhara Original Black HTML Button wapas aa gaya!
-                # (Notice: href mein ab hum 'tw_login_link' nahi, balki ek action signal bhej rahe hain)
-                st.markdown("""
+                tw_login_link = get_twitter_oauth_url()
+                
+                # 🟢 PURE HTML FIX: <a> tag ko hi button design diya hai, andar koi <button> tag nahi hai.
+                st.markdown(f"""
                 <div style='margin-bottom: 16px;'>
-                    <a href='?action=twitter_login' target='_self' style='text-decoration: none;'>
-                        <button style='width:100%; background-color:#000000; color:white; border:none; padding:10px; border-radius:5px; font-weight:bold; cursor:pointer; height:42px; font-size:14px; box-shadow: 0px 2px 4px rgba(0,0,0,0.1);'>
-                            🩵 Connect X Account
-                        </button>
+                    <a href='{tw_login_link}' target='_blank' style='display: block; width: 100%; background-color: #000000; color: white; text-align: center; padding: 10px; border-radius: 5px; font-weight: bold; text-decoration: none; box-shadow: 0px 2px 4px rgba(0,0,0,0.1); height: 42px; line-height: 22px; box-sizing: border-box;'>
+                        🩵 Connect X Account
                     </a>
                 </div>
                 """, unsafe_allow_html=True)
