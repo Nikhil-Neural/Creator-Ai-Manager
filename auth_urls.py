@@ -9,6 +9,7 @@ from db_engine import get_supabase_admin_client
 # Twitter auth state ko save karne ke liye admin database connection
 supabase_admin = get_supabase_admin_client()
 
+
 # ==============================================================
 # LINKEDIN OAUTH FUNCTION
 # ==============================================================
@@ -104,13 +105,23 @@ def get_twitter_oauth_url():
     CLIENT_ID = st.secrets.get("TWITTER_CLIENT_ID", "") 
     REDIRECT_URI = "https://creator-ai-manager-tgrh5ifkgfqme6kdomcvxb.streamlit.app/"
     
-    code_verifier, code_challenge = generate_pkce_pair() 
-    state = str(uuid.uuid4())
-    
-    response = supabase_admin.table("twitter_auth_states").insert({
-        "state": state,
-        "code_verifier": code_verifier
-    }).execute()
+    # ✅ Sirf ek baar generate karo — session mein cache karo
+    if "tw_auth_state" not in st.session_state:
+        code_verifier, code_challenge = generate_pkce_pair()
+        state = str(uuid.uuid4())
+        
+        # Supabase mein sirf tab insert karo jab naya state ban raha ho
+        supabase_admin.table("twitter_auth_states").insert({
+            "state": state,
+            "code_verifier": code_verifier
+        }).execute()
+        
+        st.session_state["tw_auth_state"] = state
+        st.session_state["tw_code_challenge"] = code_challenge
+    else:
+        # Already generate hua hai — wahi use karo
+        state = st.session_state["tw_auth_state"]
+        code_challenge = st.session_state["tw_code_challenge"]
     
     scopes = "tweet.read users.read tweet.write offline.access"
     encoded_scopes = scopes.replace(" ", "%20")

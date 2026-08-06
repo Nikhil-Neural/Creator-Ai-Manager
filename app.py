@@ -217,11 +217,6 @@ def disconnect_platform(platform_column, session_key):
     if st.session_state.get("creator_handle"):
         supabase.table("creator_profiles").update({platform_column: None}).eq("creator_handle", st.session_state["creator_handle"]).execute()
         st.session_state[session_key] = False
-
-        # 👇 YEH NAYI LINE ADD KAR DO 👇
-        if session_key == "tw_connected" and "twitter_login_url" in st.session_state:
-            del st.session_state["twitter_login_url"]
-            
         st.rerun()
 if st.sidebar.button("🚪 Secure Logout"):
     supabase.auth.sign_out()
@@ -266,6 +261,45 @@ def save_platform_token(platform_column_name, auth_code):
             "creator_handle": current_user,
             platform_column_name: auth_code
         }).execute()
+
+def restore_session_from_db():
+    """Page reload pe DB se connected status restore karo."""
+    if st.session_state.get("session_restored"):
+        return  # Sirf ek baar chalega
+    
+    try:
+        user_email = st.session_state.get("user_email", "")
+        if not user_email:
+            return
+            
+        res = supabase.table("creator_profiles") \
+            .select("*") \
+            .eq("creator_handle", user_email) \
+            .execute()
+            
+        if res.data and len(res.data) > 0:
+            profile = res.data[0]
+            
+            if profile.get("twitter_token"):
+                st.session_state["tw_connected"] = True
+                st.session_state["channels_synced"] = True
+                
+            if profile.get("youtube_token"):
+                st.session_state["yt_connected"] = True
+                st.session_state["channels_synced"] = True
+                
+            if profile.get("facebook_token"):
+                st.session_state["fb_connected"] = True
+                st.session_state["channels_synced"] = True
+                
+            if profile.get("instagram_token"):
+                st.session_state["ig_connected"] = True
+                st.session_state["channels_synced"] = True
+        
+        st.session_state["session_restored"] = True
+        
+    except Exception as e:
+        print(f"[SESSION RESTORE ERROR] {e}")
 # ── Main Content Gateway Router ──────────────────────────
 if "code" in st.query_params:
     auth_code = st.query_params["code"] 
@@ -357,8 +391,9 @@ if "code" in st.query_params:
                 code_verifier = state_res.data[0]["code_verifier"]
                 
                 st.success("🎉 X (Twitter) Account Successfully Linked! 🩵")
+                save_platform_token("twitter_token", auth_code)
                 st.session_state["tw_auth_code"] = auth_code
-                st.session_state["tw_code_verifier"] = code_verifier
+                st.session_state["tw_code_verifier"] = code_verifier 
                 st.session_state["tw_connected"] = True
                 st.session_state["channels_synced"] = True
                 
@@ -373,7 +408,12 @@ if "code" in st.query_params:
         except Exception as e:
             st.error(f"❌ Twitter verification failed: {str(e)}")
     
-    st.query_params.clear()            
+    st.query_params.clear()
+    
+# Main UI ke bilkul upar — sidebar ke baad:
+user_email = st.session_state.get("user_email", "")
+if user_email:
+    restore_session_from_db(user_email)            
     
 st.markdown(
     """
