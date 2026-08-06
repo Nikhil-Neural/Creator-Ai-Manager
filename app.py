@@ -354,6 +354,7 @@ if "code" in st.query_params:
                 st.success("🎉 X (Twitter) Account Successfully Linked! 🩵")
                 st.session_state["tw_auth_code"] = auth_code
                 st.session_state["tw_code_verifier"] = code_verifier
+                st.session_state["tw_connected"] = True
                 st.session_state["channels_synced"] = True
                 
                 # Used state delete karo — security ke liye
