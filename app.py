@@ -340,59 +340,34 @@ if "code" in st.query_params:
         st.session_state["channels_synced"] = True
 
     else:
-        st.info(f"DEBUG: Raw platform_state is: '{platform_state}'")
-        st.info(f"DEBUG: Type of platform_state is: {type(platform_state)}")
-        all_states = supabase.table("twitter_auth_states").select("state").execute()
-        st.warning(f"🔍 DB MEIN KYA HAI: {all_states.data}")
-        # 🟢 THE REAL TWITTER SUPABASE FIX (WITH ANTI-RERUN PROTECTION) 🟢
-        
-        # Step 1: Check karo ki kya hum is session mein already connect ho chuke hain
-        if st.session_state.get("tw_connected") == True:
-            st.success("🎉 X (Twitter) Account Successfully Linked! 🩵")
-            st.query_params.clear()
+        # ✅ Twitter ka UUID state — Supabase se verify karo
+        try:
+            state_res = supabase_admin.table("twitter_auth_states") \
+                .select("*") \
+                .eq("state", platform_state) \
+                .execute()
             
-        else:
-            # 🟢 THE ULTIMATE PHANTOM-RERUN KILLER 🟢
-            response = supabase.table("twitter_auth_states").select("code_verifier").eq("state", platform_state).execute()
-        
-            if response.data:
-                # 1️⃣ FIRST RUN: Data mil gaya!
-                st.success("🎉 X (Twitter) Account Successfully Linked! 🩵")
-            
-                # Token save karo aur UI variables update karo
-                save_platform_token("twitter_token", auth_code)
-                st.session_state["tw_connected"] = True
-                st.session_state["channels_synced"] = True
-            
-                # Security ke liye verify hone ke baad state delete kar do
-                supabase.table("twitter_auth_states").delete().eq("state", platform_state).execute()
-            
-                # Rerun for clean UI
-                st.query_params.clear()
-                time.sleep(1)
-                st.rerun()
-            
-            else:
-                # 2️⃣ PHANTOM RUN FALLBACK: Agar data delete ho chuka hai (DB khali hai)
-                # Toh error dene se pehle check karo ki kya token pehle hi profile mein save toh nahi ho gaya?
-                current_user = st.session_state.get("user_email")
-            
-                if current_user:
-                    check_profile = supabase.table("creator_profiles").select("twitter_token").eq("creator_handle", current_user).execute()
+            if state_res.data and len(state_res.data) > 0:
+                # ✅ Valid Twitter state mila — token exchange karo
+                code_verifier = state_res.data[0]["code_verifier"]
                 
-                    # Agar auth_code safely profile mein maujood hai, toh iska matlab yeh bas ek Phantom Rerun tha
-                    if check_profile.data and check_profile.data[0].get("twitter_token") == auth_code:
-                        st.success("🎉 X (Twitter) Account Successfully Linked! 🩵")
-                        st.session_state["tw_connected"] = True
-                        st.session_state["channels_synced"] = True
-                        st.query_params.clear()
-                    else:
-                        # Agar sach mein koi invalid state hai (e.g., purana URL)
-                        st.error("⚠️ Unknown platform state or Twitter Session Expired. Please try again.")
-                        st.query_params.clear()
-                else:
-                    st.error("⚠️ Unknown platform state or Twitter Session Expired. Please try again.")
-                    st.query_params.clear()            
+                st.success("🎉 X (Twitter) Account Successfully Linked! 🩵")
+                st.session_state["tw_auth_code"] = auth_code
+                st.session_state["tw_code_verifier"] = code_verifier
+                st.session_state["channels_synced"] = True
+                
+                # Used state delete karo — security ke liye
+                supabase_admin.table("twitter_auth_states") \
+                    .delete() \
+                    .eq("state", platform_state) \
+                    .execute()
+            else:
+                st.warning("⚠️ Unknown platform state or Twitter Session Expired. Please try again.")
+                
+        except Exception as e:
+            st.error(f"❌ Twitter verification failed: {str(e)}")
+    
+    st.query_params.clear()            
     
 st.markdown(
     """
