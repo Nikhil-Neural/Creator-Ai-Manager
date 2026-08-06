@@ -217,6 +217,11 @@ def disconnect_platform(platform_column, session_key):
     if st.session_state.get("creator_handle"):
         supabase.table("creator_profiles").update({platform_column: None}).eq("creator_handle", st.session_state["creator_handle"]).execute()
         st.session_state[session_key] = False
+
+        # 👇 YEH NAYI LINE ADD KAR DO 👇
+        if session_key == "tw_connected" and "twitter_login_url" in st.session_state:
+            del st.session_state["twitter_login_url"]
+            
         st.rerun()
 if st.sidebar.button("🚪 Secure Logout"):
     supabase.auth.sign_out()

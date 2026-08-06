@@ -100,6 +100,11 @@ def generate_pkce_pair():
 # FIXED TWITTER OAUTH FUNCTION
 # ==============================================================
 def get_twitter_oauth_url():
+    # 🧠 STEP 1: Check karo ki kya humne is session mein URL pehle hi bana liya hai?
+    if "twitter_login_url" in st.session_state:
+        # Agar haan, toh purana link hi de do, DB mein naya row mat banao!
+        return st.session_state["twitter_login_url"]
+    
     CLIENT_ID = st.secrets.get("TWITTER_CLIENT_ID", "") 
     REDIRECT_URI = "https://creator-ai-manager-tgrh5ifkgfqme6kdomcvxb.streamlit.app/"
     
@@ -115,6 +120,9 @@ def get_twitter_oauth_url():
     encoded_scopes = scopes.replace(" ", "%20")
     tw_login_link = f"https://twitter.com/i/oauth2/authorize?response_type=code&client_id={CLIENT_ID}&redirect_uri={REDIRECT_URI}&state={state}&code_challenge={code_challenge}&code_challenge_method=S256&scope={encoded_scopes}"
     
+    # 🔒 STEP 3: Link ko memory mein save kar lo taaki agli baar DB hit na ho
+    st.session_state["twitter_login_url"] = tw_login_link
+
     return tw_login_link
 # 🔐 META TOKEN EXCHANGE OVEN (FUNCTION A)
 def get_meta_access_token(auth_code):
