@@ -687,9 +687,7 @@ else:
                 # 🟢 CLAUDE FIX: Button click hone par hi URL generate hoga (No Garbage Data in DB)
                 if st.button("🩵 Connect X Account", key="tw_connect_btn", use_container_width=True):
                     tw_login_link = get_twitter_oauth_url()
-                    st.markdown(f"""
-                        <meta http-equiv="refresh" content="0; url={tw_login_link}">
-                    """, unsafe_allow_html=True)
+                    st.markdown(f"<div style='margin-bottom: 16px;'><a href='{tw_login_link}' target='_blank' style='text-decoration: none;'><button style='width:100%; background-color:#000000; color:white; border:none; padding:10px; border-radius:5px; font-weight:bold; cursor:pointer; height:42px; font-size:14px; box-shadow: 0px 2px 4px rgba(0,0,0,0.1);'>🩵 Connect X Account</button></a></div>", unsafe_allow_html=True)
                     st.info("🔄 Redirecting to X (Twitter)...")
             # 🧵 NEW: META THREADS UI CONNECT NODE
             st.write(" ")
