@@ -33,8 +33,13 @@ def parse_blueprint_metadata(raw_text):
     # 3. Extract YouTube Description
     yt_desc_match = re.search(r'(?:YouTube Description|Description):\s*(.*?)(?:\[?TWITTER|\[?INSTA|\[?LINKEDIN|\[?X THREAD|$)', raw_text, re.IGNORECASE | re.DOTALL)
     if yt_desc_match:
-        # Pata chala usme koi faltu spaces hain toh unko clean kar dega
-        parsed_data["yt_desc"] = yt_desc_match.group(1).strip()
+        # Faltu tags (single ya double brackets) aur extra characters ko clean kar dega
+        clean_desc = yt_desc_match.group(1).replace("[YOUTUBE SHORTS DESCRIPTION]", "").replace("[[YOUTUBE SHORTS DESCRIPTION]", "")
+        
+        # Agar string ke aage-peeche koi akele brackets '[' ya ']' bach gaye hain, toh unhe strip kar dega
+        clean_desc = clean_desc.strip('[]').strip()
+        
+        parsed_data["yt_desc"] = clean_desc
 
     # 4. Extract Twitter/X Thread (Sabse important)
     # Yeh dekhega ki "TWITTER" ya "X THREAD" kahan likha hai, aur wahan se lekar agle section tak sab utha lega
