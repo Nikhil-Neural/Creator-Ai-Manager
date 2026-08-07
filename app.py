@@ -958,6 +958,7 @@ else:
         parsed_data = {}
 
         # Option 1: Vault Data (The Bridge with Smart Parser)
+        # Option 1: Vault Data (The Bridge with Smart Parser)
         if metadata_source == "📂 Use Saved Vault Data (Recommended)":
             try:
                 response = supabase_admin.table("ai_blueprints_vault").select("*").eq("creator_email", st.session_state.get("user_email")).order("created_at", desc=True).execute()
@@ -969,48 +970,50 @@ else:
                 st.error("📭 Your Vault is empty. Please generate a script first.")
             else:
                 blueprint_options = {f"{item['niche_topic']} ({item['target_platform']})": item for item in blueprints}
-                selected_bp_name = st.selectbox("Select a Blueprint to extract metadata from:", options=list(blueprint_options.keys()))
-                selected_bp = blueprint_options[selected_bp_name]
+                bp_list = ["(Select a Blueprint)"] + list(blueprint_options.keys())
                 
-                # 🧠 PARSER ACTION: Text ko tod kar variables mein badalna
-                parsed_data = parse_blueprint_metadata(selected_bp['script_content'])
-                
-                # 🚀 NAYA JADOO: Regex se Trend Research wale Hooks nikalna!
-                import re
-                raw_text = selected_bp['script_content']
-                # Yeh regex "Hook:" ke baad likhe hue text ko pakad lega
-                extracted_hooks = re.findall(r'(?:Hook|Retention):\s*"?([^"\n]+)"?', raw_text)
-                
-                st.success(f"✅ AI Metadata successfully parsed and injected! Please review below.")
-                
-                # Yahan auto-fill boxes aayenge
+                # 📺 YOUTUBE INDEPENDENT NODE
                 with st.expander("📺 Auto-Filled: YouTube Metadata", expanded=True):
-                    # Agar AI ne hooks generate kiye hain, toh user ko dropdown dikhao
-                    if extracted_hooks:
-                        chosen_hook = st.selectbox(
-                            "🎯 Select a Viral Hook for your Title (or use default):", 
-                            ["(Use Default Parsed Title)"] + extracted_hooks
-                        )
+                    yt_selection = st.selectbox("📂 Load blueprint for YouTube:", bp_list, key="yt_bp_select")
+                    
+                    if yt_selection != "(Select a Blueprint)":
+                        yt_parsed = parse_blueprint_metadata(blueprint_options[yt_selection]['script_content'])
                         
-                        # Agar user dropdown se hook select karta hai, toh text_input mein wahi aayega
-                        default_title_value = parsed_data.get("yt_title", "").replace("[YOUTUBE SHORTS TITLE]", "").replace("[", "").replace("]", "").strip()
-                        if chosen_hook != "(Use Default Parsed Title)":
-                            default_title_value = chosen_hook
+                        # Dynamic Hook Injection
+                        if yt_parsed.get("hooks"):
+                            chosen_hook = st.selectbox("🎯 Select a Viral Hook for your Title:", ["(Use Default Parsed Title)"] + yt_parsed["hooks"], key="yt_hook_select")
+                            default_title = yt_parsed["yt_title"] if chosen_hook == "(Use Default Parsed Title)" else chosen_hook
+                        else:
+                            default_title = yt_parsed.get("yt_title", "")
                             
-                        final_yt_title = st.text_input("YouTube Title", value=default_title_value)
+                        final_yt_title = st.text_input("YouTube Title", value=default_title, key="auto_yt_title")
+                        final_yt_desc = st.text_area("YouTube Description", value=yt_parsed.get("yt_desc", ""), height=150, key="auto_yt_desc")
                     else:
-                        # Agar kisi wajah se hooks nahi mile, toh normal text box dikhao (safely clean karke)
-                        clean_title = parsed_data.get("yt_title", "").replace("[YOUTUBE SHORTS TITLE]", "").replace("[", "").replace("]", "").strip()
-                        final_yt_title = st.text_input("YouTube Title", value=clean_title)
-                        
-                    final_yt_desc = st.text_area("YouTube Description", value=parsed_data.get("yt_desc", "").replace("[YOUTUBE SHORTS DESCRIPTION]", "").replace("[", "").replace("]", "").strip(), height=150)
+                        st.info("Select a blueprint above to populate YouTube data.")
+                        final_yt_title = ""
+                        final_yt_desc = ""
                 
+                # 🐦 TWITTER INDEPENDENT NODE
                 with st.expander("🐦 Auto-Filled: X (Twitter) Thread"):
-                    final_tw_thread = st.text_area("Generated Thread Content", value=parsed_data.get("tw_thread", ""), height=150)
+                    tw_selection = st.selectbox("📂 Load blueprint for Twitter:", bp_list, key="tw_bp_select")
+                    
+                    if tw_selection != "(Select a Blueprint)":
+                        tw_parsed = parse_blueprint_metadata(blueprint_options[tw_selection]['script_content'])
+                        final_tw_thread = st.text_area("Generated Thread Content", value=tw_parsed.get("tw_thread", ""), height=150, key="auto_tw_thread")
+                    else:
+                        st.info("Select a blueprint above to populate Twitter data.")
+                        final_tw_thread = ""
                 
+                # 📸 INSTAGRAM/FB INDEPENDENT NODE
                 with st.expander("📸 Auto-Filled: Social Captions"):
-                    final_ig_cap = st.text_area("Instagram/Facebook Caption", value=parsed_data.get("ig_caption", ""), height=100)
-
+                    ig_selection = st.selectbox("📂 Load blueprint for Instagram/FB:", bp_list, key="ig_bp_select")
+                    
+                    if ig_selection != "(Select a Blueprint)":
+                        ig_parsed = parse_blueprint_metadata(blueprint_options[ig_selection]['script_content'])
+                        final_ig_cap = st.text_area("Instagram/Facebook Caption", value=ig_parsed.get("ig_caption", ""), height=100, key="auto_ig_cap")
+                    else:
+                        st.info("Select a blueprint above to populate Caption data.")
+                        final_ig_cap = ""
         # Option 2: Manual Paste (Clean UI with Expanders)
         elif metadata_source == "✍️ Manual Paste":
             st.info("Manually enter your content for each platform below.")
