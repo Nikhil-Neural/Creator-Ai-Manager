@@ -958,7 +958,6 @@ else:
         parsed_data = {}
 
         # Option 1: Vault Data (The Bridge with Smart Parser)
-        # Option 1: Vault Data (The Bridge with Smart Parser)
         if metadata_source == "📂 Use Saved Vault Data (Recommended)":
             try:
                 response = supabase_admin.table("ai_blueprints_vault").select("*").eq("creator_email", st.session_state.get("user_email")).order("created_at", desc=True).execute()
@@ -969,7 +968,16 @@ else:
             if not blueprints:
                 st.error("📭 Your Vault is empty. Please generate a script first.")
             else:
-                blueprint_options = {f"{item['niche_topic']} ({item['target_platform']})": item for item in blueprints}
+                def get_platform_badges(meta_string):
+                    badges = ""
+                    if "YouTube" in meta_string: badges += "🔴[YT] "
+                    if "X & Threads" in meta_string: badges += "🩵[X] "
+                    if "Insta" in meta_string: badges += "📸[IG] "
+                    if "LinkedIn" in meta_string: badges += "💼[LI] "
+                    return badges.strip()
+
+                # 🟢 MODIFIED: Purani line ko replace kar diya jisse badges dropdown mein dikhein
+                blueprint_options = {f"{get_platform_badges(str(item.get('social_metadata', '')))} - {item['niche_topic']}": item for item in blueprints}
                 bp_list = ["(Select a Blueprint)"] + list(blueprint_options.keys())
                 
                 # 📺 YOUTUBE INDEPENDENT NODE
@@ -980,14 +988,15 @@ else:
                         yt_parsed = parse_blueprint_metadata(blueprint_options[yt_selection]['script_content'])
                         
                         # Dynamic Hook Injection
+                        default_title = yt_parsed.get("yt_title", "")
                         if yt_parsed.get("hooks"):
-                            chosen_hook = st.selectbox("🎯 Select a Viral Hook for your Title:", ["(Use Default Parsed Title)"] + yt_parsed["hooks"], key="yt_hook_select")
-                            default_title = yt_parsed["yt_title"] if chosen_hook == "(Use Default Parsed Title)" else chosen_hook
-                        else:
-                            default_title = yt_parsed.get("yt_title", "")
+                            chosen_hook = st.selectbox("🎯 Select a Viral Hook for your Title:", ["(Use Default Parsed Title)"] + yt_parsed["hooks"])
+                            if chosen_hook != "(Use Default Parsed Title)":
+                                default_title = chosen_hook
                             
-                        final_yt_title = st.text_input("YouTube Title", value=default_title, key="auto_yt_title")
-                        final_yt_desc = st.text_area("YouTube Description", value=yt_parsed.get("yt_desc", ""), height=150, key="auto_yt_desc")
+                        # Notice: Yahan se 'key' hata di hai taaki dropdown change hone par ye turant update ho!
+                        final_yt_title = st.text_input("YouTube Title", value=default_title)
+                        final_yt_desc = st.text_area("YouTube Description", value=yt_parsed.get("yt_desc", ""), height=150)
                     else:
                         st.info("Select a blueprint above to populate YouTube data.")
                         final_yt_title = ""
