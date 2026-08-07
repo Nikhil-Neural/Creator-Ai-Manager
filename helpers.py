@@ -31,8 +31,9 @@ def parse_blueprint_metadata(raw_text):
         parsed_data["yt_title"] = clean_title
 
     # 3. Extract YouTube Description
-    yt_desc_match = re.search(r'(?:YouTube Description|Description):\s*(.*?)(?=\n\n|\n[A-Z]|$)', raw_text, re.IGNORECASE | re.DOTALL)
+    yt_desc_match = re.search(r'(?:YouTube Description|Description):\s*(.*?)(?:\[?TWITTER|\[?INSTA|\[?LINKEDIN|\[?X THREAD|$)', raw_text, re.IGNORECASE | re.DOTALL)
     if yt_desc_match:
+        # Pata chala usme koi faltu spaces hain toh unko clean kar dega
         parsed_data["yt_desc"] = yt_desc_match.group(1).strip()
 
     # 4. Extract Twitter/X Thread (Sabse important)
