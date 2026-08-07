@@ -5,38 +5,55 @@ from docx import Document
 
 def parse_blueprint_metadata(raw_text):
     """
-    Takes the raw text from CrewAI, slices it based on exact headings using Regex, 
-    and returns a formatted dictionary for Tab 3 UI boxes.
+    AI text se metadata extract karne ka fail-proof regex parser.
     """
-    metadata = {
+    parsed_data = {
         "yt_title": "",
         "yt_desc": "",
-        "linkedin_post": "",
         "tw_thread": "",
-        "ig_caption": ""
+        "ig_caption": "",
+        "li_post": "",
+        "hooks": []
     }
     
-    title_match = re.search(r"Title:\s*(.*?)(?=\nDescription:|\nLinkedIn Post:|\nTwitter Thread:|$)", raw_text, re.IGNORECASE | re.DOTALL)
-    if title_match:
-        metadata["yt_title"] = title_match.group(1).strip()
-        
-    desc_match = re.search(r"Description:\s*(.*?)(?=\nLinkedIn Post:|\nTwitter Thread:|$)", raw_text, re.IGNORECASE | re.DOTALL)
-    if desc_match:
-        metadata["yt_desc"] = desc_match.group(1).strip()
-        
-    linkedin_match = re.search(r"LinkedIn Post:\s*(.*?)(?=\nTwitter Thread:|$)", raw_text, re.IGNORECASE | re.DOTALL)
-    if linkedin_match:
-        metadata["linkedin_post"] = linkedin_match.group(1).strip()
-        
-    twitter_match = re.search(r"Twitter Thread:\s*(.*?)(?=$)", raw_text, re.IGNORECASE | re.DOTALL)
-    if twitter_match:
-        metadata["tw_thread"] = twitter_match.group(1).strip()
-        
-    ig_match = re.search(r"Instagram Caption:\s*(.*?)(?=$)", raw_text, re.IGNORECASE | re.DOTALL)
+    if not raw_text:
+        return parsed_data
+
+    # 1. Extract Hooks (Tumhare app.py logic ko support karne ke liye)
+    extracted_hooks = re.findall(r'(?:Hook|Retention):\s*"?([^"\n]+)"?', raw_text, re.IGNORECASE)
+    parsed_data["hooks"] = [h.strip() for h in extracted_hooks if h.strip()]
+
+    # 2. Extract YouTube Title (Bohot flexible rakha hai)
+    yt_title_match = re.search(r'(?:YouTube Title|Title):\s*(.*?)(?=\n|$)', raw_text, re.IGNORECASE)
+    if yt_title_match:
+        # Faltu brackets aur quotes hata do
+        clean_title = yt_title_match.group(1).replace("[YOUTUBE SHORTS TITLE]", "").replace('"', '').replace('[', '').replace(']', '').strip()
+        parsed_data["yt_title"] = clean_title
+
+    # 3. Extract YouTube Description
+    yt_desc_match = re.search(r'(?:YouTube Description|Description):\s*(.*?)(?=\n\n|\n[A-Z]|$)', raw_text, re.IGNORECASE | re.DOTALL)
+    if yt_desc_match:
+        parsed_data["yt_desc"] = yt_desc_match.group(1).strip()
+
+    # 4. Extract Twitter/X Thread (Sabse important)
+    # Yeh dekhega ki "TWITTER" ya "X THREAD" kahan likha hai, aur wahan se lekar agle section tak sab utha lega
+    tw_match = re.search(r'(?:\[?TWITTER.*?THREAD.*?\]?)(.*?)(?:\[?INSTAGRAM|\[?LINKEDIN|\[?YOUTUBE|$)', raw_text, re.IGNORECASE | re.DOTALL)
+    if tw_match:
+        thread_content = tw_match.group(1).strip()
+        # Agar start mein koi faltu dash ya space hai toh hata do
+        parsed_data["tw_thread"] = thread_content.lstrip('-').strip()
+
+    # 5. Extract Instagram/Facebook Caption
+    ig_match = re.search(r'(?:\[?INSTA.*?CAPTION.*?\]?)(.*?)(?:\[?LINKEDIN|\[?TWITTER|\[?YOUTUBE|$)', raw_text, re.IGNORECASE | re.DOTALL)
     if ig_match:
-        metadata["ig_caption"] = ig_match.group(1).strip()
-        
-    return metadata
+        parsed_data["ig_caption"] = ig_match.group(1).strip()
+
+    # 6. Extract LinkedIn Post
+    li_match = re.search(r'(?:\[?LINKEDIN.*?POST.*?\]?)(.*?)(?:\[?INSTAGRAM|\[?TWITTER|\[?YOUTUBE|$)', raw_text, re.IGNORECASE | re.DOTALL)
+    if li_match:
+        parsed_data["li_post"] = li_match.group(1).strip()
+
+    return parsed_data
 
 def create_word_doc(script_text, platform_name, topic_name):
     """
