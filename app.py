@@ -1023,6 +1023,29 @@ else:
                     else:
                         st.info("Select a blueprint above to populate Caption data.")
                         final_ig_cap = ""
+
+                # 💼 LINKEDIN INDEPENDENT NODE
+                with st.expander("💼 Auto-Filled: LinkedIn Post"):
+                    li_selection = st.selectbox("📂 Load blueprint for LinkedIn:", bp_list, key="li_bp_select")
+                    
+                    if li_selection != "(Select a Blueprint)":
+                        li_parsed = parse_blueprint_metadata(blueprint_options[li_selection]['script_content'])
+                        final_li_post = st.text_area("LinkedIn Post", value=li_parsed.get("li_post", ""), height=150, key="auto_li_post")
+                    else:
+                        st.info("Select a blueprint above to populate LinkedIn data.")
+                        final_li_post = ""
+
+                # 🧵 THREADS INDEPENDENT NODE
+                with st.expander("🧵 Auto-Filled: Threads Post"):
+                    th_selection = st.selectbox("📂 Load blueprint for Threads:", bp_list, key="th_bp_select")
+                    
+                    if th_selection != "(Select a Blueprint)":
+                        th_parsed = parse_blueprint_metadata(blueprint_options[th_selection]['script_content'])
+                        # Smart Hack: Threads aur Twitter ka format same hota hai, toh default mein hum tw_thread use kar lenge!
+                        final_th_post = st.text_area("Threads Post", value=th_parsed.get("tw_thread", ""), height=150, key="auto_th_post")
+                    else:
+                        st.info("Select a blueprint above to populate Threads data.")
+                        final_th_post = ""
         # Option 2: Manual Paste (Clean UI with Expanders)
         elif metadata_source == "✍️ Manual Paste":
             st.info("Manually enter your content for each platform below.")
@@ -1136,6 +1159,110 @@ else:
             st.caption("*Note: YouTube API does not support custom thumbnails for Shorts. A frame will be auto-selected.*")
             
         st.write("---")
+        # ==========================================
+        # FINAL EXECUTION BUTTON
+        # ==========================================
+        st.markdown("### 🚀 Execute Post & Schedule")
+        
+        if st.button("🔥 Confirm Schedule & Route to Platforms"):
+            
+            # 1. TWITTER ROUTING
+            if push_tw:
+                if final_tw_thread != "":
+                    tw_data = {"thread": final_tw_thread}
+                    success, msg = insert_schedule_queue(
+                        supabase_client=supabase_admin,
+                        user_email=st.session_state.get("user_email"),
+                        platform="Twitter",
+                        content_data=tw_data,
+                        scheduled_time=platform_schedule_map["twitter"]
+                    )
+                    if success:
+                        st.success(f"🐦 Twitter: {msg}")
+                    else:
+                        st.error(f"🐦 Twitter Error: {msg}")
+                else:
+                    st.warning("🐦 Twitter selected, but no thread content found.")
+
+            # 2. YOUTUBE ROUTING
+            if push_yt:
+                if final_yt_title != "" and final_yt_desc != "":
+                    yt_data = {
+                        "title": final_yt_title,
+                        "description": final_yt_desc
+                    }
+                    success, msg = insert_schedule_queue(
+                        supabase_client=supabase_admin,
+                        user_email=st.session_state.get("user_email"),
+                        platform="YouTube",
+                        content_data=yt_data,
+                        scheduled_time=platform_schedule_map["youtube"]
+                    )
+                    if success:
+                        st.success(f"📺 YouTube: {msg}")
+                    else:
+                        st.error(f"📺 YouTube Error: {msg}")
+                else:
+                    st.warning("📺 YouTube selected, but title/description is missing.")
+
+            # 3. INSTAGRAM ROUTING
+            if push_ig:
+                if final_ig_cap != "":
+                    ig_data = {"caption": final_ig_cap}
+                    success, msg = insert_schedule_queue(
+                        supabase_client=supabase_admin,
+                        user_email=st.session_state.get("user_email"),
+                        platform="Instagram",
+                        content_data=ig_data,
+                        scheduled_time=platform_schedule_map["instagram"]
+                    )
+                    if success:
+                        st.success(f"📸 Instagram: {msg}")
+                    else:
+                        st.error(f"📸 Instagram Error: {msg}")
+                else:
+                    st.warning("📸 Instagram selected, but caption is missing.")
+
+            # 4. LINKEDIN ROUTING
+            if push_li:
+                if final_li_post != "": # Make sure final_li_post exists in your Step 2 parsing UI
+                    li_data = {"post": final_li_post}
+                    success, msg = insert_schedule_queue(
+                        supabase_client=supabase_admin,
+                        user_email=st.session_state.get("user_email"),
+                        platform="LinkedIn",
+                        content_data=li_data,
+                        scheduled_time=platform_schedule_map["linkedin"]
+                    )
+                    if success:
+                        st.success(f"💼 LinkedIn: {msg}")
+                    else:
+                        st.error(f"💼 LinkedIn Error: {msg}")
+                else:
+                    st.warning("💼 LinkedIn selected, but post content is missing.")
+
+            # 5. THREADS ROUTING
+            if push_th:
+                if final_th_post != "": # Make sure final_th_post exists in your Step 2 parsing UI
+                    th_data = {"post": final_th_post}
+                    success, msg = insert_schedule_queue(
+                        supabase_client=supabase_admin,
+                        user_email=st.session_state.get("user_email"),
+                        platform="Threads",
+                        content_data=th_data,
+                        scheduled_time=platform_schedule_map["threads"]
+                    )
+                    if success:
+                        st.success(f"🧵 Threads: {msg}")
+                    else:
+                        st.error(f"🧵 Threads Error: {msg}")
+                else:
+                    st.warning("🧵 Threads selected, but content is missing.")
+
+            if any([push_yt, push_tw, push_ig, push_th, push_li]):
+                st.balloons()
+            else:
+                st.error("⚠️ Please select at least one platform to schedule.")
         
         # 🛡️ STEP 4: COMPLIANCE & KILL-SWITCH (Brought out of LinkedIn scope!)
         st.markdown("#### 🛡️ Step 4: Compliance & Safety")
