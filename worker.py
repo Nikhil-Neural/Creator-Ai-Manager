@@ -2,6 +2,7 @@ import os
 import time
 import requests
 import tempfile
+import tweepy
 from datetime import datetime, timezone
 import streamlit as st
 from supabase import create_client, Client
@@ -15,6 +16,91 @@ from googleapiclient.http import MediaFileUpload
 url = st.secrets["SUPABASE_URL"]
 key = st.secrets["SUPABASE_SERVICE_KEY"] 
 supabase: Client = create_client(url, key)
+
+def execute_twitter_thread(twitter_credentials, thread_text, video_url):
+    """
+    Telegram URL se video download karke Twitter par seamless thread post karta hai.
+    """
+    try:
+        print("🚀 Starting Twitter Execution Pipeline...")
+
+        # 1. SETUP TWITTER CLIENTS (Dono APIs zaroori hain)
+        # Client (v2) - Tweet aur thread post karne ke liye
+        client = tweepy.Client(
+            consumer_key=twitter_credentials['api_key'],
+            consumer_secret=twitter_credentials['api_secret'],
+            access_token=twitter_credentials['access_token'],
+            access_token_secret=twitter_credentials['access_token_secret']
+        )
+        
+        # API (v1.1) - Sirf Video/Image upload karne ke liye
+        auth = tweepy.OAuth1UserHandler(
+            twitter_credentials['api_key'], 
+            twitter_credentials['api_secret'],
+            twitter_credentials['access_token'], 
+            twitter_credentials['access_token_secret']
+        )
+        api = tweepy.API(auth)
+
+        media_id = None
+
+        # 2. DOWNLOAD VIDEO FROM TELEGRAM & UPLOAD TO TWITTER
+        if video_url:
+            print(f"📥 Downloading video from Telegram node: {video_url[:30]}...")
+            # Temp file banayenge taaki server ka storage full na ho
+            with tempfile.NamedTemporaryFile(delete=False, suffix='.mp4') as tmp_file:
+                response = requests.get(video_url, stream=True)
+                response.raise_for_status() # Agar link tuta ho toh error de dega
+                for chunk in response.iter_content(chunk_size=8192):
+                    tmp_file.write(chunk)
+                tmp_file_path = tmp_file.name
+            
+            print("📤 Uploading binary chunk to Twitter Servers...")
+            # Twitter par video upload ('tweet_video' category zaroori hai)
+            media = api.media_upload(tmp_file_path, media_category='tweet_video')
+            media_id = media.media_id_string
+            
+            # Safai - Temp file ko delete kar do
+            os.remove(tmp_file_path)
+            print("✅ Video Uploaded! Media ID:", media_id)
+
+        # 3. SMART THREAD SPLITTING
+        # AI generally tweets ke beech mein do lines ka gap (\n\n) deta hai
+        # Hum usko alag-alag strings mein tod lenge
+        raw_tweets = [t.strip() for t in thread_text.split('\n\n') if t.strip()]
+        
+        if not raw_tweets:
+            return False, "Thread text is completely empty."
+
+        # 4. POST THE THREAD (EK KE NEECHE EK)
+        previous_tweet_id = None
+        
+        for index, tweet_content in enumerate(raw_tweets):
+            print(f"🐦 Posting Tweet {index + 1}/{len(raw_tweets)}...")
+            
+            # Pehla Tweet (Isme Video Atttached hoga)
+            if index == 0:
+                kwargs = {"text": tweet_content[:280]} # Safety boundary
+                if media_id:
+                    kwargs["media_ids"] = [media_id]
+                
+                response = client.create_tweet(**kwargs)
+                previous_tweet_id = response.data['id']
+                
+            # Baaki ke Tweets (Isme previous tweet ka ID link hoga jisse chain banegi)
+            else:
+                response = client.create_tweet(
+                    text=tweet_content[:280],
+                    in_reply_to_tweet_id=previous_tweet_id
+                )
+                previous_tweet_id = response.data['id']
+
+        return True, f"✅ Thread successfully published! Root ID: {previous_tweet_id}"
+
+    except Exception as e:
+        error_msg = f"❌ Twitter Execution Failed: {str(e)}"
+        print(error_msg)
+        return False, error_msg
 
 # 🔄 NAYA BADLAV: Ab hum parameter mein 'user_refresh_token' le rahe hain
 def upload_to_youtube(video_path, title, description, user_refresh_token):
