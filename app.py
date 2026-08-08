@@ -1107,7 +1107,7 @@ else:
                     if push_yt:
                         with st.expander("⏰ YT Timing", expanded=True):
                             yt_date = st.date_input("YT Date", min_value=datetime.today(), key="yt_d")
-                            yt_time = st.time_input("YT Time", key="yt_t", step=timedelta(minutes=5))
+                            yt_time = st.time_input("YT Time", key="yt_t")
                             
                             naive_dt = datetime.combine(yt_date, yt_time)
                             local_aware_dt = local_tz.localize(naive_dt)
