@@ -1132,7 +1132,10 @@ else:
                     if push_tw:
                         with st.expander("⏰ X Timing", expanded=True):
                             tw_date = st.date_input("X Date", min_value=datetime.today(), key="tw_d")
-                            tw_time = st.time_input("X Time", key="tw_t", step=timedelta(minutes=5))
+                            # 🔥 ST.TIME_INPUT HATA KAR YEH LAGA DIYA
+                            tw_time_str = st.selectbox("X Time", options=time_options, index=default_time_idx, key="tw_t")
+                            # String ("10:05 AM") ko wapas Python Time mein convert kar rahe hain backend ke liye
+                            tw_time = datetime.strptime(tw_time_str, "%I:%M %p").time()
                             
                             naive_dt = datetime.combine(tw_date, tw_time)
                             local_aware_dt = local_tz.localize(naive_dt)
@@ -1147,7 +1150,10 @@ else:
                     if push_ig:
                         with st.expander("⏰ IG Timing", expanded=True):
                             ig_date = st.date_input("IG Date", min_value=datetime.today(), key="ig_d")
-                            ig_time = st.time_input("IG Time", key="ig_t", step=timedelta(minutes=5))
+                            # 🔥 ST.TIME_INPUT HATA KAR YEH LAGA DIYA
+                            ig_time_str = st.selectbox("IG Time", options=time_options, index=default_time_idx, key="ig_t")
+                            # String ("10:05 AM") ko wapas Python Time mein convert kar rahe hain backend ke liye
+                            ig_time = datetime.strptime(ig_time_str, "%I:%M %p").time()
                             
                             naive_dt = datetime.combine(ig_date, ig_time)
                             local_aware_dt = local_tz.localize(naive_dt)
@@ -1162,7 +1168,10 @@ else:
                     if push_th:
                         with st.expander("⏰ Threads Timing", expanded=True):
                             th_date = st.date_input("TH Date", min_value=datetime.today(), key="th_d")
-                            th_time = st.time_input("TH Time", key="th_t", step=timedelta(minutes=5))
+                            # 🔥 ST.TIME_INPUT HATA KAR YEH LAGA DIYA
+                            th_time_str = st.selectbox("TH Time", options=time_options, index=default_time_idx, key="th_t")
+                            # String ("10:05 AM") ko wapas Python Time mein convert kar rahe hain backend ke liye
+                            th_time = datetime.strptime(th_time_str, "%I:%M %p").time()
                             
                             naive_dt = datetime.combine(th_date, th_time)
                             local_aware_dt = local_tz.localize(naive_dt)
@@ -1177,7 +1186,10 @@ else:
                     if push_li:
                         with st.expander("⏰ LinkedIn Timing", expanded=True):
                             li_date = st.date_input("LI Date", min_value=datetime.today(), key="li_d")
-                            li_time = st.time_input("LI Time", key="li_t", step=timedelta(minutes=5))
+                            # 🔥 ST.TIME_INPUT HATA KAR YEH LAGA DIYA
+                            li_time_str = st.selectbox("LI Time", options=time_options, index=default_time_idx, key="li_t")
+                            # String ("10:05 AM") ko wapas Python Time mein convert kar rahe hain backend ke liye
+                            li_time = datetime.strptime(li_time_str, "%I:%M %p").time()
                             
                             naive_dt = datetime.combine(li_date, li_time)
                             local_aware_dt = local_tz.localize(naive_dt)
