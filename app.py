@@ -1067,15 +1067,20 @@ else:
         # 🌍 STEP 3: OMNICHANNEL DISTRIBUTION & INDEPENDENT TIMING MATRIX
         st.markdown("#### 🌍 Step 3: Distribution Routing & Custom Timings")
 
-        st.write("Select the platforms and set independent times for each:")
         import pytz
-        all_timezones = pytz.common_timezones
-        default_tz_index = all_timezones.index("Asia/Kolkata") if "Asia/Kolkata" in all_timezones else 0
-        user_timezone = st.selectbox("🌍 Select your Local Timezone:", all_timezones, index=default_tz_index)
-        local_tz = pytz.timezone(user_timezone)
+        from datetime import datetime, timedelta
 
-        # Har platform ke liye settings hold karne ke liye dictionary
-        platform_schedule_map = {}
+        all_timezones = ["(Select your timezone)"] + pytz.common_timezones
+        # Default index 0 rakha hai taaki lock active rahe
+        user_timezone = st.selectbox("🌍 Select your Local Timezone:", all_timezones, index=0)
+
+        # Jab tak timezone select nahi hoga, aage ka UI hide rahega
+        if user_timezone == "(Select your timezone)":
+            st.warning("⚠️ Action Required: Please select your local timezone from the dropdown to unlock platform scheduling.")
+        else:
+            st.write("Select the platforms and set independent times for each:")
+            local_tz = pytz.timezone(user_timezone)
+            platform_schedule_map = {}
 
         # 5 Columns for all 5 platforms - Strictly Independent
         col_p1, col_p2, col_p3, col_p4, col_p5 = st.columns(5)
@@ -1087,7 +1092,10 @@ else:
                 if push_yt:
                     with st.expander("⏰ YT Timing", expanded=True):
                         yt_date = st.date_input("YT Date", min_value=datetime.today(), key="yt_d")
-                        yt_time = st.time_input("YT Time", key="yt_t")
+
+                        # REQUIREMENT 1, 2 & 3: 5-min gap, AM/PM UI, and Manual Edit allowed
+                        yt_time = st.time_input("YT Time", key="yt_t", step=timedelta(minutes=5))
+
                         # 🔄 NAYA: User ke time ko convert kar raha hai
                         naive_dt = datetime.combine(yt_date, yt_time)
                         local_aware_dt = local_tz.localize(naive_dt)
@@ -1102,7 +1110,8 @@ else:
                 if push_tw:
                     with st.expander("⏰ X Timing", expanded=True):
                         tw_date = st.date_input("X Date", min_value=datetime.today(), key="tw_d")
-                        tw_time = st.time_input("X Time", key="tw_t")
+
+                        tw_time = st.time_input("X Time", key="tw_t", step=timedelta(minutes=5))
                         # 🔄 NAYA: User ke time ko convert kar raha hai
                         naive_dt = datetime.combine(tw_date, tw_time)
                         local_aware_dt = local_tz.localize(naive_dt)
@@ -1117,7 +1126,8 @@ else:
                 if push_ig:
                     with st.expander("⏰ IG Timing", expanded=True):
                         ig_date = st.date_input("IG Date", min_value=datetime.today(), key="ig_d")
-                        ig_time = st.time_input("IG Time", key="ig_t")
+
+                        ig_time = st.time_input("IG Time", key="ig_t", step=timedelta(minutes=5))
                         # 🔄 NAYA: User ke time ko convert kar raha hai
                         naive_dt = datetime.combine(ig_date, ig_time)
                         local_aware_dt = local_tz.localize(naive_dt)
@@ -1132,7 +1142,8 @@ else:
                 if push_th:
                     with st.expander("⏰ Threads Timing", expanded=True):
                         th_date = st.date_input("TH Date", min_value=datetime.today(), key="th_d")
-                        th_time = st.time_input("TH Time", key="th_t")
+
+                        th_time = st.time_input("TH Time", key="th_t", step=timedelta(minutes=5))
                         # 🔄 NAYA: User ke time ko convert kar raha hai
                         naive_dt = datetime.combine(th_date, th_time)
                         local_aware_dt = local_tz.localize(naive_dt)
@@ -1147,7 +1158,8 @@ else:
                 if push_li:
                     with st.expander("⏰ LinkedIn Timing", expanded=True):
                         li_date = st.date_input("LI Date", min_value=datetime.today(), key="li_d")
-                        li_time = st.time_input("LI Time", key="li_t")
+                        
+                        li_time = st.time_input("LI Time", key="li_t", step=timedelta(minutes=5))
                         # 🔄 NAYA: User ke time ko convert kar raha hai
                         naive_dt = datetime.combine(li_date, li_time)
                         local_aware_dt = local_tz.localize(naive_dt)
