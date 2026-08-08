@@ -1070,6 +1070,13 @@ else:
         import pytz
         from datetime import datetime, timedelta
 
+        # 🔥 CUSTOM TIME DROPDOWN GENERATOR (5-min intervals)
+        time_options = []
+        for h in range(24):
+            for m in range(0, 60, 5):
+                time_options.append(datetime(2000, 1, 1, h, m).strftime("%I:%M %p")) # Result: "10:05 AM"
+        default_time_idx = time_options.index("10:00 AM") # Default time 10 AM
+
         # 🧠 Smart Mapping: Har IANA timezone ko uske Country ke naam se jod rahe hain
         tz_display_map = {"(Select your timezone)": "(Select your timezone)"}
         for country_code, timezones in pytz.country_timezones.items():
@@ -1107,7 +1114,10 @@ else:
                     if push_yt:
                         with st.expander("⏰ YT Timing", expanded=True):
                             yt_date = st.date_input("YT Date", min_value=datetime.today(), key="yt_d")
-                            yt_time = st.time_input("YT Time", key="yt_t")
+                            # 🔥 ST.TIME_INPUT HATA KAR YEH LAGA DIYA
+                            yt_time_str = st.selectbox("YT Time", options=time_options, index=default_time_idx, key="yt_t")
+                            # String ("10:05 AM") ko wapas Python Time mein convert kar rahe hain backend ke liye
+                            yt_time = datetime.strptime(yt_time_str, "%I:%M %p").time()
                             
                             naive_dt = datetime.combine(yt_date, yt_time)
                             local_aware_dt = local_tz.localize(naive_dt)
