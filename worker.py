@@ -143,9 +143,10 @@ def process_queue():
     print(f"[{datetime.now()}] 🔍 Checking database for pending videos scheduled up to now...")
     
     try:
+        # FIX 1: Dhyan do yahan main .in_ lagakar Capital aur Small dono utha raha hu
         response = supabase.table("master_scheduler_queue") \
             .select("*") \
-            .eq("status", "pending") \
+            .in_("status", ["Pending", "pending"]) \
             .lte("scheduled_time", current_utc_time) \
             .execute()
         tasks = response.data
@@ -158,53 +159,74 @@ def process_queue():
         return
 
     for task in tasks:
-        platforms = task.get('target_platforms', [])
-        if "youtube" not in [p.lower() for p in platforms]:
-            continue
-
-        print(f"\n🚀 Processing Task ID: {task['id']} for YouTube...")
-        temp_vid_path = ""
+        platforms = [p.lower() for p in task.get('target_platforms', [])]
+        print(f"\n🚀 Processing Task ID: {task['id']} for platforms: {platforms}")
         
         try:
             vid_url = task['video_url']
             meta = task['metadata_payload']
-            creator_email = task['creator_handle'] 
+            creator_email = task['creator_handle']
             
-            # 🔄 NAYA BADLAV: Supabase se is specific user ka YouTube Refresh Token nikalna
-            # NOTE: Agar tumhare 'creator_profiles' table mein column ka naam alag hai, toh 'youtube_token' ko change kar lena.
-            profile_res = supabase.table("creator_profiles").select("youtube_token").eq("creator_handle", creator_email).execute()
-            
-            if not profile_res.data or not profile_res.data[0].get("youtube_token"):
-                raise ValueError(f"No YouTube refresh token found in database for user: {creator_email}")
+            # --- YOUTUBE LOGIC ---
+            if "youtube" in platforms:
+                print("📺 Starting YouTube sequence...")
+                temp_vid_path = ""
+                profile_res = supabase.table("creator_profiles").select("youtube_token").eq("creator_handle", creator_email).execute()
                 
-            user_specific_token = profile_res.data[0]["youtube_token"]
+                if not profile_res.data or not profile_res.data[0].get("youtube_token"):
+                    print(f"⚠️ Skipping YT: No YouTube refresh token found for {creator_email}")
+                else:
+                    user_specific_token = profile_res.data[0]["youtube_token"]
+                    with tempfile.NamedTemporaryFile(delete=False, suffix=".mp4") as temp_vid:
+                        r = requests.get(vid_url, stream=True)
+                        for chunk in r.iter_content(chunk_size=8192):
+                            temp_vid.write(chunk)
+                        temp_vid_path = temp_vid.name
+                    
+                    yt_title = meta.get("video_title", "Creator OS Generated Video")
+                    yt_desc = meta.get("youtube_description", "")
+                    
+                    yt_id = upload_to_youtube(temp_vid_path, yt_title, yt_desc, user_specific_token)
+                    print(f"✅ Success! YouTube Video ID: {yt_id}")
+                    
+                    if os.path.exists(temp_vid_path):
+                        os.remove(temp_vid_path)
 
-            print("📥 Downloading video from Telegram vault...")
-            with tempfile.NamedTemporaryFile(delete=False, suffix=".mp4") as temp_vid:
-                r = requests.get(vid_url, stream=True)
-                for chunk in r.iter_content(chunk_size=8192):
-                    temp_vid.write(chunk)
-                temp_vid_path = temp_vid.name
-            
-            print("☁️ Uploading to YouTube servers...")
-            yt_title = meta.get("video_title", "Creator OS Generated Video")
-            yt_desc = meta.get("youtube_description", "")
-            
-            # 🔄 NAYA BADLAV: Function mein user ka specific token pass kar rahe hain
-            yt_id = upload_to_youtube(temp_vid_path, yt_title, yt_desc, user_specific_token)
-            print(f"✅ Success! YouTube Video ID: {yt_id}")
-            
+            # --- TWITTER LOGIC ---
+            if "twitter" in platforms:
+                print("🐦 Starting Twitter sequence...")
+                
+                # Fetch Twitter Credentials from DB
+                tw_profile_res = supabase.table("twitter_auth_states").select("twitter_api_key, twitter_api_secret, twitter_access_token, twitter_access_secret").eq("creator_handle", creator_email).execute()
+                
+                if not tw_profile_res.data:
+                    print(f"⚠️ Skipping Twitter: No credentials found for {creator_email}")
+                else:
+                    creds = tw_profile_res.data[0]
+                    # Map the db columns to what execute_twitter_thread expects
+                    twitter_credentials = {
+                        "api_key": creds.get("twitter_api_key"),
+                        "api_secret": creds.get("twitter_api_secret"),
+                        "access_token": creds.get("twitter_access_token"),
+                        "access_token_secret": creds.get("twitter_access_secret")
+                    }
+                    
+                    thread_text = meta.get("twitter_thread_text", "")
+                    success, msg = execute_twitter_thread(twitter_credentials, thread_text, vid_url)
+                    
+                    if success:
+                        print(f"✅ {msg}")
+                    else:
+                        print(f"❌ {msg}")
+                        raise Exception(f"Twitter Execution Failed: {msg}")
+
+            # Agar loop yahan tak bina error ke pahunch gaya, matlab task successfully execute ho gaya hai
             supabase.table("master_scheduler_queue").delete().eq("id", task["id"]).execute()
-            print("🗄️ Database status updated to 'published'.")
+            print("🗄️ Task deleted from queue (successfully published).")
             
         except Exception as e:
             print(f"❌ Error processing task {task['id']}: {str(e)}")
-            supabase.table("master_scheduler_queue").update({"status": "failed"}).eq("id", task["id"]).execute()
-            
-        finally:
-            if os.path.exists(temp_vid_path):
-                os.remove(temp_vid_path)
-                print("🧹 Temporary files cleaned up.")
+            supabase.table("master_scheduler_queue").update({"status": "Failed"}).eq("id", task["id"]).execute()
 
 if __name__ == "__main__":
     print("🚀 Creator OS Background Worker started! Polling database every 60 seconds...")
