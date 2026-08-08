@@ -1070,9 +1070,23 @@ else:
         import pytz
         from datetime import datetime, timedelta
 
+        # 🧠 Smart Mapping: Har IANA timezone ko uske Country ke naam se jod rahe hain
+        tz_display_map = {"(Select your timezone)": "(Select your timezone)"}
+        for country_code, timezones in pytz.country_timezones.items():
+            country_name = pytz.country_names[country_code]
+            for tz in timezones:
+                # Format banega: "India - Asia/Kolkata"
+                tz_display_map[tz] = f"{country_name} - {tz}"
+
         all_timezones = ["(Select your timezone)"] + pytz.common_timezones
-        # Default index 0 rakha hai taaki lock active rahe
-        user_timezone = st.selectbox("🌍 Select your Local Timezone:", all_timezones, index=0)
+        
+        # ✨ format_func ka use karke UI pe Country dikhayenge, par backend ko standard timezone milega
+        user_timezone = st.selectbox(
+            "🌍 Select your Local Timezone:", 
+            options=all_timezones, 
+            index=0,
+            format_func=lambda tz: tz_display_map.get(tz, tz)
+        )
 
         # Jab tak timezone select nahi hoga, aage ka UI hide rahega
         if user_timezone == "(Select your timezone)":
