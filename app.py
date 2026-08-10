@@ -382,35 +382,48 @@ if "code" in st.query_params:
     else:
         if "oauth_verifier" in st.query_params and "oauth_token" in st.query_params:
             verifier = st.query_params.get("oauth_verifier")
+            oauth_token = st.query_params.get("oauth_token") # 🚀 URL se token nikala
     
             with st.spinner("Securely connecting X (Twitter) account..."):
                 try:
-                    oauth1_user_handler = tweepy.OAuth1UserHandler(
-                        st.secrets["TWITTER_API_KEY"],
-                        st.secrets["TWITTER_API_SECRET"]
-                    )
-                    # Session se purana token wapas nikalo
-                    oauth1_user_handler.request_token = {
-                        'oauth_token': st.session_state.get('tw_request_token'),
-                        'oauth_token_secret': st.session_state.get('tw_request_secret')
-                    }
-            
-                    # 🔥 YAHAN MILENGE DONO TOKENS 🔥
-                    access_token, access_token_secret = oauth1_user_handler.get_access_token(verifier)
-            
-                    # Supabase 'creator_profiles' mein update kar do
-                    # (Ensure karo ki database mein 'twitter_access_secret' column bana liya ho)
-                    supabase.table("creator_profiles").update({
-                        "twitter_token": access_token,
-                        "twitter_access_secret": access_token_secret
-                    }).eq("creator_handle", st.session_state.get("user_email")).execute()
-            
-                    st.session_state["tw_connected"] = True
-                    st.success("✅ X (Twitter) Connected Successfully for Video Uploads!")
-            
-                    # URL saaf kar do taaki page refresh hone par code dobara na chale
-                    st.query_params.clear()
-            
+                    # 🧠 THE MAGIC: Naye tab mein session ud jata hai, isliye hum Database se Secret nikal rahe hain!
+                    db_res = supabase_admin.table("twitter_auth_states").select("code_verifier").eq("state", oauth_token).execute()
+                    
+                    if not db_res.data:
+                        st.error("❌ Session expired or invalid token. Please click Connect again.")
+                    else:
+                        saved_secret = db_res.data[0]["code_verifier"]
+                        
+                        oauth1_user_handler = tweepy.OAuth1UserHandler(
+                            st.secrets["TWITTER_API_KEY"],
+                            st.secrets["TWITTER_API_SECRET"]
+                        )
+                        # Session state ki jagah DB ka secret use kiya
+                        oauth1_user_handler.request_token = {
+                            'oauth_token': oauth_token,
+                            'oauth_token_secret': saved_secret
+                        }
+                
+                        # 🔥 YAHAN MILENGE DONO TOKENS 🔥
+                        access_token, access_token_secret = oauth1_user_handler.get_access_token(verifier)
+                
+                        # Supabase 'creator_profiles' mein update kar do
+                        supabase.table("creator_profiles").update({
+                            "twitter_token": access_token,
+                            "twitter_access_secret": access_token_secret
+                        }).eq("creator_handle", st.session_state.get("user_email")).execute()
+                        
+                        # 🧹 Safai: Used token ko database se uda do taaki security bani rahe
+                        supabase_admin.table("twitter_auth_states").delete().eq("state", oauth_token).execute()
+                
+                        st.session_state["tw_connected"] = True
+                        st.success("✅ X (Twitter) Connected Successfully for Video Uploads!")
+                
+                        # URL saaf kar do taaki page refresh hone par code dobara na chale
+                        st.query_params.clear()
+                        time.sleep(1)
+                        st.rerun()
+                
                 except Exception as e:
                     st.error(f"❌ Twitter connection failed: {e}")
         
@@ -689,42 +702,33 @@ else:
                 if st.button("❌ Disconnect X (Twitter)", use_container_width=True):
                     disconnect_platform("twitter_token", "tw_connected")
                     # Disconnect hone par naya column 'twitter_access_secret' ko bhi null karna padega DB me
+                    if st.session_state.get("creator_handle"):
+                        supabase.table("creator_profiles").update({"twitter_access_secret": None}).eq("creator_handle", st.session_state["creator_handle"]).execute()
             else:
-                # 🟢 STEP 1: Sirf ek baar link generate karke session me save kar lenge
+                # 🟢 STEP 1: Link generate karo aur turant Database mein backup bana lo
                 if "tw_auth_link" not in st.session_state:
-                    st.session_state["tw_auth_link"] = get_twitter_oauth_url()
+                    tw_link = get_twitter_oauth_url()
+                    st.session_state["tw_auth_link"] = tw_link
+                    
+                    # 🚀 NEW: Generated tokens ko Database mein save kar rahe hain (For New Tab support)
+                    try:
+                        supabase_admin.table("twitter_auth_states").insert({
+                            "state": st.session_state.get("tw_request_token"),
+                            "code_verifier": st.session_state.get("tw_request_secret")
+                        }).execute()
+                    except Exception as e:
+                        pass
                 
-                # 🟢 STEP 2: Tumhara wahi Black Button, direct target="_top" ke sath (No extra buttons)
+                # 🟢 STEP 2: Black Button jisme target="_blank" laga hai (Naye tab mein khulega = NO ERRORS)
                 st.markdown(f"""
                 <div style='margin-bottom: 16px;'>
-                    <a href='{st.session_state["tw_auth_link"]}' target='_top' style='display: block; width: 100%; background-color: #000000; color: white; text-align: center; padding: 10px; border-radius: 5px; font-weight: bold; text-decoration: none; box-shadow: 0px 2px 4px rgba(0,0,0,0.1); height: 42px; line-height: 22px; box-sizing: border-box;'>
+                    <a href='{st.session_state["tw_auth_link"]}' target='_blank' style='display: block; width: 100%; background-color: #000000; color: white; text-align: center; padding: 10px; border-radius: 5px; font-weight: bold; text-decoration: none; box-shadow: 0px 2px 4px rgba(0,0,0,0.1); height: 42px; line-height: 22px; box-sizing: border-box;'>
                         🩵 Connect X Account
                     </a>
                 </div>
                 """, unsafe_allow_html=True)
-
-                # 🟢 STEP 2: Jab button click hoga tabhi URL generate hoga aur redirect hoga
-                if st.query_params.get("action") == "twitter_login":
-                    with st.spinner("Generating secure OAuth 1.0a link..."):
-                        tw_login_link = get_twitter_oauth_url()
-
-                        # 🚀 THE FIX: Javascript se iframe tod kar main window mein Twitter kholenge
-                        import streamlit.components.v1 as components
-                        
-                        js_code = f"""
-                        <script>
-                            window.top.location.href = "{tw_login_link}";
-                        </script>
-                        """
-                        # Yeh script chalte hi user dabbe se bahar nikal kar Twitter par chala jayega
-                        components.html(js_code, height=0)
-                        
-                        # Backup Button: Agar kisi wajah se browser Javascript block kar de, toh user khud click kar sake
-                        st.markdown(f'''
-                        <a href="{tw_login_link}" target="_top" style="display: block; width: 100%; background-color: #1DA1F2; color: white; text-align: center; padding: 10px; border-radius: 5px; font-weight: bold; text-decoration: none; margin-top: 10px;">
-                            Click here to continue to X (Twitter)
-                        </a>
-                        ''', unsafe_allow_html=True)
+                
+                # ISKE NEECHE JO BHI TWITTER KA PURANA CODE THA (if query params action wala) SAB DELETE KAR DO!
 
             # 🧵 NEW: META THREADS UI CONNECT NODE
             st.write(" ")
