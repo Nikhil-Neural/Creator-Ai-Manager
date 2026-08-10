@@ -387,12 +387,13 @@ if "code" in st.query_params:
         with st.spinner("Securely connecting X (Twitter) account..."):
             try:
                 # 🧠 THE MAGIC: Naye tab mein session ud jata hai, isliye hum Database se Secret nikal rahe hain!
-                db_res = supabase_admin.table("twitter_auth_states").select("code_verifier").eq("state", oauth_token).execute()
+                db_res = supabase_admin.table("twitter_auth_states").select("code_verifier, creator_handle").eq("state", oauth_token).execute()
                     
                 if not db_res.data:
                     st.error("❌ Session expired or invalid token. Please click Connect again.")
                 else:
                     saved_secret = db_res.data[0]["code_verifier"]
+                    user_email_from_db = db_res.data[0]["creator_handle"]
                         
                     oauth1_user_handler = tweepy.OAuth1UserHandler(
                         st.secrets["TWITTER_API_KEY"],
@@ -411,18 +412,12 @@ if "code" in st.query_params:
                     supabase.table("creator_profiles").update({
                         "twitter_token": access_token,
                         "twitter_access_secret": access_token_secret
-                    }).eq("creator_handle", st.session_state.get("user_email")).execute()
+                    }).eq("creator_handle", st.session_state.get("user_email_from_db")).execute()
                         
                     # 🧹 Safai: Used token ko database se uda do taaki security bani rahe
                     supabase_admin.table("twitter_auth_states").delete().eq("state", oauth_token).execute()
                 
-                    st.session_state["tw_connected"] = True
-                    st.success("✅ X (Twitter) Connected Successfully for Video Uploads!")
-                
-                    # URL saaf kar do taaki page refresh hone par code dobara na chale
-                    st.query_params.clear()
-                    time.sleep(1)
-                    st.rerun()
+                    st.success("✅ X (Twitter) Connected Successfully 🎉")
                 
             except Exception as e:
                 st.error(f"❌ Twitter connection failed: {e}")
@@ -710,11 +705,12 @@ else:
                     tw_link = get_twitter_oauth_url()
                     st.session_state["tw_auth_link"] = tw_link
                     
-                    # 🚀 NEW: Generated tokens ko Database mein save kar rahe hain (For New Tab support)
+                    # 🚀 NEW: Generated tokens aur USER EMAIL ko Database mein save kar rahe hain
                     try:
                         supabase_admin.table("twitter_auth_states").insert({
                             "state": st.session_state.get("tw_request_token"),
-                            "code_verifier": st.session_state.get("tw_request_secret")
+                            "code_verifier": st.session_state.get("tw_request_secret"),
+                            "creator_handle": st.session_state.get("user_email")  # <--- YAHAN HUMNE EMAIL BHI SAVE KAR LIYA
                         }).execute()
                     except Exception as e:
                         pass
