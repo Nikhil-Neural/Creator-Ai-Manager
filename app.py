@@ -690,10 +690,14 @@ else:
                     disconnect_platform("twitter_token", "tw_connected")
                     # Disconnect hone par naya column 'twitter_access_secret' ko bhi null karna padega DB me
             else:
-                # 🟢 HTML Button: Click karne par action=twitter_login trigger hoga
-                st.markdown("""
+                # 🟢 STEP 1: Sirf ek baar link generate karke session me save kar lenge
+                if "tw_auth_link" not in st.session_state:
+                    st.session_state["tw_auth_link"] = get_twitter_oauth_url()
+                
+                # 🟢 STEP 2: Tumhara wahi Black Button, direct target="_top" ke sath (No extra buttons)
+                st.markdown(f"""
                 <div style='margin-bottom: 16px;'>
-                    <a href='/?action=twitter_login' target='_self' style='display: block; width: 100%; background-color: #000000; color: white; text-align: center; padding: 10px; border-radius: 5px; font-weight: bold; text-decoration: none; box-shadow: 0px 2px 4px rgba(0,0,0,0.1); height: 42px; line-height: 22px; box-sizing: border-box;'>
+                    <a href='{st.session_state["tw_auth_link"]}' target='_top' style='display: block; width: 100%; background-color: #000000; color: white; text-align: center; padding: 10px; border-radius: 5px; font-weight: bold; text-decoration: none; box-shadow: 0px 2px 4px rgba(0,0,0,0.1); height: 42px; line-height: 22px; box-sizing: border-box;'>
                         🩵 Connect X Account
                     </a>
                 </div>
@@ -703,7 +707,7 @@ else:
                 if st.query_params.get("action") == "twitter_login":
                     with st.spinner("Generating secure OAuth 1.0a link..."):
                         tw_login_link = get_twitter_oauth_url()
-                        
+
                         # 🚀 THE FIX: Javascript se iframe tod kar main window mein Twitter kholenge
                         import streamlit.components.v1 as components
                         
