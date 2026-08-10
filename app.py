@@ -703,8 +703,24 @@ else:
                 if st.query_params.get("action") == "twitter_login":
                     with st.spinner("Generating secure OAuth 1.0a link..."):
                         tw_login_link = get_twitter_oauth_url()
-                        # Browser ko turant Twitter par redirect kar do
-                        st.markdown(f'<meta http-equiv="refresh" content="0; url={tw_login_link}">', unsafe_allow_html=True)
+                        
+                        # 🚀 THE FIX: Javascript se iframe tod kar main window mein Twitter kholenge
+                        import streamlit.components.v1 as components
+                        
+                        js_code = f"""
+                        <script>
+                            window.top.location.href = "{tw_login_link}";
+                        </script>
+                        """
+                        # Yeh script chalte hi user dabbe se bahar nikal kar Twitter par chala jayega
+                        components.html(js_code, height=0)
+                        
+                        # Backup Button: Agar kisi wajah se browser Javascript block kar de, toh user khud click kar sake
+                        st.markdown(f'''
+                        <a href="{tw_login_link}" target="_top" style="display: block; width: 100%; background-color: #1DA1F2; color: white; text-align: center; padding: 10px; border-radius: 5px; font-weight: bold; text-decoration: none; margin-top: 10px;">
+                            Click here to continue to X (Twitter)
+                        </a>
+                        ''', unsafe_allow_html=True)
 
             # 🧵 NEW: META THREADS UI CONNECT NODE
             st.write(" ")
