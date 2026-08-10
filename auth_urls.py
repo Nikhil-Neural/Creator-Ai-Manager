@@ -105,7 +105,7 @@ def generate_pkce_pair():
 def get_twitter_oauth_url():
     """OAuth 1.0a URL banata hai taaki Token + Secret dono mil sakein"""
     # Tumhare Streamlit app ka live URL (Local par ho toh http://localhost:8501)
-    CALLBACK_URL = "https://tumhara-app-url.com" # Ise apne asli app URL se badal dena
+    CALLBACK_URL = "https://creator-ai-manager-tgrh5ifkgfqme6kdomcvxb.streamlit.app/"
     
     oauth1_user_handler = tweepy.OAuth1UserHandler(
         st.secrets["TWITTER_API_KEY"],
