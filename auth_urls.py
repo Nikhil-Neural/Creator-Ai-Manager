@@ -5,6 +5,7 @@ import base64
 import os
 import hashlib
 from db_engine import get_supabase_admin_client
+import tweepy
 
 # Twitter auth state ko save karne ke liye admin database connection
 supabase_admin = get_supabase_admin_client()
@@ -100,34 +101,28 @@ def generate_pkce_pair():
 # ==============================================================
 # FIXED TWITTER OAUTH FUNCTION
 # ==============================================================
-def get_twitter_oauth_url():
-    
-    CLIENT_ID = st.secrets.get("TWITTER_CLIENT_ID", "") 
-    REDIRECT_URI = "https://creator-ai-manager-tgrh5ifkgfqme6kdomcvxb.streamlit.app/"
-    
-    # ✅ Sirf ek baar generate karo — session mein cache karo
-    if "tw_auth_state" not in st.session_state:
-        code_verifier, code_challenge = generate_pkce_pair()
-        state = str(uuid.uuid4())
-        
-        # Supabase mein sirf tab insert karo jab naya state ban raha ho
-        supabase_admin.table("twitter_auth_states").insert({
-            "state": state,
-            "code_verifier": code_verifier
-        }).execute()
-        
-        st.session_state["tw_auth_state"] = state
-        st.session_state["tw_code_challenge"] = code_challenge
-    else:
-        # Already generate hua hai — wahi use karo
-        state = st.session_state["tw_auth_state"]
-        code_challenge = st.session_state["tw_code_challenge"]
-    
-    scopes = "tweet.read users.read tweet.write offline.access"
-    encoded_scopes = scopes.replace(" ", "%20")
-    tw_login_link = f"https://twitter.com/i/oauth2/authorize?response_type=code&client_id={CLIENT_ID}&redirect_uri={REDIRECT_URI}&state={state}&code_challenge={code_challenge}&code_challenge_method=S256&scope={encoded_scopes}"
 
-    return tw_login_link
+def get_twitter_oauth_url():
+    """OAuth 1.0a URL banata hai taaki Token + Secret dono mil sakein"""
+    # Tumhare Streamlit app ka live URL (Local par ho toh http://localhost:8501)
+    CALLBACK_URL = "https://tumhara-app-url.com" # Ise apne asli app URL se badal dena
+    
+    oauth1_user_handler = tweepy.OAuth1UserHandler(
+        st.secrets["TWITTER_API_KEY"],
+        st.secrets["TWITTER_API_SECRET"],
+        callback=CALLBACK_URL
+    )
+    
+    # Twitter se authorization link maango
+    auth_url = oauth1_user_handler.get_authorization_url()
+    
+    # 🔥 Sabse Zaroori Step: Request tokens ko session mein save karna
+    # (Inke bina wapas aane par verification fail ho jayegi)
+    st.session_state['tw_request_token'] = oauth1_user_handler.request_token['oauth_token']
+    st.session_state['tw_request_secret'] = oauth1_user_handler.request_token['oauth_token_secret']
+    
+    return auth_url
+
 # 🔐 META TOKEN EXCHANGE OVEN (FUNCTION A)
 def get_meta_access_token(auth_code):
     """

@@ -39,6 +39,7 @@ import time # 🌟 Runtime backoff delays ke liye
 import requests
 import json
 import re
+import tweepy
 # ==============================================================
 # 🔄 MASTER SYNC ENGINE (API to Supabase Cache)
 # ==============================================================
@@ -379,36 +380,40 @@ if "code" in st.query_params:
         st.session_state["channels_synced"] = True
 
     else:
-        # ✅ Twitter ka UUID state — Supabase se verify karo
-        try:
-            state_res = supabase_admin.table("twitter_auth_states") \
-                .select("*") \
-                .eq("state", platform_state) \
-                .execute()
-            
-            if state_res.data and len(state_res.data) > 0:
-                # ✅ Valid Twitter state mila — token exchange karo
-                code_verifier = state_res.data[0]["code_verifier"]
-                
-                st.success("🎉 X (Twitter) Account Successfully Linked! 🩵")
-                save_platform_token("twitter_token", auth_code)
-                st.session_state["tw_auth_code"] = auth_code
-                st.session_state["tw_code_verifier"] = code_verifier 
-                st.session_state["tw_connected"] = True
-                st.session_state["channels_synced"] = True
-                
-                # Used state delete karo — security ke liye
-                supabase_admin.table("twitter_auth_states") \
-                    .delete() \
-                    .eq("state", platform_state) \
-                    .execute()
-            else:
-                st.warning("⚠️ Unknown platform state or Twitter Session Expired. Please try again.")
-                
-        except Exception as e:
-            st.error(f"❌ Twitter verification failed: {str(e)}")
+        if "oauth_verifier" in st.query_params and "oauth_token" in st.query_params:
+            verifier = st.query_params.get("oauth_verifier")
     
-    st.query_params.clear()
+            with st.spinner("Securely connecting X (Twitter) account..."):
+                try:
+                    oauth1_user_handler = tweepy.OAuth1UserHandler(
+                        st.secrets["TWITTER_API_KEY"],
+                        st.secrets["TWITTER_API_SECRET"]
+                    )
+                    # Session se purana token wapas nikalo
+                    oauth1_user_handler.request_token = {
+                        'oauth_token': st.session_state.get('tw_request_token'),
+                        'oauth_token_secret': st.session_state.get('tw_request_secret')
+                    }
+            
+                    # 🔥 YAHAN MILENGE DONO TOKENS 🔥
+                    access_token, access_token_secret = oauth1_user_handler.get_access_token(verifier)
+            
+                    # Supabase 'creator_profiles' mein update kar do
+                    # (Ensure karo ki database mein 'twitter_access_secret' column bana liya ho)
+                    supabase.table("creator_profiles").update({
+                        "twitter_token": access_token,
+                        "twitter_access_secret": access_token_secret
+                    }).eq("creator_handle", st.session_state.get("user_email")).execute()
+            
+                    st.session_state["tw_connected"] = True
+                    st.success("✅ X (Twitter) Connected Successfully for Video Uploads!")
+            
+                    # URL saaf kar do taaki page refresh hone par code dobara na chale
+                    st.query_params.clear()
+            
+                except Exception as e:
+                    st.error(f"❌ Twitter connection failed: {e}")
+        
 
 restore_session_from_db()            
     
@@ -683,24 +688,21 @@ else:
                 st.success("✅ Connected: X Account")
                 if st.button("❌ Disconnect X (Twitter)", use_container_width=True):
                     disconnect_platform("twitter_token", "tw_connected")
+                    # Disconnect hone par naya column 'twitter_access_secret' ko bhi null karna padega DB me
             else:
-                tw_login_link = get_twitter_oauth_url()
-                
-                # 🟢 PURE HTML FIX: <a> tag ko hi button design diya hai, andar koi <button> tag nahi hai.
-                st.markdown(f"""
+                # 🟢 HTML Button: Click karne par action=twitter_login trigger hoga
+                st.markdown("""
                 <div style='margin-bottom: 16px;'>
-                    <a href='{tw_login_link}' target='_blank' style='display: block; width: 100%; background-color: #000000; color: white; text-align: center; padding: 10px; border-radius: 5px; font-weight: bold; text-decoration: none; box-shadow: 0px 2px 4px rgba(0,0,0,0.1); height: 42px; line-height: 22px; box-sizing: border-box;'>
+                    <a href='/?action=twitter_login' target='_self' style='display: block; width: 100%; background-color: #000000; color: white; text-align: center; padding: 10px; border-radius: 5px; font-weight: bold; text-decoration: none; box-shadow: 0px 2px 4px rgba(0,0,0,0.1); height: 42px; line-height: 22px; box-sizing: border-box;'>
                         🩵 Connect X Account
                     </a>
                 </div>
                 """, unsafe_allow_html=True)
 
-                # 🟢 STEP 2: Jab button click hoga tabhi DB hit hoga
+                # 🟢 STEP 2: Jab button click hoga tabhi URL generate hoga aur redirect hoga
                 if st.query_params.get("action") == "twitter_login":
-                    with st.spinner("Redirecting to X (Twitter)..."):
-                        # URL banega aur Database mein row EXACTLY ek baar jayegi
+                    with st.spinner("Generating secure OAuth 1.0a link..."):
                         tw_login_link = get_twitter_oauth_url()
-                        
                         # Browser ko turant Twitter par redirect kar do
                         st.markdown(f'<meta http-equiv="refresh" content="0; url={tw_login_link}">', unsafe_allow_html=True)
 
