@@ -152,7 +152,7 @@ if "oauth_verifier" in st.query_params and "oauth_token" in st.query_params:
                 st.info("⚠️ ACTION REQUIRED: You can now safely CLOSE this tab. Go back to your main window and REFRESH the page to see the Disconnect button.")
 
                 st.query_params.clear()
-                st.stop()
+                
                 
         except Exception as e:
             st.error(f"❌ Twitter connection failed: {e}")
