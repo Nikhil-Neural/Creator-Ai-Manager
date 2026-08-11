@@ -7,9 +7,33 @@ import hashlib
 from db_engine import get_supabase_admin_client
 import tweepy
 
-# Twitter auth state ko save karne ke liye admin database connection
+# Twitter aur baaki platforms ke auth state ko save karne ke liye admin database connection
 supabase_admin = get_supabase_admin_client()
 
+# ==============================================================
+# 🧠 THE NEW BAGGAGE COUNTER (GLOBAL STATE GENERATOR)
+# ==============================================================
+def create_global_state(platform_name):
+    """
+    Yeh function user ka email aur ek unique ticket banata hai, 
+    usko Database mein save karta hai, aur ticket wapas bhejta hai.
+    """
+    user_email = st.session_state.get("user_email")
+    
+    # Ek unique ticket generate karo (e.g., youtube_8f3a9b)
+    unique_ticket = f"{platform_name}_{uuid.uuid4().hex[:8]}"
+    
+    if user_email:
+        try:
+            # Ticket ko database mein save kar do
+            supabase_admin.table("global_auth_states").insert({
+                "state_id": unique_ticket,
+                "creator_handle": user_email
+            }).execute()
+        except Exception as e:
+            print(f"[DB ERROR] Could not save global state: {e}")
+            
+    return unique_ticket
 
 # ==============================================================
 # LINKEDIN OAUTH FUNCTION
@@ -25,7 +49,8 @@ def get_linkedin_oauth_url():
     scopes = ["openid", "profile", "email", "w_member_social"]
     scope_str = "%20".join(scopes)
     
-    state = "linkedin_" + str(uuid.uuid4())[:8]
+    # 🚀 SMART TICKET GENERATOR
+    state = create_global_state("linkedin")
     
     auth_url = f"https://www.linkedin.com/oauth/v2/authorization?response_type=code&client_id={client_id}&redirect_uri={redirect_uri}&state={state}&scope={scope_str}"
     
@@ -45,10 +70,16 @@ def get_threads_oauth_url():
     scopes = ["threads_basic", "threads_content_publish"]
     scope_str = ",".join(scopes)
     
-    auth_url = f"https://threads.net/oauth/authorize?client_id={client_id}&redirect_uri={redirect_uri}&scope={scope_str}&response_type=code&state=threads"
+    # 🚀 SMART TICKET GENERATOR
+    state = create_global_state("thread")
+    
+    auth_url = f"https://threads.net/oauth/authorize?client_id={client_id}&redirect_uri={redirect_uri}&scope={scope_str}&response_type=code&state={state}"
     
     return auth_url
 
+# ==============================================================
+# FACEBOOK / META OAUTH FUNCTION
+# ==============================================================
 def get_facebook_oauth_url():
     client_id = st.secrets.get("META_APP_ID", "")
     if not client_id:
@@ -66,10 +97,16 @@ def get_facebook_oauth_url():
     ]
     scope_str = ",".join(scopes)
     
-    auth_url = f"https://www.facebook.com/v20.0/dialog/oauth?client_id={client_id}&redirect_uri={redirect_uri}&scope={scope_str}&response_type=code&state=facebook&auth_type=rerequest"
+    # 🚀 SMART TICKET GENERATOR
+    state = create_global_state("facebook")
+    
+    auth_url = f"https://www.facebook.com/v20.0/dialog/oauth?client_id={client_id}&redirect_uri={redirect_uri}&scope={scope_str}&response_type=code&state={state}&auth_type=rerequest"
     
     return auth_url
 
+# ==============================================================
+# YOUTUBE OAUTH FUNCTION
+# ==============================================================
 def get_youtube_oauth_url():
     client_id = st.secrets.get("YOUTUBE_CLIENT_ID", "")
     
@@ -84,7 +121,10 @@ def get_youtube_oauth_url():
     ]
     scope_str = " ".join(scopes)
     
-    auth_url = f"https://accounts.google.com/o/oauth2/v2/auth?client_id={client_id}&redirect_uri={redirect_uri}&response_type=code&scope={scope_str}&access_type=offline&prompt=consent&state=youtube"
+    # 🚀 SMART TICKET GENERATOR
+    state = create_global_state("youtube")
+    
+    auth_url = f"https://accounts.google.com/o/oauth2/v2/auth?client_id={client_id}&redirect_uri={redirect_uri}&response_type=code&scope={scope_str}&access_type=offline&prompt=consent&state={state}"
     
     return auth_url
 
@@ -101,10 +141,8 @@ def generate_pkce_pair():
 # ==============================================================
 # FIXED TWITTER OAUTH FUNCTION
 # ==============================================================
-
 def get_twitter_oauth_url():
     """OAuth 1.0a URL banata hai taaki Token + Secret dono mil sakein"""
-    # Tumhare Streamlit app ka live URL (Local par ho toh http://localhost:8501)
     CALLBACK_URL = "https://creator-ai-manager-tgrh5ifkgfqme6kdomcvxb.streamlit.app/"
     
     oauth1_user_handler = tweepy.OAuth1UserHandler(
@@ -113,23 +151,20 @@ def get_twitter_oauth_url():
         callback=CALLBACK_URL
     )
     
-    # Twitter se authorization link maango
     auth_url = oauth1_user_handler.get_authorization_url()
     
-    # 🔥 Sabse Zaroori Step: Request tokens ko session mein save karna
-    # (Inke bina wapas aane par verification fail ho jayegi)
     st.session_state['tw_request_token'] = oauth1_user_handler.request_token['oauth_token']
     st.session_state['tw_request_secret'] = oauth1_user_handler.request_token['oauth_token_secret']
     
     return auth_url
 
-# 🔐 META TOKEN EXCHANGE OVEN (FUNCTION A)
+# ==============================================================
+# ACCESS TOKEN EXCHANGERS
+# ==============================================================
 def get_meta_access_token(auth_code):
-    """
-    Kachhe Auth Code ko Meta API par bhej kar asli Access Token laata hai.
-    """
+    """Kachhe Auth Code ko Meta API par bhej kar asli Access Token laata hai."""
     client_id = st.secrets.get("META_APP_ID", "")
-    client_secret = st.secrets.get("META_APP_SECRET", "") # ⚠️ YEH NAYA SECRET CHAHIYE HOGA
+    client_secret = st.secrets.get("META_APP_SECRET", "") 
     redirect_uri = "https://creator-ai-manager-tgrh5ifkgfqme6kdomcvxb.streamlit.app/" 
     
     url = f"https://graph.facebook.com/v18.0/oauth/access_token?client_id={client_id}&redirect_uri={redirect_uri}&client_secret={client_secret}&code={auth_code}"
@@ -145,10 +180,9 @@ def get_meta_access_token(auth_code):
     except Exception as e:
         print(f"[META TOKEN EXCEPTION] {str(e)}")
         return None
+
 def get_youtube_access_token(auth_code):
-    """
-    Kachhe Auth Code ko Google ke server par bhej kar asli Access Token laata hai.
-    """
+    """Kachhe Auth Code ko Google ke server par bhej kar asli Access Token laata hai."""
     client_id = st.secrets.get("YOUTUBE_CLIENT_ID", "")
     client_secret = st.secrets.get("YOUTUBE_CLIENT_SECRET", "") 
     redirect_uri = "https://creator-ai-manager-tgrh5ifkgfqme6kdomcvxb.streamlit.app/"
@@ -167,7 +201,6 @@ def get_youtube_access_token(auth_code):
         if response.status_code == 200:
             return response.json().get("access_token")
         else:
-            # 🛑 ERROR KO CHHUPANA NAHI HAI, SEEDHA BHEJNA HAI
             return f"GOOGLE_ERROR: {response.text}" 
     except Exception as e:
         return f"SYSTEM_ERROR: {str(e)}"

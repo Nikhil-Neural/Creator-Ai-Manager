@@ -161,6 +161,94 @@ if "oauth_verifier" in st.query_params and "oauth_token" in st.query_params:
         except Exception as e:
             st.error(f"❌ Twitter connection failed: {e}")
 
+# =========================================================
+# 🌍 OAUTH 2.0 GLOBAL CATCHER (YouTube, Meta, LinkedIn, Threads)
+# =========================================================
+if "code" in st.query_params and "state" in st.query_params:
+    auth_code = st.query_params.get("code")
+    state_ticket = st.query_params.get("state")
+
+    with st.spinner("Verifying secure token and restoring session..."):
+        try:
+            # 1. Database se ticket (state) check karo aur Email nikalo
+            db_res = supabase_admin.table("global_auth_states").select("creator_handle").eq("state_id", state_ticket).execute()
+            
+            if db_res.data:
+                user_email_from_db = db_res.data[0]["creator_handle"]
+                
+                # 🧠 THE MAGIC: Streamlit ki memory wapas daal do (Auto-Login!)
+                st.session_state["user_email"] = user_email_from_db
+                st.session_state["creator_handle"] = user_email_from_db
+                
+                # 🧹 Safai: Ticket use ho gaya, usko database se uda do
+                supabase_admin.table("global_auth_states").delete().eq("state_id", state_ticket).execute()
+            else:
+                # Agar kisi wajah se ticket na mile, toh normal session check karo
+                user_email_from_db = st.session_state.get("user_email")
+                if not user_email_from_db:
+                    st.error("❌ Session expired or invalid ticket. Please close this tab and click Connect again.")
+                    st.stop()
+
+            # --- 2. PLATFORM ROUTING (Token Save Karna) ---
+            
+            # 🔵 FACEBOOK & INSTAGRAM
+            if state_ticket.startswith("facebook"):
+                st.info("🔄 Authenticating Meta Ecosystem...")
+                user_access_token = get_meta_access_token(auth_code)
+                if user_access_token:
+                    # Database update (using supabase_admin for safety in new tab)
+                    supabase_admin.table("creator_profiles").update({
+                        "facebook_token": user_access_token,
+                        "instagram_token": user_access_token
+                    }).eq("creator_handle", user_email_from_db).execute()
+                    
+                    st.session_state["fb_connected"] = True
+                    st.session_state["ig_connected"] = True
+                    st.session_state["channels_synced"] = True
+                    st.success("🎉 Meta Ecosystem (FB + IG) Successfully Linked! ♾️")
+                    st.query_params.clear()
+
+            # 🔴 YOUTUBE
+            elif state_ticket.startswith("youtube"):
+                st.info("🔄 Authenticating Google...")
+                real_access_token = get_youtube_access_token(auth_code)
+                if isinstance(real_access_token, str) and ("GOOGLE_ERROR" in real_access_token or "SYSTEM_ERROR" in real_access_token):
+                    st.error(f"❌ YouTube Auth Failed: {real_access_token}")
+                elif real_access_token:
+                    supabase_admin.table("creator_profiles").update({
+                        "youtube_token": real_access_token
+                    }).eq("creator_handle", user_email_from_db).execute()
+                    
+                    st.session_state["yt_connected"] = True
+                    st.session_state["channels_synced"] = True
+                    st.success("🎉 YouTube Channel Successfully Linked! ❤️")
+                    st.query_params.clear()
+
+            # 💼 LINKEDIN
+            elif state_ticket.startswith("linkedin"):
+                supabase_admin.table("creator_profiles").update({
+                    "linkedin_token": auth_code
+                }).eq("creator_handle", user_email_from_db).execute()
+                
+                st.session_state["li_connected"] = True
+                st.session_state["channels_synced"] = True
+                st.success("🎉 LinkedIn Profile Successfully Linked! 💼")
+                st.query_params.clear()
+
+            # 🧵 THREADS
+            elif state_ticket.startswith("thread"):
+                supabase_admin.table("creator_profiles").update({
+                    "threads_token": auth_code
+                }).eq("creator_handle", user_email_from_db).execute()
+                
+                st.session_state["th_connected"] = True
+                st.session_state["channels_synced"] = True
+                st.success("🎉 Meta Threads Account Successfully Linked! 🧵")
+                st.query_params.clear()
+
+        except Exception as e:
+            st.error(f"❌ Core Router Error: {str(e)}")
+
 # ==============================================================
 # 🔐 SECURE AUTHENTICATION SYSTEM (Supabase Auth)
 # ==============================================================
@@ -354,83 +442,6 @@ def restore_session_from_db():
         
     except Exception as e:
         print(f"[SESSION RESTORE ERROR] {e}")
-# ── Main Content Gateway Router ──────────────────────────
-if "code" in st.query_params:
-    auth_code = st.query_params["code"] 
-    platform_state = st.query_params.get("state", "instagram") 
-    
-    if platform_state == "facebook":
-        st.info("🔄 Authenticating secure connection with Meta Ecosystem...")
-        user_access_token = get_meta_access_token(auth_code)
-        
-        if user_access_token:
-            base_url = "https://graph.facebook.com/v20.0"
-            pages_url = f"{base_url}/me/accounts?access_token={user_access_token}"
-            try:
-                # 📡 Fetching Data from Meta
-                pages_res = requests.get(pages_url).json()
-                
-                # 🚨 X-RAY VISION: Agar Meta Error deta hai
-                if "error" in pages_res:
-                    st.error("🚨 META CORE ERROR DETECTED:")
-                    st.json(pages_res) 
-                
-                # ✅ SUCCESS: Agar pages mil gaye
-                elif "data" in pages_res and len(pages_res["data"]) > 0:
-                    
-                    # ⚡ MAGIC FIX 2: Claude's function requires the USER Token. 
-                    # Pehle hum yahan Page Token extract kar rahe the, jisse clash ho raha tha.
-                    save_platform_token("facebook_token", user_access_token)
-                    save_platform_token("instagram_token", user_access_token) 
-                    
-                    st.session_state["fb_connected"] = True
-                    st.session_state["ig_connected"] = True
-                    st.session_state["channels_synced"] = True
-                    st.success("🎉 Meta Ecosystem (Facebook + Instagram) Successfully Linked! ♾️")
-                    
-                    st.query_params.clear()
-                    time.sleep(1)
-                    st.rerun()
-                
-                # 📭 EMPTY: Agar sach mein page missing hai
-                else:
-                    st.error("❌ Linkage Failed: The API returned an empty list of pages.")
-                    st.warning("🕵️ RAW API RESPONSE FROM META:")
-                    st.json(pages_res) 
-                    
-            except Exception as e:
-                st.error(f"❌ Core Router Error: {str(e)}")
-        else:
-            st.warning("⚠️ Meta session token already rotated or validated. Please refresh your granular analytics dashboard below.")
-            st.query_params.clear()
-        
-    elif platform_state == "youtube":
-        st.info("🔄 Authenticating secure connection with Google...")
-        real_access_token = get_youtube_access_token(auth_code)
-        
-        # Agar error string aayi hai, toh directly print karo
-        if isinstance(real_access_token, str) and ("GOOGLE_ERROR" in real_access_token or "SYSTEM_ERROR" in real_access_token):
-            st.error(f"❌ YouTube Auth Failed. Reason: {real_access_token}")
-        elif real_access_token:
-            st.success("🎉 YouTube Channel Successfully Linked! ❤️")
-            save_platform_token("youtube_token", real_access_token) 
-            st.session_state["yt_connected"] = True
-            st.session_state["channels_synced"] = True
-        else:
-            st.error("❌ Unknown Error. Token is empty.")
-    
-    elif platform_state.startswith("linkedin"):
-        st.success("🎉 LinkedIn Profile Successfully Linked! 💼")
-        save_platform_token("linkedin_token", auth_code)
-        st.session_state["li_connected"] = True 
-        st.session_state["channels_synced"] = True
-    
-    # 🧵 THREADS DETECTOR (Isko Instagram se hamesha UPAR rakhna)
-    elif "thread" in str(platform_state).lower():
-        st.success("🎉 Meta Threads Account Successfully Linked! 🧵")
-        save_platform_token("threads_token", auth_code)
-        st.session_state["th_connected"] = True
-        st.session_state["channels_synced"] = True
         
 restore_session_from_db()            
     
