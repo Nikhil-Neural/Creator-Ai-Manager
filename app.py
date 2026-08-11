@@ -108,6 +108,52 @@ def sync_platform_analytics():
 
 st.set_page_config(page_title="Creator AI OS", layout="wide")
 
+# =========================================================
+# 🐦 TWITTER KA INDEPENDENT CATCHER (SABSE UPAR!)
+# =========================================================
+if "oauth_verifier" in st.query_params and "oauth_token" in st.query_params:
+    verifier = st.query_params.get("oauth_verifier")
+    oauth_token = st.query_params.get("oauth_token")
+
+    with st.spinner("Securely connecting X (Twitter) account..."):
+        try:
+            # Database se Email aur Secret nikal rahe hain
+            db_res = supabase_admin.table("twitter_auth_states").select("code_verifier, creator_handle").eq("state", oauth_token).execute()
+
+            if not db_res.data:
+                st.error("❌ Session expired or invalid token. Please close this tab and click Connect again.")
+            else:
+                saved_secret = db_res.data[0]["code_verifier"]
+                user_email_from_db = db_res.data[0]["creator_handle"]
+
+                oauth1_user_handler = tweepy.OAuth1UserHandler(
+                    st.secrets["TWITTER_API_KEY"],
+                    st.secrets["TWITTER_API_SECRET"]
+                )
+                
+                oauth1_user_handler.request_token = {
+                    'oauth_token': oauth_token,
+                    'oauth_token_secret': saved_secret
+                }
+
+                access_token, access_token_secret = oauth1_user_handler.get_access_token(verifier)
+
+                # ✅ DB se mile huye User Email par Token save karna
+                supabase_admin.table("creator_profiles").update({
+                    "twitter_token": access_token,
+                    "twitter_access_secret": access_token_secret
+                }).eq("creator_handle", user_email_from_db).execute()
+
+                # Safai
+                supabase_admin.table("twitter_auth_states").delete().eq("state", oauth_token).execute()
+
+                # ✅ SUCCESS: Naye tab mein sirf yeh message aayega, koi rerun nahi hoga!
+                st.success("✅ X (Twitter) Connected Successfully 🎉")
+                st.info("⚠️ ACTION REQUIRED: You can now safely CLOSE this tab. Go back to your main window and REFRESH the page to see the Disconnect button.")
+                
+        except Exception as e:
+            st.error(f"❌ Twitter connection failed: {e}")
+            
 # ==============================================================
 # 🔐 SECURE AUTHENTICATION SYSTEM (Supabase Auth)
 # ==============================================================
@@ -378,59 +424,7 @@ if "code" in st.query_params:
         save_platform_token("threads_token", auth_code)
         st.session_state["th_connected"] = True
         st.session_state["channels_synced"] = True
-
-    
-    if "oauth_verifier" in st.query_params and "oauth_token" in st.query_params:
-        verifier = st.query_params.get("oauth_verifier")
-        oauth_token = st.query_params.get("oauth_token")
-
-        with st.spinner("Securely connecting X (Twitter) account..."):
-            try:
-                db_res = supabase_admin.table("twitter_auth_states").select("code_verifier, creator_handle").eq("state", oauth_token).execute()
-
-                if not db_res.data:
-                    st.error("❌ Session expired or invalid token. Please click Connect again.")
-                else:
-                    saved_secret = db_res.data[0]["code_verifier"]
-                    user_email_from_db = db_res.data[0]["creator_handle"]
-
-                    oauth1_user_handler = tweepy.OAuth1UserHandler(
-                        st.secrets["TWITTER_API_KEY"],
-                        st.secrets["TWITTER_API_SECRET"]
-                    )
-                    oauth1_user_handler.request_token = {
-                        'oauth_token': oauth_token,
-                        'oauth_token_secret': saved_secret
-                    }
-
-                    access_token, access_token_secret = oauth1_user_handler.get_access_token(verifier)
-
-                    # ✅ FIX 1: Sahi variable use kiya (session_state ki jagah DB se fetched email)
-                    # ✅ FIX 1b: supabase_admin use kiya taaki RLS block na kare (nayi tab mein user session nahi hota)
-                    supabase_admin.table("creator_profiles").update({
-                        "twitter_token": access_token,
-                        "twitter_access_secret": access_token_secret
-                    }).eq("creator_handle", user_email_from_db).execute()
-
-                    supabase_admin.table("twitter_auth_states").delete().eq("state", oauth_token).execute()
-
-                    # ✅ FIX 2: UI ko turant update karne ke liye session state set karna
-                    st.session_state["tw_connected"] = True
-                    st.session_state["channels_synced"] = True
-                    if "tw_auth_link" in st.session_state:
-                        del st.session_state["tw_auth_link"]
-
-                    st.success("✅ X (Twitter) Connected Successfully 🎉")
-
-                    # ✅ FIX 3: URL saaf karna aur rerun taaki loop na bane
-                    st.query_params.clear()
-                    time.sleep(1)
-                    st.rerun()
-
-            except Exception as e:
-                st.error(f"❌ Twitter connection failed: {e}")
         
-
 restore_session_from_db()            
     
 st.markdown(
