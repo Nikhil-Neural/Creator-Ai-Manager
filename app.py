@@ -117,7 +117,6 @@ if "oauth_verifier" in st.query_params and "oauth_token" in st.query_params:
 
     with st.spinner("Securely connecting X (Twitter) account..."):
         try:
-            # Database se Email aur Secret nikal rahe hain
             db_res = supabase_admin.table("twitter_auth_states").select("code_verifier, creator_handle").eq("state", oauth_token).execute()
 
             if not db_res.data:
@@ -138,22 +137,27 @@ if "oauth_verifier" in st.query_params and "oauth_token" in st.query_params:
 
                 access_token, access_token_secret = oauth1_user_handler.get_access_token(verifier)
 
-                # ✅ DB se mile huye User Email par Token save karna
                 supabase_admin.table("creator_profiles").update({
                     "twitter_token": access_token,
                     "twitter_access_secret": access_token_secret
                 }).eq("creator_handle", user_email_from_db).execute()
 
-                # Safai
                 supabase_admin.table("twitter_auth_states").delete().eq("state", oauth_token).execute()
 
-                # ✅ SUCCESS: Naye tab mein sirf yeh message aayega, koi rerun nahi hoga!
-                st.success("✅ X (Twitter) Connected Successfully 🎉")
-                st.info("⚠️ ACTION REQUIRED: You can now safely CLOSE this tab. Go back to your main window and REFRESH the page to see the Disconnect button.")
+                # 🧠 THE GENIUS UX FIX: Naye tab mein Memory wapas daal do taaki Login Wall bypass ho jaye!
+                st.session_state["user_email"] = user_email_from_db
+                st.session_state["creator_handle"] = user_email_from_db
+                st.session_state["tw_connected"] = True
+                st.session_state["channels_synced"] = True
 
+                # ✅ LinkedIn jaisa same premium success message
+                st.success("🎉 X (Twitter) Account Successfully Linked! 🩵")
+                
+                # URL clean karo
                 st.query_params.clear()
                 
-                
+                # ❌ YAHAN KOI st.stop() NAHI HOGA! Code ko aage flow hone do taaki Dashboard render ho sake.
+
         except Exception as e:
             st.error(f"❌ Twitter connection failed: {e}")
 
