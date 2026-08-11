@@ -187,6 +187,7 @@ if "code" in st.query_params and "state" in st.query_params:
                 user_email_from_db = st.session_state.get("user_email")
                 if not user_email_from_db:
                     st.error("❌ Session expired or invalid ticket. Please close this tab and click Connect again.")
+                    st.query_params.clear()
                     st.stop()
 
             # --- 2. PLATFORM ROUTING (Token Save Karna) ---
