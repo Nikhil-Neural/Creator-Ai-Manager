@@ -150,10 +150,12 @@ if "oauth_verifier" in st.query_params and "oauth_token" in st.query_params:
                 # ✅ SUCCESS: Naye tab mein sirf yeh message aayega, koi rerun nahi hoga!
                 st.success("✅ X (Twitter) Connected Successfully 🎉")
                 st.info("⚠️ ACTION REQUIRED: You can now safely CLOSE this tab. Go back to your main window and REFRESH the page to see the Disconnect button.")
+
+                st.query_params.clear()
                 
         except Exception as e:
             st.error(f"❌ Twitter connection failed: {e}")
-            
+
 # ==============================================================
 # 🔐 SECURE AUTHENTICATION SYSTEM (Supabase Auth)
 # ==============================================================
