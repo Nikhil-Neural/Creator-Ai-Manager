@@ -196,22 +196,25 @@ def process_queue():
             if "twitter" in platforms:
                 print("🐦 Starting Twitter sequence...")
                 
-                # Fetch Twitter Credentials from DB
-                tw_profile_res = supabase.table("twitter_auth_states").select("twitter_api_key, twitter_api_secret, twitter_access_token, twitter_access_secret").eq("creator_handle", creator_email).execute()
+                # 🛠️ FIX 1: Sahi table 'creator_profiles' se personal tokens nikalenge
+                tw_profile_res = supabase.table("creator_profiles").select("twitter_token, twitter_access_secret").eq("creator_handle", creator_email).execute()
                 
-                if not tw_profile_res.data:
-                    print(f"⚠️ Skipping Twitter: No credentials found for {creator_email}")
+                if not tw_profile_res.data or not tw_profile_res.data[0].get("twitter_token"):
+                    print(f"⚠️ Skipping Twitter: No connected X account found for {creator_email}")
                 else:
-                    creds = tw_profile_res.data[0]
-                    # Map the db columns to what execute_twitter_thread expects
+                    user_tokens = tw_profile_res.data[0]
+                    
+                    # 🛠️ FIX 2: System API Keys 'st.secrets' se aayengi, aur User Tokens Database se!
                     twitter_credentials = {
-                        "api_key": creds.get("twitter_api_key"),
-                        "api_secret": creds.get("twitter_api_secret"),
-                        "access_token": creds.get("twitter_access_token"),
-                        "access_token_secret": creds.get("twitter_access_secret")
+                        "api_key": st.secrets["TWITTER_API_KEY"],
+                        "api_secret": st.secrets["TWITTER_API_SECRET"],
+                        "access_token": user_tokens.get("twitter_token"),
+                        "access_token_secret": user_tokens.get("twitter_access_secret")
                     }
                     
                     thread_text = meta.get("twitter_thread_text", "")
+                    
+                    # Execute the thread posting pipeline
                     success, msg = execute_twitter_thread(twitter_credentials, thread_text, vid_url)
                     
                     if success:
