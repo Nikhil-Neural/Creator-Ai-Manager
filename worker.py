@@ -137,6 +137,85 @@ def upload_to_youtube(video_path, title, description, user_refresh_token):
     response = request.execute()
     return response.get("id")
 
+def upload_to_instagram(video_url, caption, access_token):
+    """
+    Meta Graph API v20.0 integration for Instagram Reels.
+    Steps: 1. Get IG ID -> 2. Create Container -> 3. Wait for Processing -> 4. Publish
+    """
+    base_url = "https://graph.facebook.com/v20.0"
+
+    try:
+        # 🕵️‍♂️ STEP 1: Fetch IG Business Account ID dynamically
+        pages_url = f"{base_url}/me/accounts?access_token={access_token}"
+        pages_res = requests.get(pages_url).json()
+
+        if "error" in pages_res:
+            return False, f"Meta Auth Error: {pages_res['error']['message']}"
+        if not pages_res.get("data"):
+            return False, "No Facebook Pages found linked to this account."
+
+        ig_user_id = None
+        for page in pages_res["data"]:
+            page_id = page["id"]
+            ig_req = requests.get(f"{base_url}/{page_id}?fields=instagram_business_account&access_token={access_token}").json()
+            if "instagram_business_account" in ig_req:
+                ig_user_id = ig_req["instagram_business_account"]["id"]
+                break
+
+        if not ig_user_id:
+            return False, "No Instagram Professional Account linked to your Facebook Pages."
+
+        # 📦 STEP 2: Create Media Container for REELS (Direct URL Push)
+        print(f"📦 Creating Instagram Container for ID: {ig_user_id}...")
+        container_url = f"{base_url}/{ig_user_id}/media"
+        container_payload = {
+            "media_type": "REELS",
+            "video_url": video_url, # MAGIC: Seedha Telegram link, no download needed!
+            "caption": caption,
+            "access_token": access_token
+        }
+        container_res = requests.post(container_url, data=container_payload).json()
+
+        if "error" in container_res:
+            return False, f"Container Error: {container_res['error']['message']}"
+
+        creation_id = container_res.get("id")
+        print(f"⏳ Container created (ID: {creation_id}). Waiting for Meta to process video...")
+
+        # 🔄 STEP 3: Polling Status (Processing Check)
+        status_url = f"{base_url}/{creation_id}?fields=status_code&access_token={access_token}"
+        max_attempts = 15 # Max 2.5 minutes wait
+        for attempt in range(max_attempts):
+            time.sleep(10)
+            status_res = requests.get(status_url).json()
+            if "error" in status_res:
+                return False, f"Status Check Error: {status_res['error']['message']}"
+
+            status = status_res.get("status_code")
+            print(f"🔄 Meta Processing Status: {status} (Attempt {attempt+1}/{max_attempts})")
+
+            if status == "FINISHED":
+                break
+            elif status == "ERROR":
+                return False, "Meta failed to process the video internally."
+
+        # 🚀 STEP 4: Publish the Reel
+        print("🚀 Meta processing complete! Publishing Reel now...")
+        publish_url = f"{base_url}/{ig_user_id}/media_publish"
+        publish_payload = {
+            "creation_id": creation_id,
+            "access_token": access_token
+        }
+        publish_res = requests.post(publish_url, data=publish_payload).json()
+
+        if "error" in publish_res:
+            return False, f"Publishing Error: {publish_res['error']['message']}"
+
+        return True, f"Instagram Reel successfully published! Post ID: {publish_res.get('id')}"
+
+    except Exception as e:
+        return False, f"Unexpected Meta Logic Error: {str(e)}"
+
 def process_queue():
     """Database check karta hai aur pending videos upload karta hai"""
     current_utc_time = datetime.now(timezone.utc).isoformat()
@@ -222,6 +301,30 @@ def process_queue():
                     else:
                         print(f"❌ {msg}")
                         raise Exception(f"Twitter Execution Failed: {msg}")
+
+            # --- META (INSTAGRAM) LOGIC ---
+            if "instagram" in platforms or "meta" in platforms:
+                print("♾️ Starting Meta (Instagram) sequence...")
+                
+                # Database se Meta ka token nikalo
+                profile_res = supabase.table("creator_profiles").select("instagram_token").eq("creator_handle", creator_email).execute()
+                
+                if not profile_res.data or not profile_res.data[0].get("instagram_token"):
+                    print(f"⚠️ Skipping Meta: No valid Meta token found for {creator_email}")
+                else:
+                    ig_token = profile_res.data[0]["instagram_token"]
+                    
+                    # AI Payload se caption uthao
+                    ig_caption = meta.get("instagram_caption", "Powered by AI Creator OS 🚀")
+                    
+                    # Execute Meta Graph Pipeline
+                    success, msg = upload_to_instagram(vid_url, ig_caption, ig_token)
+                    
+                    if success:
+                        print(f"✅ {msg}")
+                    else:
+                        print(f"❌ {msg}")
+                        raise Exception(f"Meta Execution Failed: {msg}")
 
             # Agar loop yahan tak bina error ke pahunch gaya, matlab task successfully execute ho gaya hai
             supabase.table("master_scheduler_queue").delete().eq("id", task["id"]).execute()
