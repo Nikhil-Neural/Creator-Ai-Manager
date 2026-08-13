@@ -93,7 +93,8 @@ def get_facebook_oauth_url():
         "pages_read_engagement",
         "business_management",
         "instagram_basic",
-        "instagram_manage_insights"
+        "instagram_manage_insights",
+        "instagram_content_publish"
     ]
     scope_str = ",".join(scopes)
     
