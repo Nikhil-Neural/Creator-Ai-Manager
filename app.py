@@ -985,7 +985,7 @@ else:
             
         st.write("---")
         
-        # 🧠 STEP 2: METADATA SOURCE ENGINE
+# 🧠 STEP 2: METADATA SOURCE ENGINE
         st.markdown("#### 🧠 Step 2: Metadata Source")
         metadata_source = st.radio("Choose how you want to add titles, descriptions, and captions:", 
                                    ["📂 Use Saved Vault Data (Recommended)", "✍️ Manual Paste", "✨ Generate New Metadata"], 
@@ -996,7 +996,8 @@ else:
         final_yt_desc = ""
         final_tw_thread = ""
         final_ig_cap = ""
-        final_th_content = ""
+        final_fb_post = "" # 🆕 Naya FB Variable
+        final_th_post = ""
         final_li_post = ""
         parsed_data = {}
 
@@ -1019,77 +1020,80 @@ else:
                     if "LinkedIn" in meta_string: badges += "💼[LI] "
                     return badges.strip()
 
-                # 🟢 MODIFIED: Purani line ko replace kar diya jisse badges dropdown mein dikhein
                 blueprint_options = {f"{get_platform_badges(str(item.get('social_metadata', '')))} - {item['niche_topic']}": item for item in blueprints}
                 bp_list = ["(Select a Blueprint)"] + list(blueprint_options.keys())
                 
                 # 📺 YOUTUBE INDEPENDENT NODE
-                with st.expander("📺 Auto-Filled: YouTube Metadata", expanded=True):
+                with st.expander("📺 YouTube Metadata", expanded=True):
                     yt_selection = st.selectbox("📂 Load blueprint for YouTube:", bp_list, key="yt_bp_select")
+                    yt_parsed = {}
                     
                     if yt_selection != "(Select a Blueprint)":
                         yt_parsed = parse_blueprint_metadata(blueprint_options[yt_selection]['script_content'])
                         
-                        # Dynamic Hook Injection
-                        default_title = yt_parsed.get("yt_title", "")
-                        if yt_parsed.get("hooks"):
-                            chosen_hook = st.selectbox("🎯 Select a Viral Hook for your Title:", ["(Use Default Parsed Title)"] + yt_parsed["hooks"])
-                            if chosen_hook != "(Use Default Parsed Title)":
-                                default_title = chosen_hook
+                    default_title = yt_parsed.get("yt_title", "")
+                    if yt_parsed.get("hooks"):
+                        chosen_hook = st.selectbox("🎯 Select a Viral Hook for your Title:", ["(Use Default Parsed Title)"] + yt_parsed["hooks"])
+                        if chosen_hook != "(Use Default Parsed Title)":
+                            default_title = chosen_hook
                             
-                        # Notice: Yahan se 'key' hata di hai taaki dropdown change hone par ye turant update ho!
-                        final_yt_title = st.text_input("YouTube Title", value=default_title)
-                        final_yt_desc = st.text_area("YouTube Description", value=yt_parsed.get("yt_desc", ""), height=150)
-                    else:
-                        st.info("Select a blueprint above to populate YouTube data.")
-                        final_yt_title = ""
-                        final_yt_desc = ""
+                    # 🔓 Text boxes hamesha open rahenge (Direct Typing Enabled)
+                    final_yt_title = st.text_input("YouTube Title", value=default_title)
+                    final_yt_desc = st.text_area("YouTube Description", value=yt_parsed.get("yt_desc", ""), height=150)
                 
                 # 🐦 TWITTER INDEPENDENT NODE
-                with st.expander("🐦 Auto-Filled: X (Twitter) Thread"):
+                with st.expander("🐦 X (Twitter) Thread"):
                     tw_selection = st.selectbox("📂 Load blueprint for Twitter:", bp_list, key="tw_bp_select")
+                    tw_parsed = {}
                     
                     if tw_selection != "(Select a Blueprint)":
                         tw_parsed = parse_blueprint_metadata(blueprint_options[tw_selection]['script_content'])
-                        final_tw_thread = st.text_area("Generated Thread Content", value=tw_parsed.get("tw_thread", ""), height=150, key="auto_tw_thread")
-                    else:
-                        st.info("Select a blueprint above to populate Twitter data.")
-                        final_tw_thread = ""
+                        
+                    final_tw_thread = st.text_area("Generated Thread Content", value=tw_parsed.get("tw_thread", ""), height=150)
                 
-                # 📸 INSTAGRAM/FB INDEPENDENT NODE
-                with st.expander("📸 Auto-Filled: Social Captions"):
-                    ig_selection = st.selectbox("📂 Load blueprint for Instagram/FB:", bp_list, key="ig_bp_select")
+                # 📸 INSTAGRAM INDEPENDENT NODE
+                with st.expander("📸 Instagram Caption"):
+                    ig_selection = st.selectbox("📂 Load blueprint for Instagram:", bp_list, key="ig_bp_select")
+                    ig_parsed = {}
                     
                     if ig_selection != "(Select a Blueprint)":
                         ig_parsed = parse_blueprint_metadata(blueprint_options[ig_selection]['script_content'])
-                        final_ig_cap = st.text_area("Instagram/Facebook Caption", value=ig_parsed.get("ig_caption", ""), height=100, key="auto_ig_cap")
-                    else:
-                        st.info("Select a blueprint above to populate Caption data.")
-                        final_ig_cap = ""
+                        
+                    final_ig_cap = st.text_area("Instagram Caption", value=ig_parsed.get("ig_caption", ""), height=100)
+
+                # 📘 FACEBOOK INDEPENDENT NODE (🆕 Naya Section)
+                with st.expander("📘 Facebook Post"):
+                    fb_selection = st.selectbox("📂 Load blueprint for Facebook:", bp_list, key="fb_bp_select")
+                    fb_parsed = {}
+                    
+                    if fb_selection != "(Select a Blueprint)":
+                        fb_parsed = parse_blueprint_metadata(blueprint_options[fb_selection]['script_content'])
+                    
+                    # Hack: Agar fb_post nahi mila, toh default Insta wala caption utha lega
+                    default_fb = fb_parsed.get("fb_post", ig_parsed.get("ig_caption", "")) if fb_selection != "(Select a Blueprint)" else ""
+                    final_fb_post = st.text_area("Facebook Post Text", value=default_fb, height=100)
 
                 # 💼 LINKEDIN INDEPENDENT NODE
-                with st.expander("💼 Auto-Filled: LinkedIn Post"):
+                with st.expander("💼 LinkedIn Post"):
                     li_selection = st.selectbox("📂 Load blueprint for LinkedIn:", bp_list, key="li_bp_select")
+                    li_parsed = {}
                     
                     if li_selection != "(Select a Blueprint)":
                         li_parsed = parse_blueprint_metadata(blueprint_options[li_selection]['script_content'])
-                        final_li_post = st.text_area("LinkedIn Post", value=li_parsed.get("li_post", ""), height=150, key="auto_li_post")
-                    else:
-                        st.info("Select a blueprint above to populate LinkedIn data.")
-                        final_li_post = ""
+                        
+                    final_li_post = st.text_area("LinkedIn Post", value=li_parsed.get("li_post", ""), height=150)
 
                 # 🧵 THREADS INDEPENDENT NODE
-                with st.expander("🧵 Auto-Filled: Threads Post"):
+                with st.expander("🧵 Threads Post"):
                     th_selection = st.selectbox("📂 Load blueprint for Threads:", bp_list, key="th_bp_select")
+                    th_parsed = {}
                     
                     if th_selection != "(Select a Blueprint)":
                         th_parsed = parse_blueprint_metadata(blueprint_options[th_selection]['script_content'])
-                        # Smart Hack: Threads aur Twitter ka format same hota hai, toh default mein hum tw_thread use kar lenge!
-                        final_th_post = st.text_area("Threads Post", value=th_parsed.get("tw_thread", ""), height=150, key="auto_th_post")
-                    else:
-                        st.info("Select a blueprint above to populate Threads data.")
-                        final_th_post = ""
-        # Option 2: Manual Paste (Clean UI with Expanders)
+                        
+                    final_th_post = st.text_area("Threads Post", value=th_parsed.get("tw_thread", ""), height=150)
+
+        # Option 2: Manual Paste
         elif metadata_source == "✍️ Manual Paste":
             st.info("Manually enter your content for each platform below.")
             with st.expander("📺 YouTube Metadata", expanded=True):
@@ -1097,9 +1101,10 @@ else:
                 final_yt_desc = st.text_area("YouTube Description", key="man_yt_desc")
             with st.expander("🐦 X (Twitter) Thread"):
                 final_tw_thread = st.text_area("Tweet 1 (Video attached here)", key="man_tw_1")
-                st.caption("*(Logic for '+ Add Tweet' button will be integrated here during API wiring)*")
-            with st.expander("📸 Instagram & Facebook Captions"):
-                final_ig_cap = st.text_area("Reel/Post Caption", key="man_ig_cap")
+            with st.expander("📸 Instagram Caption"):
+                final_ig_cap = st.text_area("Reel Caption", key="man_ig_cap")
+            with st.expander("📘 Facebook Post"):
+                final_fb_post = st.text_area("Facebook Post Text", key="man_fb_post")
                 
         # Option 3: Generate New
         elif metadata_source == "✨ Generate New Metadata":
@@ -1121,44 +1126,37 @@ else:
         default_time_idx = time_options.index("10:00 AM")
 
         # 🧠 THE FIX: Bypass Streamlit's format_func search bug
-        # Step A: Timezone se Country nikalne ka master map
         tz_to_country = {}
         for country_code, timezones in pytz.country_timezones.items():
             country_name = pytz.country_names[country_code]
             for tz in timezones:
                 tz_to_country[tz] = country_name
 
-        # Step B: UI (Display) naam aur Backend (Raw) naam ka relation
         display_to_raw = {"(Select your timezone)": "(Select your timezone)"}
         for tz in pytz.common_timezones:
-            country = tz_to_country.get(tz, "Global") # Agar country na mile toh Global likho
+            country = tz_to_country.get(tz, "Global")
             display_name = f"{country} - {tz}"
             display_to_raw[display_name] = tz
 
-        # Step C: UI ke liye options array (Alphabetical sort ke sath)
         ui_options = ["(Select your timezone)"] + sorted([k for k in display_to_raw.keys() if k != "(Select your timezone)"])
 
-        # 🚀 Ab format_func ki zaroorat nahi, seedha string list pass kar rahe hain
         selected_display_tz = st.selectbox(
             "🌍 Select your Local Timezone:", 
             options=ui_options, 
             index=0
         )
 
-        # Backend ko asali timezone wapas mil jayega (e.g., 'Asia/Kolkata')
         user_timezone = display_to_raw[selected_display_tz]
 
-        # Jab tak timezone select nahi hoga, aage ka UI hide rahega
         if user_timezone == "(Select your timezone)":
             st.warning("⚠️ Action Required: Please select your local timezone from the dropdown to unlock platform scheduling.")
         else:
-            # 👇 YAHAN SE SAB KUCH 'else' KE ANDAR HAI (Indented)
             st.write("Select the platforms and set independent times for each:")
             local_tz = pytz.timezone(user_timezone)
             platform_schedule_map = {}
 
-            # 5 Columns for all 5 platforms - Strictly Independent
-            col_p1, col_p2, col_p3, col_p4, col_p5 = st.columns(5)
+            # 🚀 6 Columns for all 6 independent platforms
+            col_p1, col_p2, col_p3, col_p4, col_p5, col_p6 = st.columns(6)
 
             with col_p1:
                 push_yt = False
@@ -1167,9 +1165,7 @@ else:
                     if push_yt:
                         with st.expander("⏰ YT Timing", expanded=True):
                             yt_date = st.date_input("YT Date", min_value=datetime.today(), key="yt_d")
-                            # 🔥 ST.TIME_INPUT HATA KAR YEH LAGA DIYA
                             yt_time_str = st.selectbox("YT Time", options=time_options, index=default_time_idx, key="yt_t")
-                            # String ("10:05 AM") ko wapas Python Time mein convert kar rahe hain backend ke liye
                             yt_time = datetime.strptime(yt_time_str, "%I:%M %p").time()
                             
                             naive_dt = datetime.combine(yt_date, yt_time)
@@ -1185,9 +1181,7 @@ else:
                     if push_tw:
                         with st.expander("⏰ X Timing", expanded=True):
                             tw_date = st.date_input("X Date", min_value=datetime.today(), key="tw_d")
-                            # 🔥 ST.TIME_INPUT HATA KAR YEH LAGA DIYA
                             tw_time_str = st.selectbox("X Time", options=time_options, index=default_time_idx, key="tw_t")
-                            # String ("10:05 AM") ko wapas Python Time mein convert kar rahe hain backend ke liye
                             tw_time = datetime.strptime(tw_time_str, "%I:%M %p").time()
                             
                             naive_dt = datetime.combine(tw_date, tw_time)
@@ -1203,9 +1197,7 @@ else:
                     if push_ig:
                         with st.expander("⏰ IG Timing", expanded=True):
                             ig_date = st.date_input("IG Date", min_value=datetime.today(), key="ig_d")
-                            # 🔥 ST.TIME_INPUT HATA KAR YEH LAGA DIYA
                             ig_time_str = st.selectbox("IG Time", options=time_options, index=default_time_idx, key="ig_t")
-                            # String ("10:05 AM") ko wapas Python Time mein convert kar rahe hain backend ke liye
                             ig_time = datetime.strptime(ig_time_str, "%I:%M %p").time()
                             
                             naive_dt = datetime.combine(ig_date, ig_time)
@@ -1214,16 +1206,31 @@ else:
                 else:
                     st.caption("📸 Instagram\n(Not Connected)")
 
+            # 🆕 FACEBOOK COLUMN
             with col_p4:
+                push_fb = False
+                if st.session_state.get("fb_connected"): # Meta connect hone par ig aur fb dono true hote hain
+                    push_fb = st.checkbox("📘 Facebook", value=True)
+                    if push_fb:
+                        with st.expander("⏰ FB Timing", expanded=True):
+                            fb_date = st.date_input("FB Date", min_value=datetime.today(), key="fb_d")
+                            fb_time_str = st.selectbox("FB Time", options=time_options, index=default_time_idx, key="fb_t")
+                            fb_time = datetime.strptime(fb_time_str, "%I:%M %p").time()
+                            
+                            naive_dt = datetime.combine(fb_date, fb_time)
+                            local_aware_dt = local_tz.localize(naive_dt)
+                            platform_schedule_map["facebook"] = local_aware_dt.astimezone(pytz.utc)
+                else:
+                    st.caption("📘 Facebook\n(Not Connected)")
+
+            with col_p5:
                 push_th = False
                 if st.session_state.get("th_connected"):
                     push_th = st.checkbox("🧵 Threads", value=True)
                     if push_th:
-                        with st.expander("⏰ Threads Timing", expanded=True):
+                        with st.expander("⏰ TH Timing", expanded=True):
                             th_date = st.date_input("TH Date", min_value=datetime.today(), key="th_d")
-                            # 🔥 ST.TIME_INPUT HATA KAR YEH LAGA DIYA
                             th_time_str = st.selectbox("TH Time", options=time_options, index=default_time_idx, key="th_t")
-                            # String ("10:05 AM") ko wapas Python Time mein convert kar rahe hain backend ke liye
                             th_time = datetime.strptime(th_time_str, "%I:%M %p").time()
                             
                             naive_dt = datetime.combine(th_date, th_time)
@@ -1232,16 +1239,14 @@ else:
                 else:
                     st.caption("🧵 Threads\n(Not Connected)")
 
-            with col_p5:
+            with col_p6:
                 push_li = False
                 if st.session_state.get("li_connected"):
                     push_li = st.checkbox("💼 LinkedIn", value=True)
                     if push_li:
-                        with st.expander("⏰ LinkedIn Timing", expanded=True):
+                        with st.expander("⏰ LI Timing", expanded=True):
                             li_date = st.date_input("LI Date", min_value=datetime.today(), key="li_d")
-                            # 🔥 ST.TIME_INPUT HATA KAR YEH LAGA DIYA
                             li_time_str = st.selectbox("LI Time", options=time_options, index=default_time_idx, key="li_t")
-                            # String ("10:05 AM") ko wapas Python Time mein convert kar rahe hain backend ke liye
                             li_time = datetime.strptime(li_time_str, "%I:%M %p").time()
                             
                             naive_dt = datetime.combine(li_date, li_time)
@@ -1253,7 +1258,7 @@ else:
             if push_yt:
                 st.caption("*Note: YouTube API does not support custom thumbnails for Shorts. A frame will be auto-selected.*")
                 
-            st.write("---")
+        st.write("---")
         
         # 🛡️ STEP 4: COMPLIANCE & KILL-SWITCH (Brought out of LinkedIn scope!)
         st.markdown("#### 🛡️ Step 4: Compliance & Safety")
@@ -1283,13 +1288,14 @@ else:
                         if video_cloud_url:
                             st.info("🗄️ Splitting blueprints & Syncing with Supabase Cluster...")
                             
-                            # Clean Variable mapping matrix safely resolving states
+                            # 🛠️ THE FIX: Added Facebook & Corrected Variable Names
                             metadata_payload = {
                                 "video_title": final_yt_title if final_yt_title else uploaded_video.name,
                                 "youtube_description": final_yt_desc if final_yt_desc else "",
                                 "twitter_thread_text": final_tw_thread if final_tw_thread else "",
                                 "instagram_caption": final_ig_cap if final_ig_cap else "",
-                                "threads_content": final_th_content if final_th_content else "",
+                                "facebook_post_text": final_fb_post if final_fb_post else "", # 🆕 FB added here
+                                "threads_content": final_th_post if final_th_post else "", # 🛠️ Fixed name here
                                 "linkedin_post_text": final_li_post if final_li_post else ""
                             }
                             
