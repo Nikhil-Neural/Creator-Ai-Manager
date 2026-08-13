@@ -216,6 +216,52 @@ def upload_to_instagram(video_url, caption, access_token):
     except Exception as e:
         return False, f"Unexpected Meta Logic Error: {str(e)}"
 
+def upload_to_facebook(video_url, caption, user_access_token):
+    """
+    Meta Graph API v20.0 integration for Facebook Pages.
+    Steps: 1. Fetch Page Token -> 2. Direct Video Upload & Publish
+    """
+    base_url = "https://graph.facebook.com/v20.0"
+
+    try:
+        # 🕵️‍♂️ STEP 1: Fetch FB Pages and their specific Page Access Tokens
+        pages_url = f"{base_url}/me/accounts?access_token={user_access_token}"
+        pages_res = requests.get(pages_url).json()
+
+        if "error" in pages_res:
+            return False, f"Meta Auth Error: {pages_res['error']['message']}"
+        if not pages_res.get("data"):
+            return False, "No Facebook Pages found linked to this account."
+
+        # Hum list ka pehla page select kar rahe hain (Default)
+        page_data = pages_res["data"][0]
+        page_id = page_data["id"]
+        page_token = page_data["access_token"] # MAGIC: User token se Page token mil gaya!
+        page_name = page_data["name"]
+
+        print(f"📘 Authenticated Facebook Page: {page_name} (ID: {page_id})")
+
+        # 🚀 STEP 2: Upload and Publish Video via URL in a single step!
+        print(f"📤 Uploading & Publishing video to Facebook Page: {page_name}...")
+        video_post_url = f"{base_url}/{page_id}/videos"
+        
+        payload = {
+            "file_url": video_url, # Seedha Telegram ka link
+            "description": caption,
+            "access_token": page_token
+        }
+        
+        publish_res = requests.post(video_post_url, data=payload).json()
+
+        if "error" in publish_res:
+            return False, f"Facebook Publish Error: {publish_res['error']['message']}"
+
+        video_id = publish_res.get("id")
+        return True, f"Facebook Video successfully published! Video ID: {video_id}"
+
+    except Exception as e:
+        return False, f"Unexpected Facebook Logic Error: {str(e)}"
+
 def process_queue():
     """Database check karta hai aur pending videos upload karta hai"""
     current_utc_time = datetime.now(timezone.utc).isoformat()
@@ -333,6 +379,30 @@ def process_queue():
         except Exception as e:
             print(f"❌ Error processing task {task['id']}: {str(e)}")
             supabase.table("master_scheduler_queue").update({"status": "Failed"}).eq("id", task["id"]).execute()
+
+            # --- FACEBOOK LOGIC ---
+            if "facebook" in platforms:
+                print("📘 Starting Facebook sequence...")
+                
+                # Database se Meta/Facebook ka master token nikalo
+                profile_res = supabase.table("creator_profiles").select("facebook_token").eq("creator_handle", creator_email).execute()
+                
+                if not profile_res.data or not profile_res.data[0].get("facebook_token"):
+                    print(f"⚠️ Skipping FB: No valid Facebook token found for {creator_email}")
+                else:
+                    fb_token = profile_res.data[0]["facebook_token"]
+                    
+                    # 🆕 Naya FB Caption yahan catch hoga
+                    fb_caption = meta.get("facebook_post_text", "Powered by AI Creator OS 🚀")
+                    
+                    # Execute Facebook Graph Pipeline
+                    success, msg = upload_to_facebook(vid_url, fb_caption, fb_token)
+                    
+                    if success:
+                        print(f"✅ {msg}")
+                    else:
+                        print(f"❌ {msg}")
+                        raise Exception(f"Facebook Execution Failed: {msg}")
 
 if __name__ == "__main__":
     print("🚀 Creator OS Background Worker started! Polling database every 60 seconds...")
