@@ -1117,26 +1117,36 @@ else:
         time_options = []
         for h in range(24):
             for m in range(0, 60, 5):
-                time_options.append(datetime(2000, 1, 1, h, m).strftime("%I:%M %p")) # Result: "10:05 AM"
-        default_time_idx = time_options.index("10:00 AM") # Default time 10 AM
+                time_options.append(datetime(2000, 1, 1, h, m).strftime("%I:%M %p"))
+        default_time_idx = time_options.index("10:00 AM")
 
-        # 🧠 Smart Mapping: Har IANA timezone ko uske Country ke naam se jod rahe hain
-        tz_display_map = {"(Select your timezone)": "(Select your timezone)"}
+        # 🧠 THE FIX: Bypass Streamlit's format_func search bug
+        # Step A: Timezone se Country nikalne ka master map
+        tz_to_country = {}
         for country_code, timezones in pytz.country_timezones.items():
             country_name = pytz.country_names[country_code]
             for tz in timezones:
-                # Format banega: "India - Asia/Kolkata"
-                tz_display_map[tz] = f"{country_name} - {tz}"
+                tz_to_country[tz] = country_name
 
-        all_timezones = ["(Select your timezone)"] + pytz.common_timezones
-        
-        # ✨ format_func ka use karke UI pe Country dikhayenge, par backend ko standard timezone milega
-        user_timezone = st.selectbox(
+        # Step B: UI (Display) naam aur Backend (Raw) naam ka relation
+        display_to_raw = {"(Select your timezone)": "(Select your timezone)"}
+        for tz in pytz.common_timezones:
+            country = tz_to_country.get(tz, "Global") # Agar country na mile toh Global likho
+            display_name = f"{country} - {tz}"
+            display_to_raw[display_name] = tz
+
+        # Step C: UI ke liye options array (Alphabetical sort ke sath)
+        ui_options = ["(Select your timezone)"] + sorted([k for k in display_to_raw.keys() if k != "(Select your timezone)"])
+
+        # 🚀 Ab format_func ki zaroorat nahi, seedha string list pass kar rahe hain
+        selected_display_tz = st.selectbox(
             "🌍 Select your Local Timezone:", 
-            options=all_timezones, 
-            index=0,
-            format_func=lambda tz: tz_display_map.get(tz, tz)
+            options=ui_options, 
+            index=0
         )
+
+        # Backend ko asali timezone wapas mil jayega (e.g., 'Asia/Kolkata')
+        user_timezone = display_to_raw[selected_display_tz]
 
         # Jab tak timezone select nahi hoga, aage ka UI hide rahega
         if user_timezone == "(Select your timezone)":
