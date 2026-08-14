@@ -262,6 +262,85 @@ def upload_to_facebook(video_url, caption, user_access_token):
     except Exception as e:
         return False, f"Unexpected Facebook Logic Error: {str(e)}"
 
+def upload_to_threads(video_url, thread_text, access_token):
+    """
+    Threads API Integration for chained posts (Twitter Style).
+    Base URL is different: graph.threads.net
+    """
+    base_url = "https://graph.threads.net/v1.0"
+    
+    try:
+        # 1. SMART THREAD SPLITTING (Twitter jaisa same logic)
+        raw_posts = [t.strip() for t in thread_text.split('\n\n') if t.strip()]
+        if not raw_posts:
+            return False, "Threads text is empty."
+
+        # 2. GET THREADS USER ID
+        me_res = requests.get(f"{base_url}/me?access_token={access_token}").json()
+        if "error" in me_res:
+            return False, f"Threads Auth Error: {me_res['error']['message']}"
+        threads_user_id = me_res.get("id")
+
+        previous_post_id = None
+
+        # 3. LOOP THROUGH CHUNKS
+        for index, post_content in enumerate(raw_posts):
+            print(f"🧵 Posting Thread {index + 1}/{len(raw_posts)}...")
+            
+            # Create Container Payload
+            container_payload = {
+                "text": post_content[:500], # Threads ki limit 500 characters hoti hai
+                "access_token": access_token
+            }
+
+            # Pehla post (Video ke sath)
+            if index == 0 and video_url:
+                container_payload["media_type"] = "VIDEO"
+                container_payload["video_url"] = video_url
+            # Baaki ke posts (Text only + Reply ID)
+            else:
+                container_payload["media_type"] = "TEXT"
+                if previous_post_id:
+                    container_payload["reply_to_id"] = previous_post_id # 🔗 Chaining Magic!
+
+            # Push Container
+            container_res = requests.post(f"{base_url}/{threads_user_id}/threads", data=container_payload).json()
+            if "error" in container_res:
+                return False, f"Threads Container Error: {container_res['error']['message']}"
+            
+            creation_id = container_res.get("id")
+
+            # ⏳ Wait for Processing (Sirf pehle wale video post ke liye)
+            if index == 0 and video_url:
+                print(f"⏳ Waiting for Threads to process video (ID: {creation_id})...")
+                status_url = f"{base_url}/{creation_id}?fields=status&access_token={access_token}"
+                for attempt in range(15):
+                    time.sleep(10)
+                    status_res = requests.get(status_url).json()
+                    status = status_res.get("status")
+                    print(f"🔄 Threads Processing Status: {status} (Attempt {attempt+1}/15)")
+                    
+                    if status == "FINISHED":
+                        break
+                    elif status == "ERROR":
+                        return False, "Threads failed to process the video internally."
+
+            # 🚀 Publish the post
+            publish_res = requests.post(f"{base_url}/{threads_user_id}/threads_publish", data={"creation_id": creation_id, "access_token": access_token}).json()
+            if "error" in publish_res:
+                return False, f"Threads Publish Error: {publish_res['error']['message']}"
+            
+            # Naye post ki ID ko save karo taaki agla post ispe reply kar sake
+            previous_post_id = publish_res.get("id")
+            print(f"✅ Thread part {index+1} published! ID: {previous_post_id}")
+            
+            time.sleep(3) # Agla part bhejne se pehle thoda sans lene ka time
+
+        return True, f"✅ Full Threads chain successfully published! Root ID: {previous_post_id}"
+
+    except Exception as e:
+        return False, f"Unexpected Threads Logic Error: {str(e)}"
+
 def process_queue():
     """Database check karta hai aur pending videos upload karta hai"""
     current_utc_time = datetime.now(timezone.utc).isoformat()
@@ -372,14 +451,6 @@ def process_queue():
                         print(f"❌ {msg}")
                         raise Exception(f"Meta Execution Failed: {msg}")
 
-            # Agar loop yahan tak bina error ke pahunch gaya, matlab task successfully execute ho gaya hai
-            supabase.table("master_scheduler_queue").delete().eq("id", task["id"]).execute()
-            print("🗄️ Task deleted from queue (successfully published).")
-            
-        except Exception as e:
-            print(f"❌ Error processing task {task['id']}: {str(e)}")
-            supabase.table("master_scheduler_queue").update({"status": "Failed"}).eq("id", task["id"]).execute()
-
             # --- FACEBOOK LOGIC ---
             if "facebook" in platforms:
                 print("📘 Starting Facebook sequence...")
@@ -404,6 +475,35 @@ def process_queue():
                         print(f"❌ {msg}")
                         raise Exception(f"Facebook Execution Failed: {msg}")
 
+                    # --- THREADS LOGIC ---
+            if "threads" in platforms:
+                print("🧵 Starting Threads sequence...")
+                
+                profile_res = supabase.table("creator_profiles").select("threads_token").eq("creator_handle", creator_email).execute()
+                
+                if not profile_res.data or not profile_res.data[0].get("threads_token"):
+                    print(f"⚠️ Skipping Threads: No valid token found for {creator_email}")
+                else:
+                    th_token = profile_res.data[0]["threads_token"]
+                    # Yahan hum threads_content uthayenge DB se
+                    th_caption = meta.get("threads_content", "Powered by AI Creator OS 🚀")
+                    
+                    success, msg = upload_to_threads(vid_url, th_caption, th_token)
+                    
+                    if success:
+                        print(f"✅ {msg}")
+                    else:
+                        print(f"❌ {msg}")
+                        raise Exception(f"Threads Execution Failed: {msg}")
+                   
+            # Agar loop yahan tak bina error ke pahunch gaya, matlab task successfully execute ho gaya hai
+            supabase.table("master_scheduler_queue").delete().eq("id", task["id"]).execute()
+            print("🗄️ Task deleted from queue (successfully published).")
+                    
+        except Exception as e:
+            print(f"❌ Error processing task {task['id']}: {str(e)}")
+            supabase.table("master_scheduler_queue").update({"status": "Failed"}).eq("id", task["id"]).execute()
+                
 if __name__ == "__main__":
     print("🚀 Creator OS Background Worker started! Polling database every 60 seconds...")
     while True:

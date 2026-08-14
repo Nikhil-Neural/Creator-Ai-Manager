@@ -205,3 +205,28 @@ def get_youtube_access_token(auth_code):
             return f"GOOGLE_ERROR: {response.text}" 
     except Exception as e:
         return f"SYSTEM_ERROR: {str(e)}"
+    
+def get_threads_access_token(auth_code):
+    """Exchanges the temporary auth_code for a real Threads Access Token"""
+    url = "https://graph.threads.net/oauth/access_token"
+    
+    # Note: Ensure you have these secrets in your Streamlit config
+    # Use the exact same REDIRECT_URI you used in get_threads_oauth_url()
+    payload = {
+        "client_id": st.secrets["META_APP_ID"], # Ya jo bhi tumhara Threads App ID hai
+        "client_secret": st.secrets["META_APP_SECRET"],
+        "grant_type": "authorization_code",
+        "redirect_uri": st.secrets["REDIRECT_URI"], 
+        "code": auth_code
+    }
+    
+    try:
+        response = requests.post(url, data=payload).json()
+        if "access_token" in response:
+            return response["access_token"]
+        else:
+            print(f"Threads Token Error: {response}")
+            return None
+    except Exception as e:
+        print(f"Threads Exchange Error: {e}")
+        return None

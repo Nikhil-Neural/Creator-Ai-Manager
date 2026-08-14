@@ -2,7 +2,7 @@ from helpers import parse_blueprint_metadata, create_word_doc
 from ai_engine import run_my_crew_ai_agents
 from social_publisher import post_to_twitter_thread, post_to_linkedin
 from analytics_engine import fetch_youtube_analytics, fetch_meta_analytics
-from auth_urls import get_linkedin_oauth_url, get_threads_oauth_url, get_facebook_oauth_url, get_youtube_oauth_url, get_twitter_oauth_url, get_meta_access_token, get_youtube_access_token
+from auth_urls import get_linkedin_oauth_url, get_threads_oauth_url, get_facebook_oauth_url, get_youtube_oauth_url, get_twitter_oauth_url, get_meta_access_token, get_youtube_access_token, get_threads_access_token
 # 1. Pehle sahi function ko import karo
 from db_engine import get_supabase_admin_client
 # 2. Phir us function ko call karke apna supabase_admin variable bana lo
@@ -238,13 +238,20 @@ if "code" in st.query_params and "state" in st.query_params:
 
             # 🧵 THREADS
             elif state_ticket.startswith("thread"):
-                supabase_admin.table("creator_profiles").update({
-                    "threads_token": auth_code
-                }).eq("creator_handle", user_email_from_db).execute()
+                st.info("🔄 Generating secure Threads token...")
+                real_threads_token = get_threads_access_token(auth_code)
                 
-                st.session_state["th_connected"] = True
-                st.session_state["channels_synced"] = True
-                st.success("🎉 Meta Threads Account Successfully Linked! 🧵")
+                if real_threads_token:
+                    supabase_admin.table("creator_profiles").update({
+                        "threads_token": real_threads_token
+                    }).eq("creator_handle", user_email_from_db).execute()
+                    
+                    st.session_state["th_connected"] = True
+                    st.session_state["channels_synced"] = True
+                    st.success("🎉 Meta Threads Account Successfully Linked! 🧵")
+                else:
+                    st.error("❌ Failed to generate real Threads token. Please check App ID/Secret.")
+                    
                 st.query_params.clear()
 
         except Exception as e:
