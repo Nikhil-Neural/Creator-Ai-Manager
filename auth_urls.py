@@ -213,10 +213,11 @@ def get_threads_access_token(auth_code):
     # Note: Ensure you have these secrets in your Streamlit config
     # Use the exact same REDIRECT_URI you used in get_threads_oauth_url()
     payload = {
-        "client_id": st.secrets["META_APP_ID"], # Ya jo bhi tumhara Threads App ID hai
+        "client_id": st.secrets["META_APP_ID"], 
         "client_secret": st.secrets["META_APP_SECRET"],
         "grant_type": "authorization_code",
-        "redirect_uri": st.secrets["REDIRECT_URI"], 
+        # 👇 Yahan apna exact app link string mein hardcode kar do!
+        "redirect_uri": "https://creator-ai-manager-tgrh5ifkgfqme6kdomcvxb.streamlit.app/", 
         "code": auth_code
     }
     
