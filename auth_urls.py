@@ -210,15 +210,16 @@ def get_threads_access_token(auth_code):
     """Exchanges the temporary auth_code for a real Threads Access Token"""
     url = "https://graph.threads.net/oauth/access_token"
     
-    # Note: Ensure you have these secrets in your Streamlit config
-    # Use the exact same REDIRECT_URI you used in get_threads_oauth_url()
+    # Meta ki aadat hai URL ke end mein '#_=_' lagane ki, hum isko clean kar lenge
+    clean_code = auth_code.replace("#_=_", "")
+    
     payload = {
         "client_id": st.secrets["META_APP_ID"], 
         "client_secret": st.secrets["META_APP_SECRET"],
         "grant_type": "authorization_code",
-        # 👇 Yahan apna exact app link string mein hardcode kar do!
+        # DHYAN RAHE: Yeh bilkul waisa hi hona chahiye jaisa app settings/URL mein hai
         "redirect_uri": "https://creator-ai-manager-tgrh5ifkgfqme6kdomcvxb.streamlit.app/", 
-        "code": auth_code
+        "code": clean_code
     }
     
     try:
@@ -226,8 +227,9 @@ def get_threads_access_token(auth_code):
         if "access_token" in response:
             return response["access_token"]
         else:
-            print(f"Threads Token Error: {response}")
+            # 🚀 NAYA: Ab Meta ki aawaz seedha tumhari screen par aayegi!
+            st.error(f"🔍 META ERROR DETAILS: {response}") 
             return None
     except Exception as e:
-        print(f"Threads Exchange Error: {e}")
+        st.error(f"🚨 REQUEST CRASHED: {e}")
         return None
