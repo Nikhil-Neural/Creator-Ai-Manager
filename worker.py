@@ -226,6 +226,7 @@ def upload_to_facebook(video_url, caption, user_access_token):
         return False, f"Unexpected Facebook Logic Error: {str(e)}"
 
 # 🧵 MASTER THREADS ENGINE (Chain/Chreading Enabled)
+# 🧵 MASTER THREADS ENGINE (Chain/Chreading Enabled)
 def upload_to_threads(video_url, thread_text, access_token):
     """
     Threads Graph API Integration for chained posts (Twitter/X Style).
@@ -264,8 +265,13 @@ def upload_to_threads(video_url, thread_text, access_token):
                 if previous_post_id:
                     container_payload["reply_to_id"] = previous_post_id
 
-            # Create Container
-            container_res = requests.post(f"{base_url}/{threads_user_id}/threads", data=container_payload, timeout=30).json()
+            # 🛡️ SAFE CONTAINER CREATION
+            container_req = requests.post(f"{base_url}/{threads_user_id}/threads", data=container_payload, timeout=30)
+            try:
+                container_res = container_req.json()
+            except Exception:
+                return False, f"Meta crashed during Container build! Raw Server Response: {container_req.text}"
+                
             if "error" in container_res:
                 return False, f"Threads Container Error: {container_res['error'].get('message', 'Unknown')}"
             
@@ -293,21 +299,28 @@ def upload_to_threads(video_url, thread_text, access_token):
                 if not is_finished:
                     return False, "Threads video processing timed out after 2.5 minutes."
 
-            # Publish the Container
+            # 🛡️ SAFE PUBLISH CREATION
             print(f"🚀 Publishing Thread part {index + 1}...")
-            publish_url = f"{base_url}/{threads_user_id}/threads_publish"
             publish_payload = {
                 "creation_id": creation_id,
                 "access_token": access_token
             }
-            publish_res = requests.post(publish_url, data=publish_payload, timeout=30).json()
+            publish_req = requests.post(f"{base_url}/{threads_user_id}/threads_publish", data=publish_payload, timeout=30)
             
+            try:
+                publish_res = publish_req.json()
+            except Exception:
+                return False, f"Meta crashed during Publish! Raw Server Response: {publish_req.text}"
+
             if "error" in publish_res:
                 return False, f"Threads Publish Error: {publish_res['error'].get('message', 'Unknown')}"
             
             previous_post_id = publish_res.get("id")
             print(f"✅ Published Thread part {index+1}! Post ID: {previous_post_id}")
-            time.sleep(3)
+            
+            # 🚀 THE FIX: Meta ko global database sync karne ke liye extra time dena
+            print("⏳ Giving Meta time to index this post before replying...")
+            time.sleep(15) 
 
         return True, f"✅ Full Threads Chain published successfully! Root ID: {previous_post_id}"
 
