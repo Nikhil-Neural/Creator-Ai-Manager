@@ -208,21 +208,40 @@ def get_threads_access_token(auth_code):
     clean_code = auth_code.replace("#_=_", "")
     
     payload = {
-        # 🚀 HACK: Yahan bhi bypass kar diya
-        "client_id": "2128519801042338", 
-        "client_secret": st.secrets["THREADS_APP_SECRET"], # Bas Secret ko toml se aane do
+        "client_id": "2128519801042338", # Tumhara Hardcoded ID
+        "client_secret": st.secrets["THREADS_APP_SECRET"],
         "grant_type": "authorization_code",
         "redirect_uri": "https://creator-ai-manager-tgrh5ifkgfqme6kdomcvxb.streamlit.app/", 
         "code": clean_code
     }
     
     try:
+        # STEP 1: Get Short-Lived Token (1 Hour)
         response = requests.post(url, data=payload).json()
+        
         if "access_token" in response:
-            return response["access_token"]
+            short_lived_token = response["access_token"]
+            
+            # 🚀 STEP 2: Swap it for a Long-Lived Token (60 Days)
+            exchange_url = "https://graph.threads.net/access_token"
+            exchange_params = {
+                "grant_type": "th_exchange_token",
+                "client_secret": st.secrets["THREADS_APP_SECRET"],
+                "access_token": short_lived_token
+            }
+            
+            long_lived_res = requests.get(exchange_url, params=exchange_params).json()
+            
+            if "access_token" in long_lived_res:
+                print("✅ BOOM! 60-Day Long-Lived Threads Token Generated!")
+                return long_lived_res["access_token"]
+            else:
+                # Agar exchange fail hua toh backup ke liye short token de do
+                return short_lived_token 
         else:
             st.error(f"🔍 META ERROR DETAILS: {response}") 
             return None
+            
     except Exception as e:
         st.error(f"🚨 REQUEST CRASHED: {e}")
         return None
