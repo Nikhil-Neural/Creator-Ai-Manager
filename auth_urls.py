@@ -207,37 +207,44 @@ def get_threads_access_token(auth_code):
     url = "https://graph.threads.net/oauth/access_token"
     clean_code = auth_code.replace("#_=_", "")
     
+    # ID ko hardcode rakhte hain kyunki cache ka issue ho raha tha
+    client_id_hardcoded = "2128519801042338" 
+    
+    # 🔒 SUPER SECURE: Secret hamesha .toml se hi aayega
+    client_secret_secure = st.secrets["THREADS_APP_SECRET"] 
+    
     payload = {
-        "client_id": "2128519801042338", # Tumhara Hardcoded ID
-        "client_secret": st.secrets["THREADS_APP_SECRET"],
+        "client_id": client_id_hardcoded,
+        "client_secret": client_secret_secure,
         "grant_type": "authorization_code",
         "redirect_uri": "https://creator-ai-manager-tgrh5ifkgfqme6kdomcvxb.streamlit.app/", 
         "code": clean_code
     }
     
     try:
-        # STEP 1: Get Short-Lived Token (1 Hour)
+        # STEP 1: Pehle 1-Ghante wala token lo
         response = requests.post(url, data=payload).json()
         
         if "access_token" in response:
             short_lived_token = response["access_token"]
             
-            # 🚀 STEP 2: Swap it for a Long-Lived Token (60 Days)
+            # 🚀 STEP 2: Ab isko 60-DIN (2 Mahine) ke Permanent Token mein badlo!
             exchange_url = "https://graph.threads.net/access_token"
             exchange_params = {
                 "grant_type": "th_exchange_token",
-                "client_secret": st.secrets["THREADS_APP_SECRET"],
+                "client_secret": client_secret_secure, # Yahan bhi .toml wala secret jayega
                 "access_token": short_lived_token
             }
             
             long_lived_res = requests.get(exchange_url, params=exchange_params).json()
             
             if "access_token" in long_lived_res:
-                print("✅ BOOM! 60-Day Long-Lived Threads Token Generated!")
+                st.success("✅ BOOM! 60-Day Permanent Threads Token Generated!")
                 return long_lived_res["access_token"]
             else:
-                # Agar exchange fail hua toh backup ke liye short token de do
-                return short_lived_token 
+                # Is baar hum kachra token nahi denge, seedha error pakdenge
+                st.error(f"❌ 60-DAY TOKEN REJECTED BY META: {long_lived_res}")
+                return None 
         else:
             st.error(f"🔍 META ERROR DETAILS: {response}") 
             return None
