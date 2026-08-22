@@ -214,8 +214,8 @@ def get_threads_access_token(auth_code):
     clean_code = auth_code.replace("#_=_", "")
     
     payload = {
-        "client_id": st.secrets["META_APP_ID"], 
-        "client_secret": st.secrets["META_APP_SECRET"],
+        "client_id": st.secrets["THREADS_APP_ID"], 
+        "client_secret": st.secrets["THREADS_APP_SECRET"],
         "grant_type": "authorization_code",
         # DHYAN RAHE: Yeh bilkul waisa hi hona chahiye jaisa app settings/URL mein hai
         "redirect_uri": "https://creator-ai-manager-tgrh5ifkgfqme6kdomcvxb.streamlit.app/", 
