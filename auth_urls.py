@@ -60,17 +60,14 @@ def get_linkedin_oauth_url():
 # META THREADS OAUTH FUNCTION
 # ==============================================================
 def get_threads_oauth_url():
-    client_id = st.secrets.get("THREADS_APP_ID", "")
-    
-    if not client_id:
-        return "#error_missing_threads_client_id"
+    # 🚀 HACK: Bypass st.secrets aur seedha ID hardcode kar diya
+    client_id = "2128519801042338" 
 
     redirect_uri = "https://creator-ai-manager-tgrh5ifkgfqme6kdomcvxb.streamlit.app/" 
     
     scopes = ["threads_basic", "threads_content_publish"]
     scope_str = ",".join(scopes)
     
-    # 🚀 SMART TICKET GENERATOR
     state = create_global_state("thread")
     
     auth_url = f"https://threads.net/oauth/authorize?client_id={client_id}&redirect_uri={redirect_uri}&scope={scope_str}&response_type=code&state={state}"
@@ -207,17 +204,14 @@ def get_youtube_access_token(auth_code):
         return f"SYSTEM_ERROR: {str(e)}"
     
 def get_threads_access_token(auth_code):
-    """Exchanges the temporary auth_code for a real Threads Access Token"""
     url = "https://graph.threads.net/oauth/access_token"
-    
-    # Meta ki aadat hai URL ke end mein '#_=_' lagane ki, hum isko clean kar lenge
     clean_code = auth_code.replace("#_=_", "")
     
     payload = {
-        "client_id": st.secrets["THREADS_APP_ID"], 
-        "client_secret": st.secrets["THREADS_APP_SECRET"],
+        # 🚀 HACK: Yahan bhi bypass kar diya
+        "client_id": "2128519801042338", 
+        "client_secret": st.secrets["THREADS_APP_SECRET"], # Bas Secret ko toml se aane do
         "grant_type": "authorization_code",
-        # DHYAN RAHE: Yeh bilkul waisa hi hona chahiye jaisa app settings/URL mein hai
         "redirect_uri": "https://creator-ai-manager-tgrh5ifkgfqme6kdomcvxb.streamlit.app/", 
         "code": clean_code
     }
@@ -227,7 +221,6 @@ def get_threads_access_token(auth_code):
         if "access_token" in response:
             return response["access_token"]
         else:
-            # 🚀 NAYA: Ab Meta ki aawaz seedha tumhari screen par aayegi!
             st.error(f"🔍 META ERROR DETAILS: {response}") 
             return None
     except Exception as e:
