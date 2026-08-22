@@ -256,7 +256,6 @@ def upload_to_threads(video_url, thread_text, access_token):
                 "access_token": access_token
             }
 
-            # Pehla item video ke sath
             if index == 0 and video_url:
                 container_payload["media_type"] = "VIDEO"
                 container_payload["video_url"] = video_url
@@ -265,19 +264,26 @@ def upload_to_threads(video_url, thread_text, access_token):
                 if previous_post_id:
                     container_payload["reply_to_id"] = previous_post_id
 
-            # 🛡️ SAFE CONTAINER CREATION
-            container_req = requests.post(f"{base_url}/{threads_user_id}/threads", data=container_payload, timeout=30)
-            try:
-                container_res = container_req.json()
-            except Exception:
-                return False, f"Meta crashed during Container build! Raw Server Response: {container_req.text}"
+            # 🛡️ SMART RETRY LOGIC FOR CONTAINER (Meta Sync Handle Karega)
+            container_res = None
+            for retry in range(3):
+                container_req = requests.post(f"{base_url}/{threads_user_id}/threads", data=container_payload, timeout=30)
+                try:
+                    container_res = container_req.json()
+                    break # Agar theek se JSON mila, toh retry loop tod do
+                except Exception:
+                    print(f"⚠️ Meta Silent Crash (Status {container_req.status_code}). Syncing delay... Retrying {retry+1}/3 in 15s...")
+                    time.sleep(15)
+                    
+            if not container_res:
+                return False, f"Meta crashed 3 times continuously! Raw Text: {container_req.text}"
                 
             if "error" in container_res:
                 return False, f"Threads Container Error: {container_res['error'].get('message', 'Unknown')}"
             
             creation_id = container_res.get("id")
 
-            # Video Processing Status Polling (Sirf Video wale container ke liye)
+            # Video Processing Status Polling
             if index == 0 and video_url:
                 print(f"⏳ Waiting for Threads to encode video (ID: {creation_id})...")
                 status_url = f"{base_url}/{creation_id}?fields=status,error_message&access_token={access_token}"
@@ -299,18 +305,25 @@ def upload_to_threads(video_url, thread_text, access_token):
                 if not is_finished:
                     return False, "Threads video processing timed out after 2.5 minutes."
 
-            # 🛡️ SAFE PUBLISH CREATION
+            # 🛡️ SMART RETRY LOGIC FOR PUBLISH
             print(f"🚀 Publishing Thread part {index + 1}...")
             publish_payload = {
                 "creation_id": creation_id,
                 "access_token": access_token
             }
-            publish_req = requests.post(f"{base_url}/{threads_user_id}/threads_publish", data=publish_payload, timeout=30)
             
-            try:
-                publish_res = publish_req.json()
-            except Exception:
-                return False, f"Meta crashed during Publish! Raw Server Response: {publish_req.text}"
+            publish_res = None
+            for retry in range(3):
+                publish_req = requests.post(f"{base_url}/{threads_user_id}/threads_publish", data=publish_payload, timeout=30)
+                try:
+                    publish_res = publish_req.json()
+                    break
+                except Exception:
+                    print(f"⚠️ Meta Publish Crash (Status {publish_req.status_code}). Retrying {retry+1}/3 in 15s...")
+                    time.sleep(15)
+
+            if not publish_res:
+                return False, f"Meta crashed during Publish! Raw Text: {publish_req.text}"
 
             if "error" in publish_res:
                 return False, f"Threads Publish Error: {publish_res['error'].get('message', 'Unknown')}"
@@ -318,9 +331,10 @@ def upload_to_threads(video_url, thread_text, access_token):
             previous_post_id = publish_res.get("id")
             print(f"✅ Published Thread part {index+1}! Post ID: {previous_post_id}")
             
-            # 🚀 THE FIX: Meta ko global database sync karne ke liye extra time dena
-            print("⏳ Giving Meta time to index this post before replying...")
-            time.sleep(15) 
+            # Agla part chain karne se pehle Meta ko pakka indexing time do
+            if index < len(raw_posts) - 1:
+                print("⏳ Giving Meta global servers 15 seconds to sync this post before chaining...")
+                time.sleep(15)
 
         return True, f"✅ Full Threads Chain published successfully! Root ID: {previous_post_id}"
 
