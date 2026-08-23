@@ -207,10 +207,10 @@ def get_threads_access_token(auth_code):
     url = "https://graph.threads.net/oauth/access_token"
     clean_code = auth_code.replace("#_=_", "")
     
-    # ID ko hardcode rakhte hain kyunki cache ka issue ho raha tha
+    # ID hardcoded taaki cache issue na ho
     client_id_hardcoded = "2128519801042338" 
     
-    # 🔒 SUPER SECURE: Secret hamesha .toml se hi aayega
+    # 🔒 SUPER SECURE: Secret .toml se hi aayega
     client_secret_secure = st.secrets["THREADS_APP_SECRET"] 
     
     payload = {
@@ -228,27 +228,28 @@ def get_threads_access_token(auth_code):
         if "access_token" in response:
             short_lived_token = response["access_token"]
             
-            # 🚀 STEP 2: Ab isko 60-DIN (2 Mahine) ke Permanent Token mein badlo!
+            # 🚀 STEP 2: Force 60-Day Permanent Token
             exchange_url = "https://graph.threads.net/access_token"
             exchange_params = {
                 "grant_type": "th_exchange_token",
-                "client_secret": client_secret_secure, # Yahan bhi .toml wala secret jayega
+                "client_secret": client_secret_secure,
                 "access_token": short_lived_token
             }
             
             long_lived_res = requests.get(exchange_url, params=exchange_params).json()
             
             if "access_token" in long_lived_res:
-                st.success("✅ BOOM! 60-Day Permanent Threads Token Generated!")
+                expires_in = long_lived_res.get("expires_in", "Unknown")
+                st.success(f"✅ BOOM! 60-Day Permanent Threads Token Generated! (Expires in: {expires_in} seconds)")
                 return long_lived_res["access_token"]
             else:
-                # Is baar hum kachra token nahi denge, seedha error pakdenge
+                # 🛑 KACHRA TOKEN REJECTED: App yahin ruk jayegi!
                 st.error(f"❌ 60-DAY TOKEN REJECTED BY META: {long_lived_res}")
-                return None 
+                st.stop() # Yeh database ko update hone se rok dega
         else:
-            st.error(f"🔍 META ERROR DETAILS: {response}") 
-            return None
+            st.error(f"🔍 META SHORT-TOKEN ERROR: {response}") 
+            st.stop()
             
     except Exception as e:
         st.error(f"🚨 REQUEST CRASHED: {e}")
-        return None
+        st.stop()
