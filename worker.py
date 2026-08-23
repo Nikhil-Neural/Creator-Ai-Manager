@@ -229,8 +229,8 @@ def upload_to_facebook(video_url, caption, user_access_token):
 # 🧵 MASTER THREADS ENGINE (Chain/Chreading Enabled)
 def upload_to_threads(video_url, thread_text, access_token):
     """
-    Threads Graph API Integration for chained posts (Twitter/X Style).
-    API Endpoint: graph.threads.net/v1.0
+    Threads Graph API Integration for chained posts.
+    With Meta Sync Ping Verification to prevent 500 Server Crashes.
     """
     base_url = "https://graph.threads.net/v1.0"
     
@@ -252,7 +252,7 @@ def upload_to_threads(video_url, thread_text, access_token):
             print(f"🧵 Building Thread part {index + 1}/{len(raw_posts)}...")
             
             container_payload = {
-                "text": post_content[:500],
+                "text": post_content[:490], # Safety buffer for length
                 "access_token": access_token
             }
 
@@ -262,24 +262,26 @@ def upload_to_threads(video_url, thread_text, access_token):
             else:
                 container_payload["media_type"] = "TEXT"
                 if previous_post_id:
-                    container_payload["reply_to_id"] = previous_post_id
+                    # 🛡️ FIX 1: Strict String Cast for Meta Database
+                    container_payload["reply_to_id"] = str(previous_post_id)
 
-            # 🛡️ SMART RETRY LOGIC FOR CONTAINER (Meta Sync Handle Karega)
+            # Container Creation with basic retry
             container_res = None
             for retry in range(3):
                 container_req = requests.post(f"{base_url}/{threads_user_id}/threads", data=container_payload, timeout=30)
                 try:
                     container_res = container_req.json()
-                    break # Agar theek se JSON mila, toh retry loop tod do
+                    if "error" not in container_res:
+                        break # Success
                 except Exception:
-                    print(f"⚠️ Meta Silent Crash (Status {container_req.status_code}). Syncing delay... Retrying {retry+1}/3 in 15s...")
-                    time.sleep(15)
-                    
-            if not container_res:
-                return False, f"Meta crashed 3 times continuously! Raw Text: {container_req.text}"
+                    pass
                 
-            if "error" in container_res:
-                return False, f"Threads Container Error: {container_res['error'].get('message', 'Unknown')}"
+                print(f"⚠️ Meta API choked on Container. Retrying {retry+1}/3 in 20s...")
+                time.sleep(20)
+                    
+            if not container_res or "error" in container_res:
+                err_msg = container_res.get('error', {}).get('message', 'Unknown') if container_res else container_req.text
+                return False, f"Threads Container Failed after 3 retries: {err_msg}"
             
             creation_id = container_res.get("id")
 
@@ -289,11 +291,11 @@ def upload_to_threads(video_url, thread_text, access_token):
                 status_url = f"{base_url}/{creation_id}?fields=status,error_message&access_token={access_token}"
                 
                 is_finished = False
-                for attempt in range(15):
-                    time.sleep(10)
+                for attempt in range(20): # Increased attempts
+                    time.sleep(15)
                     status_res = requests.get(status_url, timeout=30).json()
                     status = status_res.get("status")
-                    print(f"🔄 Threads Processing Status: {status} (Attempt {attempt+1}/15)")
+                    print(f"🔄 Threads Processing Status: {status} (Attempt {attempt+1}/20)")
                     
                     if status == "FINISHED":
                         is_finished = True
@@ -303,9 +305,9 @@ def upload_to_threads(video_url, thread_text, access_token):
                         return False, f"Threads Video Encoding Failed: {err_detail}"
                 
                 if not is_finished:
-                    return False, "Threads video processing timed out after 2.5 minutes."
+                    return False, "Threads video processing timed out."
 
-            # 🛡️ SMART RETRY LOGIC FOR PUBLISH
+            # Publish
             print(f"🚀 Publishing Thread part {index + 1}...")
             publish_payload = {
                 "creation_id": creation_id,
@@ -317,24 +319,40 @@ def upload_to_threads(video_url, thread_text, access_token):
                 publish_req = requests.post(f"{base_url}/{threads_user_id}/threads_publish", data=publish_payload, timeout=30)
                 try:
                     publish_res = publish_req.json()
-                    break
+                    if "error" not in publish_res:
+                        break
                 except Exception:
-                    print(f"⚠️ Meta Publish Crash (Status {publish_req.status_code}). Retrying {retry+1}/3 in 15s...")
-                    time.sleep(15)
+                    pass
+                print(f"⚠️ Meta Publish choked. Retrying {retry+1}/3 in 20s...")
+                time.sleep(20)
 
-            if not publish_res:
-                return False, f"Meta crashed during Publish! Raw Text: {publish_req.text}"
-
-            if "error" in publish_res:
-                return False, f"Threads Publish Error: {publish_res['error'].get('message', 'Unknown')}"
+            if not publish_res or "error" in publish_res:
+                err_msg = publish_res.get('error', {}).get('message', 'Unknown') if publish_res else publish_req.text
+                return False, f"Threads Publish Error: {err_msg}"
             
             previous_post_id = publish_res.get("id")
             print(f"✅ Published Thread part {index+1}! Post ID: {previous_post_id}")
             
-            # Agla part chain karne se pehle Meta ko pakka indexing time do
+            # 🛡️ THE MASTER FIX: PING VERIFICATION
             if index < len(raw_posts) - 1:
-                print("⏳ Giving Meta global servers 15 seconds to sync this post before chaining...")
-                time.sleep(15)
+                print(f"📡 Pinging Meta global servers to verify Post {previous_post_id} is live before replying...")
+                verify_url = f"{base_url}/{previous_post_id}?fields=id&access_token={access_token}"
+                
+                is_live = False
+                for ping in range(6): # Try for up to 2 minutes
+                    time.sleep(20) # 20 second delay between pings
+                    verify_res = requests.get(verify_url, timeout=30).json()
+                    
+                    if "id" in verify_res:
+                        print("✅ Meta confirmed post is fully indexed! Safe to attach next reply.")
+                        is_live = True
+                        break
+                    else:
+                        print(f"🔄 Meta backend still syncing... Waiting ({ping+1}/6)")
+                        
+                if not is_live:
+                    print("⚠️ Meta is exceptionally slow. Attempting blind reply anyway...")
+                    time.sleep(10)
 
         return True, f"✅ Full Threads Chain published successfully! Root ID: {previous_post_id}"
 
