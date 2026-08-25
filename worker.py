@@ -251,9 +251,9 @@ def upload_to_threads(video_url, thread_text, access_token):
         for index, post_content in enumerate(raw_posts):
             print(f"🧵 Building Thread part {index + 1}/{len(raw_posts)}...")
             
+            # 🛡️ THE JSON FIX: Payload mein ab access_token nahi bhejenge
             container_payload = {
-                "text": post_content[:490], # Safety buffer for length
-                "access_token": access_token
+                "text": post_content[:490]
             }
 
             if index == 0 and video_url:
@@ -262,13 +262,16 @@ def upload_to_threads(video_url, thread_text, access_token):
             else:
                 container_payload["media_type"] = "TEXT"
                 if previous_post_id:
-                    # 🛡️ FIX 1: Strict String Cast for Meta Database
                     container_payload["reply_to_id"] = str(previous_post_id)
 
-            # Container Creation with basic retry
+            # 🚀 Token ko URL Query Parameter bana kar bhejenge
+            auth_params = {"access_token": access_token}
+
+            # Container Creation with JSON
             container_res = None
             for retry in range(3):
-                container_req = requests.post(f"{base_url}/{threads_user_id}/threads", data=container_payload, timeout=30)
+                # 🚀 Yahan 'data=' ki jagah 'json=' use kiya hai
+                container_req = requests.post(f"{base_url}/{threads_user_id}/threads", params=auth_params, json=container_payload, timeout=30)
                 try:
                     container_res = container_req.json()
                     if "error" not in container_res:
@@ -278,6 +281,39 @@ def upload_to_threads(video_url, thread_text, access_token):
                 
                 print(f"⚠️ Meta API choked on Container. Retrying {retry+1}/3 in 20s...")
                 time.sleep(20)
+                    
+            if not container_res or "error" in container_res:
+                err_msg = container_res.get('error', {}).get('message', 'Unknown') if container_res else container_req.text
+                return False, f"Threads Container Failed after 3 retries: {err_msg}"
+            
+            creation_id = container_res.get("id")
+
+            # Video Processing Status Polling (Same as before)
+            if index == 0 and video_url:
+                print(f"⏳ Waiting for Threads to encode video (ID: {creation_id})...")
+                status_url = f"{base_url}/{creation_id}?fields=status,error_message&access_token={access_token}"
+                # ... (tera polling wala loop same rahega) ...
+
+            # Publish
+            print(f"🚀 Publishing Thread part {index + 1}...")
+            publish_payload = {
+                "creation_id": creation_id
+            }
+            
+            publish_res = None
+            for retry in range(3):
+                # 🚀 Yahan bhi 'json=' use karenge
+                publish_req = requests.post(f"{base_url}/{threads_user_id}/threads_publish", params=auth_params, json=publish_payload, timeout=30)
+                try:
+                    publish_res = publish_req.json()
+                    if "error" not in publish_res:
+                        break
+                except Exception:
+                    pass
+                print(f"⚠️ Meta Publish choked. Retrying {retry+1}/3 in 20s...")
+                time.sleep(20)
+
+            # ... (uske neeche ka verification wala code same rahega) ...
                     
             if not container_res or "error" in container_res:
                 err_msg = container_res.get('error', {}).get('message', 'Unknown') if container_res else container_req.text
