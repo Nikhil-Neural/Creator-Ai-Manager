@@ -225,12 +225,12 @@ def upload_to_facebook(video_url, caption, user_access_token):
     except Exception as e:
         return False, f"Unexpected Facebook Logic Error: {str(e)}"
 
-# 🧵 MASTER THREADS ENGINE (Chain/Chreading Enabled)
-# 🧵 MASTER THREADS ENGINE (Chain/Chreading Enabled)
+
+# 🧵 MASTER THREADS ENGINE (Chain/Chreading Enabled) - FULLY CLEANED
 def upload_to_threads(video_url, thread_text, access_token):
     """
     Threads Graph API Integration for chained posts.
-    With Meta Sync Ping Verification to prevent 500 Server Crashes.
+    With Meta Sync Ping Verification & JSON Payload parsing.
     """
     base_url = "https://graph.threads.net/v1.0"
     
@@ -251,7 +251,7 @@ def upload_to_threads(video_url, thread_text, access_token):
         for index, post_content in enumerate(raw_posts):
             print(f"🧵 Building Thread part {index + 1}/{len(raw_posts)}...")
             
-            # 🛡️ THE JSON FIX: Payload mein ab access_token nahi bhejenge
+            # 🛡️ THE JSON FIX: Payload
             container_payload = {
                 "text": post_content[:490]
             }
@@ -264,13 +264,12 @@ def upload_to_threads(video_url, thread_text, access_token):
                 if previous_post_id:
                     container_payload["reply_to_id"] = str(previous_post_id)
 
-            # 🚀 Token ko URL Query Parameter bana kar bhejenge
+            # 🚀 Token URL Query Parameter
             auth_params = {"access_token": access_token}
 
             # Container Creation with JSON
             container_res = None
             for retry in range(3):
-                # 🚀 Yahan 'data=' ki jagah 'json=' use kiya hai
                 container_req = requests.post(f"{base_url}/{threads_user_id}/threads", params=auth_params, json=container_payload, timeout=30)
                 try:
                     container_res = container_req.json()
@@ -288,52 +287,20 @@ def upload_to_threads(video_url, thread_text, access_token):
             
             creation_id = container_res.get("id")
 
-            # Video Processing Status Polling (Same as before)
-            if index == 0 and video_url:
-                print(f"⏳ Waiting for Threads to encode video (ID: {creation_id})...")
-                status_url = f"{base_url}/{creation_id}?fields=status,error_message&access_token={access_token}"
-                # ... (tera polling wala loop same rahega) ...
-
-            # Publish
-            print(f"🚀 Publishing Thread part {index + 1}...")
-            publish_payload = {
-                "creation_id": creation_id
-            }
-            
-            publish_res = None
-            for retry in range(3):
-                # 🚀 Yahan bhi 'json=' use karenge
-                publish_req = requests.post(f"{base_url}/{threads_user_id}/threads_publish", params=auth_params, json=publish_payload, timeout=30)
-                try:
-                    publish_res = publish_req.json()
-                    if "error" not in publish_res:
-                        break
-                except Exception:
-                    pass
-                print(f"⚠️ Meta Publish choked. Retrying {retry+1}/3 in 20s...")
-                time.sleep(20)
-
-            # ... (uske neeche ka verification wala code same rahega) ...
-                    
-            if not container_res or "error" in container_res:
-                err_msg = container_res.get('error', {}).get('message', 'Unknown') if container_res else container_req.text
-                return False, f"Threads Container Failed after 3 retries: {err_msg}"
-            
-            creation_id = container_res.get("id")
-
             # Video Processing Status Polling
             if index == 0 and video_url:
                 print(f"⏳ Waiting for Threads to encode video (ID: {creation_id})...")
                 status_url = f"{base_url}/{creation_id}?fields=status,error_message&access_token={access_token}"
                 
                 is_finished = False
-                for attempt in range(20): # Increased attempts
+                for attempt in range(20): 
                     time.sleep(15)
                     status_res = requests.get(status_url, timeout=30).json()
                     status = status_res.get("status")
                     print(f"🔄 Threads Processing Status: {status} (Attempt {attempt+1}/20)")
                     
-                    if status == "FINISHED":
+                    # 🛡️ THE FIX: Accept both statuses
+                    if status in ["FINISHED", "PUBLISHED"]:
                         is_finished = True
                         break
                     elif status == "ERROR":
@@ -346,13 +313,12 @@ def upload_to_threads(video_url, thread_text, access_token):
             # Publish
             print(f"🚀 Publishing Thread part {index + 1}...")
             publish_payload = {
-                "creation_id": creation_id,
-                "access_token": access_token
+                "creation_id": creation_id
             }
             
             publish_res = None
             for retry in range(3):
-                publish_req = requests.post(f"{base_url}/{threads_user_id}/threads_publish", data=publish_payload, timeout=30)
+                publish_req = requests.post(f"{base_url}/{threads_user_id}/threads_publish", params=auth_params, json=publish_payload, timeout=30)
                 try:
                     publish_res = publish_req.json()
                     if "error" not in publish_res:
@@ -369,14 +335,14 @@ def upload_to_threads(video_url, thread_text, access_token):
             previous_post_id = publish_res.get("id")
             print(f"✅ Published Thread part {index+1}! Post ID: {previous_post_id}")
             
-            # 🛡️ THE MASTER FIX: PING VERIFICATION
+            # 🛡️ PING VERIFICATION
             if index < len(raw_posts) - 1:
                 print(f"📡 Pinging Meta global servers to verify Post {previous_post_id} is live before replying...")
                 verify_url = f"{base_url}/{previous_post_id}?fields=id&access_token={access_token}"
                 
                 is_live = False
-                for ping in range(6): # Try for up to 2 minutes
-                    time.sleep(20) # 20 second delay between pings
+                for ping in range(6): 
+                    time.sleep(20) 
                     verify_res = requests.get(verify_url, timeout=30).json()
                     
                     if "id" in verify_res:
