@@ -65,7 +65,7 @@ def get_threads_oauth_url():
 
     redirect_uri = "https://creator-ai-manager-tgrh5ifkgfqme6kdomcvxb.streamlit.app/" 
     
-    scopes = ["threads_basic", "threads_content_publish"]
+    scopes = ["threads_basic", "threads_content_publish", "threads_manage_replies"]
     scope_str = ",".join(scopes)
     
     state = create_global_state("thread")
