@@ -226,14 +226,37 @@ if "code" in st.query_params and "state" in st.query_params:
                     st.query_params.clear()
 
             # 💼 LINKEDIN
+            # 💼 LINKEDIN
             elif state_ticket.startswith("linkedin"):
-                supabase_admin.table("creator_profiles").update({
-                    "linkedin_token": auth_code
-                }).eq("creator_handle", user_email_from_db).execute()
+                st.info("🔄 Generating secure LinkedIn token...")
                 
-                st.session_state["li_connected"] = True
-                st.session_state["channels_synced"] = True
-                st.success("🎉 LinkedIn Profile Successfully Linked! 💼")
+                # 🚀 THE FIX: Exchanging the temporary Auth Code for a Real Access Token
+                token_url = "https://www.linkedin.com/oauth/v2/accessToken"
+                token_payload = {
+                    "grant_type": "authorization_code",
+                    "code": auth_code,
+                    "client_id": st.secrets["LINKEDIN_CLIENT_ID"],
+                    "client_secret": st.secrets["LINKEDIN_CLIENT_SECRET"],
+                    # 👇 Yeh Redirect URI wahi honi chahiye jo tumhare LinkedIn Developer console mein hai
+                    "redirect_uri": "https://creator-ai-manager-tgrh5ifkgfqme6kdomcvxb.streamlit.app/" 
+                }
+                
+                headers = {"Content-Type": "application/x-www-form-urlencoded"}
+                token_res = requests.post(token_url, data=token_payload, headers=headers).json()
+                
+                if "access_token" in token_res:
+                    real_linkedin_token = token_res["access_token"]
+                    
+                    supabase_admin.table("creator_profiles").update({
+                        "linkedin_token": real_linkedin_token
+                    }).eq("creator_handle", user_email_from_db).execute()
+                    
+                    st.session_state["li_connected"] = True
+                    st.session_state["channels_synced"] = True
+                    st.success("🎉 LinkedIn Profile Successfully Linked! 💼")
+                else:
+                    st.error(f"❌ LinkedIn Token Error: {token_res}")
+                    
                 st.query_params.clear()
 
             # 🧵 THREADS

@@ -360,6 +360,73 @@ def upload_to_threads(video_url, thread_text, access_token):
 
     except Exception as e:
         return False, f"Unexpected Threads Error: {str(e)}"
+def upload_to_linkedin(video_path, post_text, access_token):
+    """
+    LinkedIn 3-Step Video Upload & Publish Logic
+    """
+    headers = {
+        'Authorization': f'Bearer {access_token}',
+        'X-Restli-Protocol-Version': '2.0.0'
+    }
+    
+    try:
+        # STEP 1: Get User URN (Unique Profile ID)
+        me_response = requests.get('https://api.linkedin.com/v2/userinfo', headers={'Authorization': f'Bearer {access_token}'}).json()
+        if "sub" not in me_response:
+            return False, f"Auth Error: Could not fetch LinkedIn Profile. {me_response}"
+        
+        person_urn = f"urn:li:person:{me_response['sub']}"
+        print(f"💼 Authenticated LinkedIn User: {person_urn}")
+        
+        # STEP 2: Register Video Upload
+        print("📦 Registering video upload with LinkedIn servers...")
+        register_url = "https://api.linkedin.com/v2/assets?action=registerUpload"
+        register_payload = {
+            "registerUploadRequest": {
+                "recipes": ["urn:li:digitalmediaRecipe:feedshare-video"],
+                "owner": person_urn,
+                "serviceRelationships": [{"relationshipType": "OWNER", "identifier": "urn:li:userGeneratedContent"}]
+            }
+        }
+        
+        reg_res = requests.post(register_url, headers=headers, json=register_payload).json()
+        if "value" not in reg_res:
+            return False, f"Failed to register video: {reg_res}"
+            
+        upload_url = reg_res['value']['uploadMechanism']['com.linkedin.digitalmedia.uploading.MediaUploadHttpRequest']['uploadUrl']
+        asset_urn = reg_res['value']['asset']
+        
+        # STEP 3: Upload Binary Video Data
+        print(f"📤 Uploading video binary chunks to LinkedIn (Asset: {asset_urn})...")
+        with open(video_path, 'rb') as video_file:
+            upload_res = requests.post(upload_url, headers={'Authorization': f'Bearer {access_token}'}, data=video_file)
+            if upload_res.status_code not in [200, 201]:
+                return False, f"Video upload failed (Status {upload_res.status_code}): {upload_res.text}"
+                
+        # STEP 4: Publish the Final Post
+        print("🚀 Compiling and publishing LinkedIn Post...")
+        publish_url = "https://api.linkedin.com/v2/ugcPosts"
+        publish_payload = {
+            "author": person_urn,
+            "lifecycleState": "PUBLISHED",
+            "specificContent": {
+                "com.linkedin.ugc.ShareContent": {
+                    "shareCommentary": {"text": post_text},
+                    "shareMediaCategory": "VIDEO",
+                    "media": [{"status": "READY", "media": asset_urn}]
+                }
+            },
+            "visibility": {"com.linkedin.ugc.MemberNetworkVisibility": "PUBLIC"}
+        }
+        
+        pub_res = requests.post(publish_url, headers=headers, json=publish_payload).json()
+        if "id" in pub_res:
+            return True, f"LinkedIn post published successfully! Post ID: {pub_res['id']}"
+        else:
+            return False, f"Publish error: {pub_res}"
+
+    except Exception as e:
+        return False, f"Unexpected LinkedIn Error: {str(e)}"
 
 def process_queue():
     """Database check karta hai aur pending videos upload karta hai"""
@@ -492,6 +559,35 @@ def process_queue():
                     else:
                         print(f"❌ {msg}")
                         raise Exception(f"Threads Execution Failed: {msg}")
+
+            # --- LINKEDIN LOGIC ---
+            if "linkedin" in platforms:
+                print("💼 Starting LinkedIn sequence...")
+                profile_res = supabase.table("creator_profiles").select("linkedin_token").eq("creator_handle", creator_email).execute()
+                
+                if not profile_res.data or not profile_res.data[0].get("linkedin_token"):
+                    print(f"⚠️ Skipping LinkedIn: No valid token found for {creator_email}")
+                else:
+                    li_token = profile_res.data[0]["linkedin_token"]
+                    li_caption = meta.get("linkedin_post_text", "Powered by AI Creator OS 🚀")
+                    
+                    # LinkedIn requires a local file for binary upload, so we download it from Telegram temp storage
+                    with tempfile.NamedTemporaryFile(delete=False, suffix=".mp4") as temp_vid:
+                        r = requests.get(vid_url, stream=True, timeout=60)
+                        for chunk in r.iter_content(chunk_size=8192):
+                            temp_vid.write(chunk)
+                        temp_vid_path = temp_vid.name
+                    
+                    success, msg = upload_to_linkedin(temp_vid_path, li_caption, li_token)
+                    
+                    if os.path.exists(temp_vid_path):
+                        os.remove(temp_vid_path)
+                        
+                    if success:
+                        print(f"✅ {msg}")
+                    else:
+                        print(f"❌ {msg}")
+                        raise Exception(f"LinkedIn Execution Failed: {msg}")
 
             # Task successfully processed -> Remove from queue
             supabase.table("master_scheduler_queue").delete().eq("id", task["id"]).execute()
