@@ -84,8 +84,10 @@ def execute_twitter_thread(twitter_credentials, thread_text, video_url):
         print(error_msg)
         return False, error_msg
 
-def upload_to_youtube(video_path, title, description, user_refresh_token):
-    """YouTube API ke through actual video upload logic"""
+def upload_to_youtube(video_path, meta, user_refresh_token):
+    """
+    YouTube API v3 Upload Engine with Advanced Payload Controls.
+    """
     creds = Credentials(
         None,
         refresh_token=user_refresh_token, 
@@ -96,23 +98,40 @@ def upload_to_youtube(video_path, title, description, user_refresh_token):
     
     youtube = googleapiclient.discovery.build("youtube", "v3", credentials=creds)
     
+    # ⚙️ EXTRACTING ADVANCED METADATA
+    title = meta.get("video_title", "Creator OS Generated Video")
+    description = meta.get("youtube_description", "")
+    is_kids = meta.get("yt_is_kids", False) # False by default
+    show_likes = meta.get("yt_show_likes", True) # False hides likes
+    video_lang = meta.get("yt_language", "en-US") # Language Code
+    privacy = meta.get("yt_privacy", "private") # public, private, or unlisted
+    
     body = {
         "snippet": {
             "title": title,
             "description": description,
             "tags": ["Shorts", "AI", "CreatorOS"],
-            "categoryId": "28"
+            "categoryId": "28",
+            "defaultLanguage": video_lang,
+            "defaultAudioLanguage": video_lang
         },
         "status": {
-            "privacyStatus": "private", 
-            "selfDeclaredMadeForKids": False
+            "privacyStatus": privacy, 
+            "selfDeclaredMadeForKids": is_kids,
+            "publicStatsViewable": show_likes  # True = Show Likes, False = Hide Likes
         }
     }
     
     media = MediaFileUpload(video_path, chunksize=-1, resumable=True)
     request = youtube.videos().insert(part="snippet,status", body=body, media_body=media)
     response = request.execute()
-    return response.get("id")
+    video_id = response.get("id")
+    
+    # 🔗 GENERATE STUDIO REDIRECT LINK
+    studio_edit_link = f"https://studio.youtube.com/video/{video_id}/edit"
+    print(f"🎬 YouTube Studio Setup Link: {studio_edit_link}")
+    
+    return video_id
 
 def upload_to_instagram(video_url, caption, access_token):
     """Meta Graph API v20.0 integration for Instagram Reels."""
