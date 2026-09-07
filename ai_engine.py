@@ -28,10 +28,12 @@ def get_cluster_llm(provider="groq"):
         primary_key = GR_KEY_1 if GR_KEY_1 else GROQ_KEY
         fallback_key = GR_KEY_2 if GR_KEY_2 else primary_key
         try:
-            return LLM(model="groq/llama-3.3-70b-versatile", api_key=primary_key, timeout=30)
+            # 🟢 CHANGE 1: Updated to 3.1
+            return LLM(model="groq/llama-3.1-70b-versatile", api_key=primary_key, timeout=30)
         except Exception as e:
             print(f"[ROUTING ALERT] Groq Key 1 failed. Swapping to Groq Key 2. Error: {e}")
-            return LLM(model="groq/llama-3.3-70b-versatile", api_key=fallback_key, timeout=30)
+            # 🟢 CHANGE 2: Updated to 3.1
+            return LLM(model="groq/llama-3.1-70b-versatile", api_key=fallback_key, timeout=30)
     else:
         primary_key = G_KEY_1 if G_KEY_1 else GEMINI_KEY
         fallback_key = G_KEY_2 if G_KEY_2 else primary_key
