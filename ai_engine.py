@@ -102,7 +102,7 @@ def run_my_crew_ai_agents(niche_topic, social_platform, script_language, meta_la
 
     if not gemini_resolved:
         target_groq_key = GR_KEY_2 if GR_KEY_2 else (GR_KEY_1 if GR_KEY_1 else GROQ_KEY)
-        script_writing_llm = LLM(model="groq/llama-3.3-70b-versatile", api_key=target_groq_key, timeout=30)
+        script_writing_llm = LLM(model="groq/llama-3.1-70b-versatile", api_key=target_groq_key, timeout=30)
 
     trend_analyst = Agent(
         role="Viral Retention Strategist",
