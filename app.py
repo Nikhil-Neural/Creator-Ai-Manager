@@ -1082,6 +1082,7 @@ else:
                     with c2:
                         yt_kids_val = st.checkbox("Made for Kids?", value=False, key="yt_kids1")
                         yt_likes_val = st.checkbox("Show Likes to Viewers?", value=True, key="yt_likes1")
+                        st.info("💡 Note: YouTube API does not support uploading custom Thumbnails or 'Related Video' links for Shorts. Once our background engine publishes this video, please visit your YouTube Studio to add these final touches.")
                 
                 # 🐦 TWITTER INDEPENDENT NODE
                 with st.expander("🐦 X (Twitter) Thread"):
