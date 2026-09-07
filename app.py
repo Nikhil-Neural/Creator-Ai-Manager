@@ -226,7 +226,6 @@ if "code" in st.query_params and "state" in st.query_params:
                     st.query_params.clear()
 
             # 💼 LINKEDIN
-            # 💼 LINKEDIN
             elif state_ticket.startswith("linkedin"):
                 st.info("🔄 Generating secure LinkedIn token...")
                 
@@ -1029,6 +1028,11 @@ else:
         final_fb_post = "" # 🆕 Naya FB Variable
         final_th_post = ""
         final_li_post = ""
+        # New YT Variables
+        yt_privacy_val = "private"
+        yt_kids_val = False
+        yt_likes_val = True
+        yt_lang_val = "en-US"
         parsed_data = {}
 
         # Option 1: Vault Data (The Bridge with Smart Parser)
@@ -1054,7 +1058,7 @@ else:
                 bp_list = ["(Select a Blueprint)"] + list(blueprint_options.keys())
                 
                 # 📺 YOUTUBE INDEPENDENT NODE
-                with st.expander("📺 YouTube Metadata", expanded=True):
+                with st.expander("📺 YouTube Metadata & Settings", expanded=True):
                     yt_selection = st.selectbox("📂 Load blueprint for YouTube:", bp_list, key="yt_bp_select")
                     yt_parsed = {}
                     
@@ -1067,9 +1071,17 @@ else:
                         if chosen_hook != "(Use Default Parsed Title)":
                             default_title = chosen_hook
                             
-                    # 🔓 Text boxes hamesha open rahenge (Direct Typing Enabled)
                     final_yt_title = st.text_input("YouTube Title", value=default_title)
                     final_yt_desc = st.text_area("YouTube Description", value=yt_parsed.get("yt_desc", ""), height=150)
+                    
+                    st.markdown("##### ⚙️ Advanced YouTube Settings")
+                    c1, c2 = st.columns(2)
+                    with c1:
+                        yt_privacy_val = st.selectbox("Visibility", ["public", "private", "unlisted"], index=1, key="yt_priv1")
+                        yt_lang_val = st.selectbox("Language", ["en-US", "hi-IN", "en-GB"], index=0, key="yt_lang1")
+                    with c2:
+                        yt_kids_val = st.checkbox("Made for Kids?", value=False, key="yt_kids1")
+                        yt_likes_val = st.checkbox("Show Likes to Viewers?", value=True, key="yt_likes1")
                 
                 # 🐦 TWITTER INDEPENDENT NODE
                 with st.expander("🐦 X (Twitter) Thread"):
@@ -1322,10 +1334,14 @@ else:
                             metadata_payload = {
                                 "video_title": final_yt_title if final_yt_title else uploaded_video.name,
                                 "youtube_description": final_yt_desc if final_yt_desc else "",
+                                "yt_privacy": yt_privacy_val,
+                                "yt_is_kids": yt_kids_val,
+                                "yt_show_likes": yt_likes_val,
+                                "yt_language": yt_lang_val,
                                 "twitter_thread_text": final_tw_thread if final_tw_thread else "",
                                 "instagram_caption": final_ig_cap if final_ig_cap else "",
-                                "facebook_post_text": final_fb_post if final_fb_post else "", # 🆕 FB added here
-                                "threads_content": final_th_post if final_th_post else "", # 🛠️ Fixed name here
+                                "facebook_post_text": final_fb_post if final_fb_post else "", 
+                                "threads_content": final_th_post if final_th_post else "", 
                                 "linkedin_post_text": final_li_post if final_li_post else ""
                             }
                             
