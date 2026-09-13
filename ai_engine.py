@@ -29,11 +29,11 @@ def get_cluster_llm(provider="groq"):
         fallback_key = GR_KEY_2 if GR_KEY_2 else primary_key
         try:
             # 🟢 CHANGE 1: Updated to 3.1
-            return LLM(model="groq/llama-3.1-8b-instant", api_key=primary_key, timeout=30)
+            return LLM(model="groq/llama3-8b-8192", api_key=primary_key, timeout=30)
         except Exception as e:
             print(f"[ROUTING ALERT] Groq Key 1 failed. Swapping to Groq Key 2. Error: {e}")
             # 🟢 CHANGE 2: Updated to 3.1
-            return LLM(model="groq/llama-3.1-8b-instant", api_key=fallback_key, timeout=30)
+            return LLM(model="groq/llama3-8b-8192", api_key=fallback_key, timeout=30)
     else:
         primary_key = G_KEY_1 if G_KEY_1 else GEMINI_KEY
         fallback_key = G_KEY_2 if G_KEY_2 else primary_key
@@ -102,7 +102,7 @@ def run_my_crew_ai_agents(niche_topic, social_platform, script_language, meta_la
 
     if not gemini_resolved:
         target_groq_key = GR_KEY_2 if GR_KEY_2 else (GR_KEY_1 if GR_KEY_1 else GROQ_KEY)
-        script_writing_llm = LLM(model="groq/llama-3.1-8b-instant", api_key=target_groq_key, timeout=30)
+        script_writing_llm = LLM(model="groq/llama3-8b-8192", api_key=target_groq_key, timeout=30)
 
     trend_analyst = Agent(
         role="Viral Retention Strategist",
