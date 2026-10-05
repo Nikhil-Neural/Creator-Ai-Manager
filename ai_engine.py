@@ -5,43 +5,19 @@ import requests
 import time
 from crewai import Agent, Task, Crew, LLM
 
-# ── API Keys & TRIPLE-LAYER FAILPROOF LLM RESOLVER MATRIX ──
-G_KEY_1 = st.secrets.get("GEMINI_API_KEY_1", "")
-G_KEY_2 = st.secrets.get("GEMINI_API_KEY_2", "")
-GR_KEY_1 = st.secrets.get("GROQ_API_KEY_1", "")
-GR_KEY_2 = st.secrets.get("GROQ_API_KEY_2", "")
+# ── SINGLE PAID API KEY SETUP ──
+GEMINI_KEY = st.secrets.get("GEMINI_API_KEY", "")
 S_KEY_1 = st.secrets.get("SERPER_API_KEY_1", "")
 S_KEY_2 = st.secrets.get("SERPER_API_KEY_2", "")
 
-GEMINI_KEY = G_KEY_1 if G_KEY_1 else st.secrets.get("GEMINI_API_KEY", "")
-GROQ_KEY   = GR_KEY_1 if GR_KEY_1 else st.secrets.get("GROQ_API_KEY", "")
 SERPER_KEY = S_KEY_1 if S_KEY_1 else st.secrets.get("SERPER_API_KEY", "")
 
 from crewai_tools import SerperDevTool
 search_tool = SerperDevTool(api_key=SERPER_KEY) if SERPER_KEY else None
 
-if not G_KEY_1 and not GR_KEY_1 and not GEMINI_KEY and not GROQ_KEY:
-    st.sidebar.error("⚠️ Control Panel Matrix Empty: Keys Missing!")
+if not GEMINI_KEY:
+    st.sidebar.error("⚠️ Control Panel Matrix Empty: Gemini API Key Missing!")
 
-def get_cluster_llm(provider="groq"):
-    if provider == "groq":
-        primary_key = GR_KEY_1 if GR_KEY_1 else GROQ_KEY
-        fallback_key = GR_KEY_2 if GR_KEY_2 else primary_key
-        try:
-            # 🟢 CHANGE 1: Updated to 3.1
-            return LLM(model="groq/llama3-8b-8192", api_key=primary_key, timeout=30)
-        except Exception as e:
-            print(f"[ROUTING ALERT] Groq Key 1 failed. Swapping to Groq Key 2. Error: {e}")
-            # 🟢 CHANGE 2: Updated to 3.1
-            return LLM(model="groq/llama3-8b-8192", api_key=fallback_key, timeout=30)
-    else:
-        primary_key = G_KEY_1 if G_KEY_1 else GEMINI_KEY
-        fallback_key = G_KEY_2 if G_KEY_2 else primary_key
-        try:
-            return LLM(model="gemini/gemini-2.5-flash", api_key=primary_key, timeout=30)
-        except Exception as e:
-            print(f"[ROUTING ALERT] Gemini Key 1 failed. Swapping to Gemini Key 2. Error: {e}")
-            return LLM(model="gemini/gemini-2.5-flash", api_key=fallback_key, timeout=30)
 
 def fetch_live_trends(niche_topic):
     if not SERPER_KEY:
@@ -65,44 +41,18 @@ def fetch_live_trends(niche_topic):
         print(f"[RADAR ERROR] Blueprint link extraction failed: {str(e)}")
         return []
 
-def run_my_crew_ai_agents(niche_topic, social_platform, script_language, meta_langs, video_duration, app_mode, user_pasted_script, selected_bundle_options):    # ⏱️ SHORTS MATHS: Direct seconds, aur approx 2.5 words per second (150 words/min)
+def run_my_crew_ai_agents(niche_topic, social_platform, script_language, meta_langs, video_duration, app_mode, user_pasted_script, selected_bundle_options):
+    # ⏱️ SHORTS MATHS: Direct seconds, aur approx 2.5 words per second (150 words/min)
     target_seconds = int(video_duration)
     target_words = int((video_duration / 60) * 150)
     
-    groq_cluster_llm = get_cluster_llm(provider="groq")
-    script_writing_llm = None
-    gemini_resolved = False
-    
-    if G_KEY_1 or GEMINI_KEY:
-        k1 = G_KEY_1 if G_KEY_1 else GEMINI_KEY
-        for attempt in range(1, 3):
-            try:
-                test_llm = LLM(model="gemini/gemini-2.5-flash", api_key=k1, timeout=15)
-                test_llm.call(messages=[{"role": "user", "content": "ping"}])
-                script_writing_llm = test_llm
-                gemini_resolved = True
-                print(f"[MATRIX SUCCESS] Gemini Key 1 working flawlessly on attempt {attempt}.")
-                time.sleep(15)
-                break
-            except Exception as e:
-                print(f"[MATRIX WARNING] Gemini Key 1 attempt {attempt} failed with error: {e}. Cooling down...")
-                time.sleep(15)
-                
-    if not gemini_resolved and G_KEY_2:
-        for attempt in range(1, 3):
-            try:
-                test_llm = LLM(model="gemini/gemini-2.5-flash", api_key=G_KEY_2, timeout=15)
-                test_llm.call(messages=[{"role": "user", "content": "ping"}])
-                script_writing_llm = test_llm
-                gemini_resolved = True
-                time.sleep(15)
-                break
-            except Exception as e:
-                time.sleep(15)
-
-    if not gemini_resolved:
-        target_groq_key = GR_KEY_2 if GR_KEY_2 else (GR_KEY_1 if GR_KEY_1 else GROQ_KEY)
-        script_writing_llm = LLM(model="groq/llama3-8b-8192", api_key=target_groq_key, timeout=30)
+    # ── PRODUCTION LLM ENGINE ──
+    production_llm = LLM(
+        model="gemini/gemini-2.5-flash", 
+        api_key=GEMINI_KEY, 
+        temperature=0.7,
+        timeout=60
+    )
 
     trend_analyst = Agent(
         role="Viral Retention Strategist",
@@ -110,7 +60,7 @@ def run_my_crew_ai_agents(niche_topic, social_platform, script_language, meta_la
         backstory="""You are a top-tier YouTube Shorts & Reels strategist who has analyzed 10,000+ viral videos. 
         You don't just look for 'topics', you look for 'Dopamine Hits', 'Curiosity Gaps', and 'Pattern Interrupts'. 
         You know exactly why a user stops scrolling in the first 3 seconds.""",
-        llm=groq_cluster_llm, max_iter=1, max_rpm=5, verbose=True, allow_delegation=False, memory=False
+        llm=production_llm, max_iter=1, max_rpm=10, verbose=True, allow_delegation=False, memory=False
     )
 
     script_writer = Agent(
@@ -124,7 +74,7 @@ def run_my_crew_ai_agents(niche_topic, social_platform, script_language, meta_la
         ALWAYS write like this (human): "Itni lambi memory honi chahiye AI ko ki purani baatein bhool na jaaye."
         
         BANNED WORDS: Delve, Unleash, Tapestry, In today's digital landscape, Buckle up, Crucial, Imperative, Furthermore, Moreover, In conclusion, Testament.""",
-        llm=script_writing_llm, max_iter=1, max_rpm=5, verbose=True, allow_delegation=False, memory=False
+        llm=production_llm, max_iter=1, max_rpm=10, verbose=True, allow_delegation=False, memory=False
     )
 
     copy_maestro = Agent(
@@ -134,7 +84,7 @@ def run_my_crew_ai_agents(niche_topic, social_platform, script_language, meta_la
         You use psychological triggers, extreme curiosity, and sharp sarcasm. 
         You NEVER use cringey emojis or robotic corporate speak like 'In today's fast-paced world'. 
         Your goal is to force the user to click '...more' or jump into the comments section.""",
-        llm=groq_cluster_llm, max_iter=1, max_rpm=5, verbose=True, allow_delegation=False, memory=False
+        llm=production_llm, max_iter=1, max_rpm=10, verbose=True, allow_delegation=False, memory=False
     )
 
     tasks_pipeline = []
@@ -301,25 +251,16 @@ def run_my_crew_ai_agents(niche_topic, social_platform, script_language, meta_la
     
     master_crew = Crew(agents=[trend_analyst, script_writer, copy_maestro], tasks=tasks_pipeline, verbose=True, process='sequential')
         
-    # 🛡️ THE MID-AIR PARACHUTE SYSTEM
     try:
         master_crew.kickoff()
     except Exception as crew_error:
-        print(f"🚨 [ENGINE CRASH] Primary LLM failed mid-generation: {crew_error}")
-        print("🔄 Deploying GROQ Parachute Engine...")
-            
-        # 1. Force swap the failed agent's brain to Groq
-        script_writer.llm = groq_cluster_llm
-            
-        # 2. Restart the Crew with the new engine
-        master_crew = Crew(agents=[trend_analyst, script_writer, copy_maestro], tasks=tasks_pipeline, verbose=True, process='sequential')
-        master_crew.kickoff()
+        print(f"🚨 [ENGINE ERROR] Pipeline failed: {crew_error}")
+        return f"Error generating content. Please check logs. Details: {crew_error}"
         
     compiled_final_output = "### 🕵️ EXPERT TREND RESEARCH ANALYSIS\n" + str(research_task.output.raw if hasattr(research_task, 'output') and research_task.output else "") + "\n\n"
     if script_task and script_task.output:
-
-        
         compiled_final_output += "### 🎬 PREMIUM AUDIO/VISUAL RETENTION SCRIPT\n" + str(script_task.output.raw) + "\n\n"
     if distribution_task and distribution_task.output:
         compiled_final_output += "### 📱 DISTRIBUTION MICRO-ASSETS PACKAGE\n" + str(distribution_task.output.raw) + "\n\n"     
+    
     return compiled_final_output
