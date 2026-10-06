@@ -715,7 +715,7 @@ if current_os_mode == "✍️ AI Script Generator":
                         st.success(li_data.replace('\n', '  \n')) 
                         
                     if tw_data:
-                        st.markdown("### ⬛ X (Twitter) Thread")
+                        st.markdown("### ⬛ X (Twitter)")
                         st.warning(tw_data.replace('\n', '  \n')) 
                         
                     if not any([yt_data, ig_data, li_data, tw_data]):
@@ -1154,7 +1154,7 @@ else:
                         st.info("💡 Note: YouTube API does not support uploading custom Thumbnails or 'Related Video' links for Shorts. Once our background engine publishes this video, please visit your YouTube Studio to add these final touches.")
                 
                 # 🐦 TWITTER INDEPENDENT NODE
-                with st.expander("🐦 X (Twitter) Thread"):
+                with st.expander("🐦 X (Twitter)"):
                     tw_selection = st.selectbox("📂 Load blueprint for Twitter:", bp_list, key="tw_bp_select")
                     tw_parsed = {}
                     
@@ -1172,6 +1172,8 @@ else:
                         ig_parsed = parse_blueprint_metadata(blueprint_options[ig_selection]['script_content'])
                         
                     final_ig_cap = st.text_area("Instagram Caption", value=ig_parsed.get("ig_caption", ""), height=100)
+                    # 💡 Naya IG Tip
+                    st.caption("⚠️ **IG Pro Tip:** AI ne aapko 3 variations diye hain. Schedule karne se pehle box mein se apni pasand ka 1 option rakh kar baaki 2 delete kar lein.")
 
                 # 📘 FACEBOOK INDEPENDENT NODE (🆕 Naya Section)
                 with st.expander("📘 Facebook Post"):
@@ -1184,6 +1186,8 @@ else:
                     # Hack: Agar fb_post nahi mila, toh default Insta wala caption utha lega
                     default_fb = fb_parsed.get("fb_post", ig_parsed.get("ig_caption", "")) if fb_selection != "(Select a Blueprint)" else ""
                     final_fb_post = st.text_area("Facebook Post Text", value=default_fb, height=100)
+                    # 💡 Naya IG Tip
+                    st.caption("⚠️ **FB Pro Tip:** AI ne aapko 3 variations diye hain. Schedule karne se pehle box mein se apni pasand ka 1 option rakh kar baaki 2 delete kar lein.")
 
                 # 💼 LINKEDIN INDEPENDENT NODE
                 with st.expander("💼 LinkedIn Post"):
@@ -1211,7 +1215,7 @@ else:
             with st.expander("📺 YouTube Metadata", expanded=True):
                 final_yt_title = st.text_input("YouTube Title", key="man_yt_title")
                 final_yt_desc = st.text_area("YouTube Description", key="man_yt_desc")
-            with st.expander("🐦 X (Twitter) Thread"):
+            with st.expander("🐦 X (Twitter)"):
                 final_tw_thread = st.text_area("Tweet 1 (Video attached here)", key="man_tw_1")
             with st.expander("📸 Instagram Caption"):
                 final_ig_cap = st.text_area("Reel Caption", key="man_ig_cap")
