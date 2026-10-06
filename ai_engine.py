@@ -45,7 +45,7 @@ def run_my_crew_ai_agents(niche_topic, social_platform, script_language, meta_la
     
     # ── PRODUCTION LLM ENGINE ──
     production_llm = LLM(
-        model="gemini/gemini-2.5-flash", 
+        model="gemini/gemini-3.8-flash", 
         api_key=GEMINI_KEY, 
         temperature=0.7,
         timeout=60
