@@ -7,10 +7,7 @@ from crewai import Agent, Task, Crew, LLM
 
 # ── SINGLE PAID API KEY SETUP ──
 GEMINI_KEY = st.secrets.get("GEMINI_API_KEY", "")
-S_KEY_1 = st.secrets.get("SERPER_API_KEY_1", "")
-S_KEY_2 = st.secrets.get("SERPER_API_KEY_2", "")
-
-SERPER_KEY = S_KEY_1 if S_KEY_1 else st.secrets.get("SERPER_API_KEY", "")
+SERPER_KEY = st.secrets.get("SERPER_API_KEY", "")
 
 from crewai_tools import SerperDevTool
 search_tool = SerperDevTool(api_key=SERPER_KEY) if SERPER_KEY else None
