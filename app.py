@@ -415,7 +415,7 @@ with st.sidebar:
         default="✍️ AI Script Generator"
     )
     st.write("---")
-    st.caption("Architecture Framework: CrewAI + Gemini + Groq Matrix")
+    st.caption("Architecture Framework: CrewAI + Gemini Matrix")
 # ── Main Content Gateway Router ──────────────────────────
 def save_platform_token(platform_column_name, auth_code):
     current_user = st.session_state.get("user_email") # 👈 FIXED: Swapped handle to explicit user_email session key
