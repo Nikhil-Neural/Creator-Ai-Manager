@@ -2,7 +2,6 @@ streamlit
 crewai[google-genai]
 crewai[litellm]
 litellm
-groq
 python-dotenv
 python-docx
 crewai-tools
