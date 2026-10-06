@@ -655,58 +655,51 @@ if current_os_mode == "✍️ AI Script Generator":
                     st.error(f"Engine Error: {str(e)}")
 
     with tab2:
-        st.header("📥 Generated Content Dashboard")
-
-    if "script_data" in st.session_state and st.session_state["script_data"]:
-        final_output = str(st.session_state["script_data"])
-    
-        # 1. Text ko 3 hisso mein split karna
-        parts = final_output.split("### ")
-        research_text, script_text, social_text = "", "", ""
-    
-        for part in parts:
-            if "EXPERT TREND RESEARCH" in part:
-                research_text = part.replace("🕵️ EXPERT TREND RESEARCH ANALYSIS\n", "").strip()
-            elif "PREMIUM AUDIO/VISUAL" in part:
-                script_text = part.replace("🎬 PREMIUM AUDIO/VISUAL RETENTION SCRIPT\n", "").strip()
-            elif "DISTRIBUTION MICRO-ASSETS" in part:
-                social_text = part.replace("📱 DISTRIBUTION MICRO-ASSETS PACKAGE\n", "").strip()
-    
-        # 2. Tabs display karna
-        tab_res, tab_scr, tab_soc = st.tabs(["🕵️ Trend Research", "🎬 Video Script", "📱 Social Media Assets"])
+        st.header("📥 Download Generated Content")
         
-        with tab_res:
-            if research_text: 
-                st.markdown(research_text)
-            else: 
-                st.info("Research skip kar di gayi thi.")
+        if "script_data" in st.session_state and st.session_state["script_data"]:
+            final_output = str(st.session_state["script_data"])
+            
+            # POINT 1: UI Layout Restoration (Sab kuch tab2 ke andar nested hai)
+            st.info("💡 Tip: Read your output below or scroll down to download the files.")
+            
+            # Nested tabs takii tumhara main app layout kharab na ho
+            sub_tab1, sub_tab2, sub_tab3 = st.tabs(["🕵️ Trend Research", "🎬 Video Script", "📱 Social Media Assets"])
+            
+            # Basic split (Sirf display ke liye, no strict parsing yet)
+            parts = final_output.split("### ")
+            research_text, script_text, social_text = "", "", ""
+            
+            for part in parts:
+                if "EXPERT TREND RESEARCH" in part:
+                    research_text = "### " + part.strip()
+                elif "PREMIUM AUDIO/VISUAL" in part:
+                    script_text = "### " + part.strip()
+                elif "DISTRIBUTION MICRO-ASSETS" in part:
+                    social_text = "### " + part.strip()
+            
+            # POINT 3: Markdown Formatting Clean-up
+            # .replace('\n', '  \n') ensure karta hai ki line breaks properly render hon aur text chipke nahi.
+            with sub_tab1:
+                st.markdown(research_text.replace('\n', '  \n') if research_text else "No research data.")
+            with sub_tab2:
+                st.markdown(script_text.replace('\n', '  \n') if script_text else "No script data.")
+            with sub_tab3:
+                st.markdown(social_text.replace('\n', '  \n') if social_text else "No social media data.")
                 
-        with tab_scr:
-            if script_text: 
-                st.markdown(script_text)
-                st.caption("💡 Tip: Mouse hover karke top-right corner se 1-click copy karein.")
-            else: 
-                st.info("Script generate nahi hui.")
+            st.write("---")
+            
+            # Original Download Buttons
+            safe_name = st.session_state.get('niche_data', 'blueprint').replace(" ", "_")[:30]
+            
+            c1, c2 = st.columns(2)
+            with c1: 
+                st.download_button("📥 Notepad (.txt)", final_output, file_name=f"{safe_name}.txt", use_container_width=True)
+            with c2: 
+                st.download_button("📥 Word Doc (.docx)", create_word_doc(final_output, "Omnichannel", st.session_state.get("niche_data", "File")), file_name=f"{safe_name}.docx", use_container_width=True)
                 
-        with tab_soc:
-            if social_text: 
-                st.markdown(social_text)
-            else: 
-                st.info("Social media assets select nahi kiye gaye the.")
-
-        st.write("---")
-        
-        # 3. Download Buttons (Poora compiled text download karne ke liye)
-        safe_name = st.session_state.get('niche_data', 'blueprint').replace(" ", "_")[:30]
-        
-        c1, c2 = st.columns(2)
-        with c1: 
-            st.download_button("📥 Notepad (.txt)", final_output, file_name=f"{safe_name}.txt", use_container_width=True)
-        with c2: 
-            st.download_button("📥 Word Doc (.docx)", create_word_doc(final_output, "Omnichannel", st.session_state.get("niche_data", "File")), file_name=f"{safe_name}.docx", use_container_width=True)
-        
-    else: 
-        st.warning("⚠️ No data compiled yet. Run AI Engine first.")
+        else: 
+            st.warning("⚠️ No data compiled yet. Run AI Engine first.")
     with tab3:
         st.header("📂 My Saved Blueprints Vault")
         st.markdown("Access all your previously generated high-retention scripts and metadata here.")
