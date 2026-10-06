@@ -685,7 +685,43 @@ if current_os_mode == "✍️ AI Script Generator":
             with sub_tab2:
                 st.markdown(script_text.replace('\n', '  \n') if script_text else "No script data.")
             with sub_tab3:
-                st.markdown(social_text.replace('\n', '  \n') if social_text else "No social media data.")
+                if social_text:
+                    # 1. Normalize headings (taaki agar AI ne bold kiya ho toh wo theek ho jaye)
+                    normalized_text = social_text.replace("**", "")
+                    
+                    # 2. Strict Regex Logic to extract platform-specific text
+                    youtube_match = re.search(r'(Title:.*?)(?=Instagram Caption:|LinkedIn Post:|Twitter Thread:|$)', normalized_text, re.DOTALL | re.IGNORECASE)
+                    ig_match = re.search(r'Instagram Caption:(.*?)(?=LinkedIn Post:|Twitter Thread:|$)', normalized_text, re.DOTALL | re.IGNORECASE)
+                    li_match = re.search(r'LinkedIn Post:(.*?)(?=Twitter Thread:|$)', normalized_text, re.DOTALL | re.IGNORECASE)
+                    tw_match = re.search(r'Twitter Thread:(.*?)$', normalized_text, re.DOTALL | re.IGNORECASE)
+                    
+                    # 3. Clean and isolate data
+                    yt_data = youtube_match.group(1).strip() if youtube_match else ""
+                    ig_data = ig_match.group(1).strip() if ig_match else ""
+                    li_data = li_match.group(1).strip() if li_match else ""
+                    tw_data = tw_match.group(1).strip() if tw_match else ""
+                    
+                    # 4. Render exact UI Boxes
+                    if yt_data:
+                        st.markdown("### 🟥 YouTube SEO")
+                        st.error(yt_data.replace('\n', '  \n'))  
+                    
+                    if ig_data:
+                        st.markdown("### 🟪 Instagram & Facebook")
+                        st.info(ig_data.replace('\n', '  \n'))   
+                        
+                    if li_data:
+                        st.markdown("### 🟦 LinkedIn B2B")
+                        st.success(li_data.replace('\n', '  \n')) 
+                        
+                    if tw_data:
+                        st.markdown("### ⬛ X (Twitter) Thread")
+                        st.warning(tw_data.replace('\n', '  \n')) 
+                        
+                    if not any([yt_data, ig_data, li_data, tw_data]):
+                        st.markdown(social_text.replace('\n', '  \n')) # Fallback
+                else:
+                    st.info("No social media data generated.")
                 
             st.write("---")
             
