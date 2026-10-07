@@ -47,38 +47,51 @@ def run_my_crew_ai_agents(niche_topic, social_platform, script_language, meta_la
     production_llm = LLM(
         model="gemini/gemini-3.8-flash", 
         api_key=GEMINI_KEY, 
-        temperature=0.6, # Thoda kam kiya taaki hallucination ruke
+        temperature=0.6, 
         timeout=60
     )
 
     trend_analyst = Agent(
         role="Content Research & Verification Specialist",
         goal=f"Extract high-signal facts and credible retention triggers for '{niche_topic}' on {social_platform}. Accuracy > Virality.",
-        backstory="""You are a top-tier researcher and content strategist. You prioritize primary sources and factual accuracy over extreme clickbait. 
+        backstory="""You are a top-tier researcher. You prioritize primary sources and factual accuracy over extreme clickbait. 
         NEVER invent statistics, dates, percentages, or product capabilities. 
-        Distinguish between verified facts, reasonable inferences, and speculation. 
-        Your goal is to find what is genuinely interesting about a topic without manufacturing fake hype, rivalry, or claiming something is 'dead' or 'obsolete'.""",
+        Distinguish between verified facts, reasonable inferences, and speculation.
+        Do not pass unsupported claims, invented benchmarks, or unverified authority statements into downstream context as facts. 
+        CRITICAL: You must explicitly label your findings before passing them downstream. Use these exact labels:
+        [VERIFIED]: For hard facts.
+        [INFERENCE]: For logical deductions.
+        [UNVERIFIED / DO NOT USE AS FACT]: For uncertain or unsupported claims.""",
         llm=production_llm, max_iter=1, max_rpm=10, verbose=True, allow_delegation=False, memory=False
     )
 
+    # 🔥 SCRIPT WRITER UPDATED WITH CONTEXT BOUNDING
     script_writer = Agent(
-        role="Premium Video Scriptwriter",
-        goal="Write a high-retention, factually accurate video script in a timestamped 3-column production format.",
-        backstory="""You are an experienced video scriptwriter who understands how real creators speak naturally on camera. 
-        Use natural spoken transitions only when they genuinely improve flow. 
-        AVOID repetitive AI-copy patterns like "Look,", "Here's the thing,", "Honestly,", or "The crazy part is."
-        The framework serves the story; the story does not serve the framework. Never sacrifice factual accuracy for a stronger hook. 
-        Mix short punchy sentences with explanatory ones, and never use corporate jargon.""",
+        role="Premium Video Scriptwriter & QA Auditor",
+        goal="Write a high-retention, nuanced, and factually bulletproof video script.",
+        backstory="""You are an elite video scriptwriter. 
+        CRITICAL QA RULES YOU MUST STRICTLY FOLLOW:
+        1. NO UNSUPPORTED NUMBERS: Never invent numeric benchmarks (e.g., '70% retention', '3x growth') unless explicitly verified in the research context provided to you.
+        2. AUTHORITY CHECKS: Never attribute a claim to company leads, engineers, or official sources unless a specific source is present in the research context. If no source is available, either omit the attribution or use only a claim that is explicitly supported by the [VERIFIED] research findings.
+        3. NO DETERMINISTIC ALGORITHM CLAIMS: Never say "the algorithm freezes impressions." Use the nuanced reality: "this can weaken organic performance."
+        4. AVOID BINARY CONCLUSIONS: Do not force absolute "X is bad, Y is good" narratives. Find the nuanced insight (e.g., "Frequency isn't the enemy, sacrificing quality is").
+        5. EVIDENCE BOUNDARY: Treat [VERIFIED] findings as factual source material. Treat [INFERENCE] only as interpretation, never as established fact. Never use [UNVERIFIED / DO NOT USE AS FACT] content in the script.
+        Avoid repetitive transitions like 'Look,' or 'Honestly,'. The framework serves the story.""",
         llm=production_llm, max_iter=1, max_rpm=10, verbose=True, allow_delegation=False, memory=False
     )
 
     copy_maestro = Agent(
         role="Platform-Native Conversion Copywriter",
-        goal="Convert concepts into high-signal, platform-optimized social media assets without fake urgency.",
+        goal="Convert concepts into high-signal, platform-optimized social media assets without fake urgency or repetition.",
         backstory="""You are a conversion-aware social media strategist. 
-        You create attention-efficient copy that drives genuine curiosity. 
-        You NEVER use absolute claims (e.g., "zero latency", "100% accurate", "completely replaces") unless explicitly supported by facts. 
-        You adapt perfectly to the specific platform's native behavior without using cheap rage-bait, cringe emojis, or robotic corporate babble.""",
+        CRITICAL QA RULES:
+        1. Never invent statistics, unsupported numbers, or fake authority claims.
+        2. DO NOT repeat the exact same thesis across all platforms. Adapt the core insight dynamically:
+           - YouTube: Focus on Search/Curiosity.
+           - Instagram: Focus on Relatable Creator/User Pain.
+           - LinkedIn: Focus on Productivity/Business Insight (No corporate jargon).
+           - Twitter/X: Focus on Strong Opinion and Discussion.
+        3. Never use cheap rage-bait or absolute deterministic claims.""",
         llm=production_llm, max_iter=1, max_rpm=10, verbose=True, allow_delegation=False, memory=False
     )
 
