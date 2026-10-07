@@ -497,35 +497,39 @@ if current_os_mode == "✍️ AI Script Generator":
         app_mode = st.radio("🔮 Kis Mode me kaam karna hai?", ["🚀 Complete Blueprint Mode", "✍️ Repurpose My Script Mode"], horizontal=True)
         st.write("---")
         
-        # 1. Blueprint Arrays (The 10 Hooks, 4 Bodies, 4 CTAs)
+        # 1. Premium Blueprint Arrays (Optimized via AI Audit)
         HOOK_OPTIONS = [
             "Select a Hook...",
-            "The Negative Warning (Stop doing X. It's destroying Y)",
-            "The Curiosity Gap (The real reason why X, and nobody is talking about it)",
-            "The Contrarian (Myth Buster - X is a complete lie)",
-            "The Secret Tool Drop (This secret feels illegal to know)",
-            "The Bold Claim (This simple shift will change X forever)",
-            "The 'How-To' Tease (How to achieve X in short time)",
-            "The Mind-Reader (You are probably struggling with X...)",
-            "The Shocking Statistic (99% fail because of this...)",
-            "The Visual Anchor (Direct bizarre statement matching B-Roll)",
-            "The 'Us vs. Them' (Why A is losing, while B takes over)"
+            "The Curiosity Gap (There's one part of X that most people overlook...)",
+            "The Bold Insight (The biggest change isn't X. It's Y.)",
+            "The Warning / Mistake (This common mistake can completely change the outcome)",
+            "The Contrarian / Myth-Buster (The popular explanation isn't quite the full story)",
+            "The Relatable Problem (If you've ever struggled with X, this matters)",
+            "The How-To Tease (Here's how to do X without Y)",
+            "The Data Hook (Start with a verified statistic, benchmark, or fact)",
+            "The Visual Hook (What you're looking at is actually...)",
+            "The Hidden Detail (Most people noticed X. But this smaller detail matters more)",
+            "The Comparison (X and Y are solving the same problem in completely different ways)"
         ]
 
         BODY_OPTIONS = [
             "Select a Body Framework...",
-            "The Step-by-Step Blueprint (Highly logical, Step 1, 2, 3)",
-            "The Case Study (Real-world success story or trend breakdown)",
-            "The Problem-Agitate-Solve (PAS - Pain, Agitate, Solution)",
-            "Rapid Fire Facts (High-density, fast-paced bullet points)"
+            "The Explainer (What is it -> How it works -> Why it matters - Best for Tech/AI)",
+            "The Step-by-Step Blueprint (Highly logical, Step 1, 2, 3 - Best for Tutorials)",
+            "The Story Arc (Setup -> Conflict -> Turning Point -> Resolution - Best for History/Mythology)",
+            "The Case Study / Real Example (Real-world breakdown - Best for Business/Trends)",
+            "Rapid-Fire Insights (3-5 connected facts with natural transitions)",
+            "Problem -> Tension -> Solution (Focus on fixing a core pain point)"
         ]
 
         CTA_OPTIONS = [
             "Select a CTA...",
-            "The Value Bribe (Comment [KEYWORD] for DM)",
-            "The Seamless Loop (Connects end perfectly to the hook)",
-            "The Cliffhanger (Hit subscribe for Part 2)",
-            "The Direct Engagement Question (What is your take?)"
+            "The Save / Share Push (Save this for later / Send to a friend)",
+            "The Opinion / Debate (Which side are you on? / Do you agree?)",
+            "The Discussion Question (A highly specific question related to the video's core insight)",
+            "The Resource Bribe (Comment [KEYWORD] for the guide/DM)",
+            "The Follow / Subscribe (Follow for more deep breakdowns)",
+            "The Continuation (Hit subscribe for Part 2 - ONLY if multi-part)"
         ]
 
         # 2. UI Routing based on Mode
@@ -623,13 +627,17 @@ if current_os_mode == "✍️ AI Script Generator":
                     # CrewAI Executed with Injected Data
                     ai_output = run_my_crew_ai_agents(
                         niche_topic=st.session_state["niche_data"],
-                        social_platform="Omnichannel", # 👈 YEH THA MISSING LINK!
+                        social_platform="Omnichannel",
                         script_language=script_language, 
                         meta_langs=meta_languages, 
                         video_duration=st.session_state.get("duration", 1.0), 
                         app_mode=st.session_state["current_mode"], 
                         user_pasted_script=st.session_state.get("pasted_script", ""), 
-                        selected_bundle_options=st.session_state["selected_options"]
+                        selected_bundle_options=st.session_state["selected_options"],
+                        # THE CRITICAL BUG FIX: Passing the variables
+                        selected_hook=selected_hook if app_mode == "🚀 Complete Blueprint Mode" else "Standard",
+                        selected_body=selected_body if app_mode == "🚀 Complete Blueprint Mode" else "Standard",
+                        selected_cta=selected_cta if app_mode == "🚀 Complete Blueprint Mode" else "Standard"
                     )
                     
                     st.session_state["script_data"] = ai_output

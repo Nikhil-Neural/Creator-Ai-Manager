@@ -38,49 +38,47 @@ def fetch_live_trends(niche_topic):
         print(f"[RADAR ERROR] Blueprint link extraction failed: {str(e)}")
         return []
 
-def run_my_crew_ai_agents(niche_topic, social_platform, script_language, meta_langs, video_duration, app_mode, user_pasted_script, selected_bundle_options):
+def run_my_crew_ai_agents(niche_topic, social_platform, script_language, meta_langs, video_duration, app_mode, user_pasted_script, selected_bundle_options, selected_hook, selected_body, selected_cta):
     # ⏱️ SHORTS MATHS: Direct seconds, aur approx 2.5 words per second (150 words/min)
     target_seconds = int(video_duration)
-    target_words = int((video_duration / 60) * 150)
+    target_words = int((video_duration / 60) * 140)
     
     # ── PRODUCTION LLM ENGINE ──
     production_llm = LLM(
         model="gemini/gemini-3.8-flash", 
         api_key=GEMINI_KEY, 
-        temperature=0.7,
+        temperature=0.6, # Thoda kam kiya taaki hallucination ruke
         timeout=60
     )
 
     trend_analyst = Agent(
-        role="Viral Retention Strategist",
-        goal=f"Extract extreme psychological hooks and viewer retention triggers for '{niche_topic}' on {social_platform}.",
-        backstory="""You are a top-tier YouTube Shorts & Reels strategist who has analyzed 10,000+ viral videos. 
-        You don't just look for 'topics', you look for 'Dopamine Hits', 'Curiosity Gaps', and 'Pattern Interrupts'. 
-        You know exactly why a user stops scrolling in the first 3 seconds.""",
+        role="Content Research & Verification Specialist",
+        goal=f"Extract high-signal facts and credible retention triggers for '{niche_topic}' on {social_platform}. Accuracy > Virality.",
+        backstory="""You are a top-tier researcher and content strategist. You prioritize primary sources and factual accuracy over extreme clickbait. 
+        NEVER invent statistics, dates, percentages, or product capabilities. 
+        Distinguish between verified facts, reasonable inferences, and speculation. 
+        Your goal is to find what is genuinely interesting about a topic without manufacturing fake hype, rivalry, or claiming something is 'dead' or 'obsolete'.""",
         llm=production_llm, max_iter=1, max_rpm=10, verbose=True, allow_delegation=False, memory=False
     )
 
     script_writer = Agent(
-        role="Humanized Script Writer",
-        goal="Write a hyper-engaging, 2-column video script blueprint.",
-        backstory="""You are a highly successful, 28-year-old content creator who has written 500+ viral scripts. 
-        You talk like you're explaining a fascinating secret to a friend, not presenting in a boardroom. 
-        You use casual, spoken-English transitions like 'Look,', 'Here's the thing,', 'Honestly,', 'The crazy part is...'.
-        
-        NEVER write like this (robotic): "Context windows play a crucial role in determining LLM performance."
-        ALWAYS write like this (human): "Itni lambi memory honi chahiye AI ko ki purani baatein bhool na jaaye."
-        
-        BANNED WORDS: Delve, Unleash, Tapestry, In today's digital landscape, Buckle up, Crucial, Imperative, Furthermore, Moreover, In conclusion, Testament.""",
+        role="Premium Video Scriptwriter",
+        goal="Write a high-retention, factually accurate video script in a timestamped 3-column production format.",
+        backstory="""You are an experienced video scriptwriter who understands how real creators speak naturally on camera. 
+        Use natural spoken transitions only when they genuinely improve flow. 
+        AVOID repetitive AI-copy patterns like "Look,", "Here's the thing,", "Honestly,", or "The crazy part is."
+        The framework serves the story; the story does not serve the framework. Never sacrifice factual accuracy for a stronger hook. 
+        Mix short punchy sentences with explanatory ones, and never use corporate jargon.""",
         llm=production_llm, max_iter=1, max_rpm=10, verbose=True, allow_delegation=False, memory=False
     )
 
     copy_maestro = Agent(
-        role="Direct-Response Micro Copywriter",
-        goal="Convert concepts into highly aggressive, scroll-stopping social media assets.",
-        backstory="""You are a ruthless social media manager known for driving massive engagement. 
-        You use psychological triggers, extreme curiosity, and sharp sarcasm. 
-        You NEVER use cringey emojis or robotic corporate speak like 'In today's fast-paced world'. 
-        Your goal is to force the user to click '...more' or jump into the comments section.""",
+        role="Platform-Native Conversion Copywriter",
+        goal="Convert concepts into high-signal, platform-optimized social media assets without fake urgency.",
+        backstory="""You are a conversion-aware social media strategist. 
+        You create attention-efficient copy that drives genuine curiosity. 
+        You NEVER use absolute claims (e.g., "zero latency", "100% accurate", "completely replaces") unless explicitly supported by facts. 
+        You adapt perfectly to the specific platform's native behavior without using cheap rage-bait, cringe emojis, or robotic corporate babble.""",
         llm=production_llm, max_iter=1, max_rpm=10, verbose=True, allow_delegation=False, memory=False
     )
 
@@ -91,9 +89,15 @@ def run_my_crew_ai_agents(niche_topic, social_platform, script_language, meta_la
         if raw_trends:
             live_scanned_context = "\n".join([f"- Title: {item['title']} (URL: {item['url']})" for item in raw_trends])
 
+    # 1. UPGRADED RESEARCH TASK (The Fact-Check Gatekeeper)
     research_task = Task(
-        description=f"Analyze topic: '{niche_topic}' on {social_platform}.\nContext:\n{live_scanned_context}\nIdentify 3 breakout hooks and 3 retention nodes under 150 words total. No titles/urls.",
-        expected_output="Clean bullet points analysis matrix data.",
+        description=f"""Analyze topic: '{niche_topic}' on {social_platform}.
+        Context:\n{live_scanned_context}
+        
+        CRITICAL FACT-CHECK RULE: You are the gatekeeper. Verify all company/product attributions before writing. Example: Project Astra = Google DeepMind (NOT OpenAI). If the user's premise contains a factual error, YOU MUST SILENTLY CORRECT IT. Never mix up competing companies in hooks or claims.
+        
+        Identify 3 COMPLETELY DIFFERENT breakout hooks (1 Negative/Fear, 1 Story/Curiosity, and 1 Direct Benefit) and 3 retention nodes under 150 words total. Do not repeat sentence structures. No titles/urls.""",
+        expected_output="Clean bullet points analysis matrix data with factually verified and corrected premise.",
         agent=trend_analyst
     )
     tasks_pipeline.append(research_task)
@@ -104,22 +108,28 @@ def run_my_crew_ai_agents(niche_topic, social_platform, script_language, meta_la
         if app_mode == "✍️ Repurpose My Script Mode":
             script_prompt = f"Analyze and re-engineer raw script: '{user_pasted_script}'."
             
+        # 2. UPGRADED SCRIPT TASK (Emotion Tones, 8-Word Hook, MM:SS fix)
         script_task = Task(
             description=f"""{script_prompt} Target language: '{script_language}'.
             
+            🎯 STRICT FRAMEWORK EXECUTION:
+            - Hook Style: {selected_hook}
+            - Body Structure: {selected_body}
+            - CTA Mechanism: {selected_cta}
+            
+            HOOK RULE: The first 3 seconds [00:00-00:03] MUST be UNDER 8 WORDS. Make it a provocative question or shocking statement only.
+            ENDING RULE: The last 5 seconds MUST use a strong psychological ending. NEVER end with a generic "what do you think?".
+            TIME RULE: Time markers must follow standard MM:SS format (e.g., 00:59, never 00:60).
+            
             ANTI-ROBOT RULES:
-            1. RHYTHM VARIATION: Mix short punchy sentences (3-5 words) with longer explanatory ones. Do not over-explain.
-            2. VISUAL-VERBAL SYNC: Do not formally narrate the visuals. Point to them organically (e.g., "See this? It's not just a graphic...").
+            1. RHYTHM VARIATION: Mix short punchy sentences (3-5 words) with longer explanatory ones.
+            2. VISUAL-VERBAL SYNC: Point to visuals organically (e.g., "See this?").
             
-            CRITICAL CRITERIA: You MUST use this exact table framework layout:
-            | Timestamp | Visuals | Audio ({script_language}) |
+            CRITICAL CRITERIA: You MUST use this exact table framework layout including [Emotion Tone] for editing:
+            | Timestamp | Visuals & [Emotion Tone] | Audio ({script_language}) |
             | :--- | :--- | :--- |
-            
-            🌟 EXAMPLE SHOT-PROMPTING FORMAT:
-            | [00:00-00:05] | Camera zooms in sharply | Kya tumhe pata hai AI kya sochta hai? |
-            | [00:05-00:10] | Holographic flowchart expanding | Yeh simple hai. Lekin iska impact bahut bada hai. |
             """,
-            expected_output="Perfect Markdown 3-column table framework script avoiding all banned AI words.",
+            expected_output="Perfect Markdown 3-column table framework script avoiding banned AI words, factually correct, and strictly following the selected frameworks.",
             agent=script_writer, context=[research_task]
         )
         tasks_pipeline.append(script_task)
@@ -146,70 +156,51 @@ def run_my_crew_ai_agents(niche_topic, social_platform, script_language, meta_la
         twitter_instruction = ""
         parser_format = ""
             
-        # 🧠 HYPER-ENGINEERED DYNAMIC SEO LOGIC (YOUTUBE)
+        # 📺 YOUTUBE: Factual SEO (No Keyword Stuffing)
         if include_youtube:
             yt_title_instruction = """[YOUTUBE SHORTS TITLE]
             Constraint: STRICTLY UNDER 60 CHARACTERS.
-            Structure: Use extreme curiosity or a pattern interrupt. Include the core keyword naturally. End with a relevant emoji or a bracketed word like (Warning) or (Secret). NO HASHTAGS in the title."""
+            CRITICAL: Verify all company names are correct before writing.
+            Structure: Pattern interrupt + core keyword + power word. 
+            Do NOT use "officially dead" or "game over" unless factually verified. No misleading attributions."""
+            
             desc_instruction = """[YOUTUBE SHORTS DESCRIPTION]
-            Constraint: STRICTLY UNDER 60 WORDS.
-            Structure MUST include: 
-            1. A punchy hook line.
-            2. A direct CTA.
-            3. 'Keywords:' followed by 3-4 highly relevant SEO search terms (comma-separated).
-            4. EXACTLY 3 niche hashtags.
-            DO NOT generate long paragraphs, mini-blogs, or timestamps."""
+            Write 2-4 natural sentences. 
+            Naturally weave 3-4 highly relevant SEO search terms directly into the flow of the sentences. 
+            DO NOT explicitly write the word 'Keywords:'. Include a natural CTA and 2-3 niche hashtags."""
                 
-            # YouTube ka format parser mein add ho gaya
-            parser_format += f"""
-                Title: [{yt_title_instruction}]
-                Description: [{desc_instruction}]
-                """
-        # 🔥 THE HIGHLY ENGINEERED INSTA/FB PROMPT RESTORED
+            parser_format += f"\nTitle: [{yt_title_instruction}]\nDescription: [{desc_instruction}]"
+            
+        # 📸 META (IG/FB): 3 Distinct Angles (No Insulting Language)
         if include_ig_fb:
             ig_fb_instruction = f"""[INSTAGRAM/FACEBOOK REELS CAPTION]
             Target Language: STRICTLY {meta_langs.get('ig', 'English')}
-            Constraints: STRICTLY follow this 3-part framework:
-            1. The Truncation Hook (Above the Fold): Only the first few words are visible. First line MUST be under 100 characters. End with an unresolved thought, curiosity, sarcasm, or a bold claim to force a '...more' click.
-            2. The Context Drop: Leave a blank line, then write a 2-3 sentence punchy, highly engaging summary about the video.
-            3. The 5-Tag Rule: End with EXACTLY 5 highly relevant SEO hashtags (Do not use generic tags)."""
+            Generate 3 GENUINELY DIFFERENT caption angles:
+            [Option 1] - News Angle: What happened and why it matters.
+            [Option 2] - Insight Angle: What does this mean for users?
+            [Option 3] - Debate Angle: What could this change in the future?
+            Rules: Strong first line (under 100 chars), natural spoken language. NO insults, NO fake stats, NO cheap rage-bait. End with 3-5 relevant hashtags."""
+            
             parser_format += f"\nInstagram Caption:\n[{ig_fb_instruction}]"
     
-        # 🏢 HYPER-ENGINEERED B2B COPY LOGIC (LINKEDIN)
+        # 💼 LINKEDIN: Human Professional (No Corporate Jargon)
         if include_linkedin:
             linkedin_instruction = """[LINKEDIN POST FRAMEWORK]
-            Role: B2B Authority & Tech Industry Leader.
-            Constraints: Use short sentences (1 sentence = 1 line). Use high-level business vocabulary (e.g., ROI-driven, operational friction, scalable architecture).
-            Structure MUST strictly follow:
-            1. Pattern Interrupt Hook: First 2 lines must make a bold claim or share a hard data point. 
-            2. The Cliffhanger: Leave a blank line after the 3rd sentence to force a '...see more' click.
-            3. The Skimmable Meat: Use bullet points to deliver the core blueprint/value.
-            4. The 'Aha!' Insight: Provide a contrarian or paradigm-shifting perspective near the end.
-            5. Engagement CTA: Ask a thought-provoking question to drive comments. Explicitly state "Link is in the first comment" (Do not put the actual URL in the text)."""
+            Role: A modern, high-level creator sharing insights.
+            Constraints: Use conversational but professional language. BANNED: Corporate jargon like 'ROI', 'synergy', 'asymmetric', 'terminal phase', 'spatial execution'.
+            Structure: 1. Strong observation -> 2. Verified fact -> 3. Why it matters -> 4. Nuanced insight -> 5. Question.
+            Never invent business statistics. Never mention a link in the comments unless a real resource is provided."""
                 
-            # LinkedIn ka format parser mein add ho gaya
-            parser_format += f"""
-                LinkedIn Post:
-                [{linkedin_instruction}]
-                """
+            parser_format += f"\nLinkedIn Post:\n[{linkedin_instruction}]"
     
-        # 🧵 HYPER-ENGINEERED VIRAL LOGIC (TWITTER/X)
+        # 🧵 TWITTER: Storytelling & Strict Length
         if include_twitter:
             twitter_instruction = """[TWITTER/X VIRAL THREAD FRAMEWORK]
-            Role: Tech/SaaS Thought Leader.
-            Constraints: Exactly 5 to 7 tweets total. Max 280 characters per tweet. NO HASHTAGS. End each tweet with a progress tracker (e.g., 1/6, 2/6).
-            Structure MUST strictly follow:
-            - Tweet 1 (The Banger): Scroll-stopping massive claim. Suggest a sleek, dark-themed, ultra-detailed visual/graphic in brackets. End with thread emoji 🧵👇.
-            - Tweet 2 (The Agitation): Hit the core pain point. Why should the reader care?
-            - Tweet 3-5 (The Meat): One single idea per tweet. Use white space and bullet marks (•, ✅).
-            - Penultimate Tweet (TL;DR): A quick bulleted summary of the thread.
-            - Final Tweet (The Loop): CTA asking to Retweet the first tweet ♻️, follow for more breakdowns, and check the link in the reply."""
+            Constraints: 5 to 7 tweets total. HARD RULE: Each tweet MUST be under 240 characters (keep a buffer). NO HASHTAGS. End each tweet with a progress tracker (e.g., 1/6).
+            Structure: Tell a story. 1: Hook+News, 2: Context, 3: Core capability/fact, 4: Why it matters, 5: TL;DR or Implication, 6: Conclusion/Question.
+            Every post must add NEW information. Do not force a CTA into every thread."""
                 
-            # Twitter ka format parser mein add ho gaya
-            parser_format += f"""
-                Twitter Thread:
-                [{twitter_instruction}]
-                """
+            parser_format += f"\nTwitter Thread:\n[{twitter_instruction}]"
         # ⚡ THE INVISIBLE SCRIPT INJECTION BRIDGE ⚡
         dist_context_list = [research_task]
         if script_task:
@@ -219,15 +210,15 @@ def run_my_crew_ai_agents(niche_topic, social_platform, script_language, meta_la
             # Repurpose Mode (Jab user ne apna text diya ho)
             smart_injection_logic = f"IMPORTANT: Deeply analyze the following script provided by the user. Match your metadata's tone, hooks, and context perfectly to this script:\n\n[USER SCRIPT BEGIN]\n{user_pasted_script}\n[USER SCRIPT END]"
         else:
-            # 👈 NAYA: Metadata Only Mode (Na AI ki script hai, na user ki)
-            smart_injection_logic = f"IMPORTANT: You are generating standalone social media metadata based on the trend research and the core topic: '{niche_topic}'. THERE IS NO SCRIPT PROVIDED. Focus 100% on making the metadata hyper-viral and strictly aligned with the provided topic context."
+            # Metadata Only Mode (Na AI ki script hai, na user ki)
+            smart_injection_logic = f"IMPORTANT: You are generating standalone social media metadata based on the trend research and the core topic: '{niche_topic}'. THERE IS NO SCRIPT PROVIDED. Focus 100% on making the metadata hyper-viral, factually accurate, and strictly aligned with the provided topic context."
     
         distribution_task = Task(
             description=f"""Act as a Top-Tier Metadata & Copywriting Specialist. 
                 
             {smart_injection_logic}
                 
-            Generate a package based on the script above for the requested platforms:
+            Generate a package based on the script or topic context for the requested platforms:
             {chr(10).join(dist_requirements)}
                 
             CRITICAL CONSTRAINTS FOR OUTPUT (FOLLOW STRICTLY):
@@ -240,9 +231,10 @@ def run_my_crew_ai_agents(niche_topic, social_platform, script_language, meta_la
             2. 🤖 API PARSER FORMAT (MANDATORY FORMATTING):
                 You MUST output EXACTLY in this format with these exact section headings for the requested items. Do not deviate.
                 {parser_format}
-                """,
-            expected_output="Compiled social media assets tier list package with highly engineered, dynamically scaled, SEO-optimized metadata and professional social copy.",
-            agent=copy_maestro
+            """,
+            expected_output="Compiled social media assets tier list package with highly engineered, logically structured, SEO-optimized metadata and professional social copy.",
+            agent=copy_maestro,
+            context=dist_context_list # 👈 YEH FIX ZAROORI THA TAAKI AI SCRIPT READ KAR SAKE
         )
         tasks_pipeline.append(distribution_task)
     
