@@ -663,56 +663,53 @@ if current_os_mode == "✍️ AI Script Generator":
                     st.error(f"Engine Error: {str(e)}")
 
     with tab2:
-        st.header("📥 Download Generated Content")
-        
         if "script_data" in st.session_state and st.session_state["script_data"]:
             final_output = str(st.session_state["script_data"])
             
-            # POINT 1: UI Layout Restoration (Sab kuch tab2 ke andar nested hai)
             st.info("💡 Tip: Read your output below or scroll down to download the files.")
             
-            # Nested tabs takii tumhara main app layout kharab na ho
             sub_tab1, sub_tab2, sub_tab3 = st.tabs(["🕵️ Trend Research", "🎬 Video Script", "📱 Social Media Assets"])
             
-            # Basic split (Sirf display ke liye, no strict parsing yet)
-            parts = final_output.split("### ")
+            # 1. SUPER ROBUST SPLITTING LOGIC (No text will ever disappear now)
             research_text, script_text, social_text = "", "", ""
             
-            for part in parts:
-                if "EXPERT TREND RESEARCH" in part:
-                    research_text = "### " + part.strip()
-                elif "PREMIUM AUDIO/VISUAL" in part:
-                    script_text = "### " + part.strip()
-                elif "DISTRIBUTION MICRO-ASSETS" in part:
-                    social_text = "### " + part.strip()
+            if "PREMIUM AUDIO/VISUAL" in final_output:
+                parts1 = final_output.split("PREMIUM AUDIO/VISUAL")
+                research_text = parts1[0].strip()
+                
+                if "DISTRIBUTION MICRO-ASSETS" in parts1[1]:
+                    parts2 = parts1[1].split("DISTRIBUTION MICRO-ASSETS")
+                    script_text = "### PREMIUM AUDIO/VISUAL\n\n" + parts2[0].strip()
+                    social_text = "### DISTRIBUTION MICRO-ASSETS\n\n" + parts2[1].strip()
+                else:
+                    script_text = "### PREMIUM AUDIO/VISUAL\n\n" + parts1[1].strip()
+            else:
+                research_text = final_output # Fallback
             
-            # POINT 3: Markdown Formatting Clean-up
-            # .replace('\n', '  \n') ensure karta hai ki line breaks properly render hon aur text chipke nahi.
+            # Render Tabs
             with sub_tab1:
                 st.markdown(research_text.replace('\n', '  \n') if research_text else "No research data.")
             with sub_tab2:
                 st.markdown(script_text.replace('\n', '  \n') if script_text else "No script data.")
             with sub_tab3:
                 if social_text:
-                    # 1. Normalize headings (taaki agar AI ne bold kiya ho toh wo theek ho jaye)
                     normalized_text = social_text.replace("**", "")
                     
-                    # 2. Strict Regex Logic to extract platform-specific text
                     youtube_match = re.search(r'(Title:.*?)(?=Instagram Caption:|LinkedIn Post:|Twitter Thread:|$)', normalized_text, re.DOTALL | re.IGNORECASE)
                     ig_match = re.search(r'Instagram Caption:(.*?)(?=LinkedIn Post:|Twitter Thread:|$)', normalized_text, re.DOTALL | re.IGNORECASE)
                     li_match = re.search(r'LinkedIn Post:(.*?)(?=Twitter Thread:|$)', normalized_text, re.DOTALL | re.IGNORECASE)
                     tw_match = re.search(r'Twitter Thread:(.*?)$', normalized_text, re.DOTALL | re.IGNORECASE)
                     
-                    # 3. Clean and isolate data
                     yt_data = youtube_match.group(1).strip() if youtube_match else ""
                     ig_data = ig_match.group(1).strip() if ig_match else ""
                     li_data = li_match.group(1).strip() if li_match else ""
                     tw_data = tw_match.group(1).strip() if tw_match else ""
                     
-                    # 4. Render exact UI Boxes
+                    # 4. YOUTUBE UI FIX: Changed st.error to a sleek, clean bordered container!
                     if yt_data:
                         st.markdown("### 🟥 YouTube SEO")
-                        st.error(yt_data.replace('\n', '  \n'))  
+                        with st.container(border=True): # Clean border, no error icon!
+                            st.markdown(yt_data.replace('\n', '  \n'))  
                     
                     if ig_data:
                         st.markdown("### 🟪 Instagram & Facebook")
@@ -727,13 +724,12 @@ if current_os_mode == "✍️ AI Script Generator":
                         st.warning(tw_data.replace('\n', '  \n')) 
                         
                     if not any([yt_data, ig_data, li_data, tw_data]):
-                        st.markdown(social_text.replace('\n', '  \n')) # Fallback
+                        st.markdown(social_text.replace('\n', '  \n')) 
                 else:
                     st.info("No social media data generated.")
                 
             st.write("---")
             
-            # Original Download Buttons
             safe_name = st.session_state.get('niche_data', 'blueprint').replace(" ", "_")[:30]
             
             c1, c2 = st.columns(2)
