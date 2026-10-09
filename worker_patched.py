@@ -484,6 +484,18 @@ def upload_to_linkedin(video_path, post_text, access_token):
     except Exception as e:
         return False, f"Unexpected LinkedIn Error: {str(e)}"
 
+
+def save_platform_status(task_id, platform_statuses):
+    """Save platform progress immediately to prevent duplicate retries."""
+    result = (
+        supabase.table("master_scheduler_queue")
+        .update({"platform_statuses": platform_statuses})
+        .eq("id", task_id)
+        .execute()
+    )
+    return result
+
+
 def process_queue():
     """Database check karta hai aur pending videos upload karta hai"""
     current_utc_time = datetime.now(timezone.utc).isoformat()
