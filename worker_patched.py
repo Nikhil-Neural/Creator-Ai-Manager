@@ -587,6 +587,7 @@ def process_queue():
                             yt_id = upload_to_youtube(temp_vid_path, meta, user_specific_token)
                             print(f"✅ Success! YouTube Video ID: {yt_id}")
                             platform_statuses["youtube"] = "published"
+                            save_platform_status(task["id"], platform_statuses)
                             
                     except Exception as e:
                         print(f"❌ YouTube Execution Failed: {str(e)}")
@@ -625,6 +626,7 @@ def process_queue():
                             if success:
                                 print(f"✅ {msg}")
                                 platform_statuses["twitter"] = "published"
+                                save_platform_status(task["id"], platform_statuses)
                             else:
                                 raise Exception(f"Twitter Execution Failed: {msg}")
                         except Exception as e:
@@ -652,6 +654,7 @@ def process_queue():
                             if success:
                                 print(f"✅ {msg}")
                                 platform_statuses["instagram"] = "published"
+                                save_platform_status(task["id"], platform_statuses)
                             else:
                                 raise Exception(f"Meta Execution Failed: {msg}")
                         except Exception as e:
@@ -679,6 +682,7 @@ def process_queue():
                             if success:
                                 print(f"✅ {msg}")
                                 platform_statuses["facebook"] = "published"
+                                save_platform_status(task["id"], platform_statuses)
                             else:
                                 raise Exception(f"Facebook Execution Failed: {msg}")
                         except Exception as e:
@@ -706,6 +710,7 @@ def process_queue():
                             if success:
                                 print(f"✅ {msg}")
                                 platform_statuses["threads"] = "published"
+                                save_platform_status(task["id"], platform_statuses)
                             else:
                                 raise Exception(f"Threads Execution Failed: {msg}")
                         except Exception as e:
@@ -737,6 +742,7 @@ def process_queue():
                             if success:
                                 print(f"✅ {msg}")
                                 platform_statuses["linkedin"] = "published"
+                                save_platform_status(task["id"], platform_statuses)
                             else:
                                 raise Exception(f"LinkedIn Execution Failed: {msg}")
                     except Exception as e:
