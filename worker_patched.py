@@ -1,0 +1,783 @@
+import os
+import time
+import requests
+import tempfile
+import tweepy
+from datetime import datetime, timezone
+import streamlit as st
+from supabase import create_client, Client
+from storage_engine import generate_presigned_url
+from datetime import datetime, timezone, timedelta
+# Google API Imports
+import googleapiclient.discovery
+from google.oauth2.credentials import Credentials
+from googleapiclient.http import MediaFileUpload
+
+# 1. Supabase Connection Setup
+url = st.secrets["SUPABASE_URL"]
+key = st.secrets["SUPABASE_SERVICE_KEY"] 
+supabase: Client = create_client(url, key)
+
+def download_video_safe(vid_url, max_size_mb=250):
+    """
+    R2/Network se safely video download karta hai 250MB limit ke sath.
+    """
+    max_bytes = max_size_mb * 1024 * 1024
+    downloaded_bytes = 0
+    
+    temp_vid = tempfile.NamedTemporaryFile(delete=False, suffix=".mp4")
+    temp_vid_path = temp_vid.name
+    
+    try:
+        r = requests.get(vid_url, stream=True, timeout=60)
+        r.raise_for_status()
+        
+        for chunk in r.iter_content(chunk_size=8192):
+            if chunk:
+                downloaded_bytes += len(chunk)
+                if downloaded_bytes > max_bytes:
+                    temp_vid.close()
+                    os.remove(temp_vid_path)
+                    raise Exception(f"Download size exceeded {max_size_mb}MB limit.")
+                temp_vid.write(chunk)
+                
+        temp_vid.close()
+        return temp_vid_path
+    except Exception as e:
+        if os.path.exists(temp_vid_path):
+            os.remove(temp_vid_path)
+        raise e
+
+def execute_twitter_thread(twitter_credentials, thread_text, video_url):
+    
+    try:
+        print("🚀 Starting Twitter Execution Pipeline...")
+
+        client = tweepy.Client(
+            consumer_key=twitter_credentials['api_key'],
+            consumer_secret=twitter_credentials['api_secret'],
+            access_token=twitter_credentials['access_token'],
+            access_token_secret=twitter_credentials['access_token_secret']
+        )
+        
+        auth = tweepy.OAuth1UserHandler(
+            twitter_credentials['api_key'], 
+            twitter_credentials['api_secret'],
+            twitter_credentials['access_token'], 
+            twitter_credentials['access_token_secret']
+        )
+        api = tweepy.API(auth)
+
+        media_id = None
+        tmp_file_path = None
+
+        if video_url:
+            print("📥 Downloading video for Twitter...")
+            try:
+                # 🚨 FIX: Purana requests.get block deleted. Direct safe downloader use kiya hai.
+                tmp_file_path = download_video_safe(video_url)
+                
+                print("📤 Uploading binary chunk to Twitter Servers...")
+                media = api.media_upload(tmp_file_path, media_category='tweet_video')
+                media_id = media.media_id_string
+                print("✅ Video Uploaded! Media ID:", media_id)
+            finally:
+                if tmp_file_path and os.path.exists(tmp_file_path):
+                    os.remove(tmp_file_path)
+                    print("🧹 Temporary Twitter video file cleaned up.")
+
+        # [Iske aage ka thread posting wala code (raw_tweets loop) same rahega...]
+
+        raw_tweets = [t.strip() for t in thread_text.split('\n\n') if t.strip()]
+        if not raw_tweets:
+            return False, "Thread text is completely empty."
+
+        previous_tweet_id = None
+        for index, tweet_content in enumerate(raw_tweets):
+            print(f"🐦 Posting Tweet {index + 1}/{len(raw_tweets)}...")
+            if index == 0:
+                kwargs = {"text": tweet_content[:280]}
+                if media_id:
+                    kwargs["media_ids"] = [media_id]
+                response = client.create_tweet(**kwargs)
+                previous_tweet_id = response.data['id']
+            else:
+                response = client.create_tweet(
+                    text=tweet_content[:280],
+                    in_reply_to_tweet_id=previous_tweet_id
+                )
+                previous_tweet_id = response.data['id']
+
+        return True, f"✅ Thread successfully published! Root ID: {previous_tweet_id}"
+
+    except Exception as e:
+        error_msg = f"❌ Twitter Execution Failed: {str(e)}"
+        print(error_msg)
+        return False, error_msg
+
+def upload_to_youtube(video_path, meta, user_refresh_token):
+    """
+    YouTube API v3 Upload Engine with Advanced Payload Controls.
+    """
+    creds = Credentials(
+        None,
+        refresh_token=user_refresh_token, 
+        token_uri="https://oauth2.googleapis.com/token",
+        client_id=st.secrets["GOOGLE_CLIENT_ID"],
+        client_secret=st.secrets["GOOGLE_CLIENT_SECRET"]
+    )
+    
+    youtube = googleapiclient.discovery.build("youtube", "v3", credentials=creds)
+    
+    # ⚙️ EXTRACTING ADVANCED METADATA
+    title = meta.get("video_title", "Creator OS Generated Video")
+    description = meta.get("youtube_description", "")
+    is_kids = meta.get("yt_is_kids", False) # False by default
+    show_likes = meta.get("yt_show_likes", True) # False hides likes
+    video_lang = meta.get("yt_language", "en-US") # Language Code
+    privacy = meta.get("yt_privacy", "private") # public, private, or unlisted
+    
+    body = {
+        "snippet": {
+            "title": title,
+            "description": description,
+            "tags": ["Shorts", "AI", "CreatorOS"],
+            "categoryId": "28",
+            "defaultLanguage": video_lang,
+            "defaultAudioLanguage": video_lang
+        },
+        "status": {
+            "privacyStatus": privacy, 
+            "selfDeclaredMadeForKids": is_kids,
+            "publicStatsViewable": show_likes  # True = Show Likes, False = Hide Likes
+        }
+    }
+    
+    media = MediaFileUpload(video_path, chunksize=-1, resumable=True)
+    request = youtube.videos().insert(part="snippet,status", body=body, media_body=media)
+    response = request.execute()
+    video_id = response.get("id")
+    
+    # 🔗 GENERATE STUDIO REDIRECT LINK
+    studio_edit_link = f"https://studio.youtube.com/video/{video_id}/edit"
+    print(f"🎬 YouTube Studio Setup Link: {studio_edit_link}")
+    
+    return video_id
+
+def upload_to_instagram(video_url, caption, access_token):
+    """Meta Graph API v20.0 integration for Instagram Reels."""
+    base_url = "https://graph.facebook.com/v20.0"
+
+    try:
+        pages_url = f"{base_url}/me/accounts?access_token={access_token}"
+        pages_res = requests.get(pages_url, timeout=30).json()
+
+        if "error" in pages_res:
+            return False, f"Meta Auth Error: {pages_res['error']['message']}"
+        if not pages_res.get("data"):
+            return False, "No Facebook Pages found linked to this account."
+
+        ig_user_id = None
+        for page in pages_res["data"]:
+            page_id = page["id"]
+            ig_req = requests.get(f"{base_url}/{page_id}?fields=instagram_business_account&access_token={access_token}", timeout=30).json()
+            if "instagram_business_account" in ig_req:
+                ig_user_id = ig_req["instagram_business_account"]["id"]
+                break
+
+        if not ig_user_id:
+            return False, "No Instagram Professional Account linked to your Facebook Pages."
+
+        print(f"📦 Creating Instagram Container for ID: {ig_user_id}...")
+        container_url = f"{base_url}/{ig_user_id}/media"
+        container_payload = {
+            "media_type": "REELS",
+            "video_url": video_url,
+            "caption": caption,
+            "access_token": access_token
+        }
+        container_res = requests.post(container_url, data=container_payload, timeout=30).json()
+
+        if "error" in container_res:
+            return False, f"Container Error: {container_res['error']['message']}"
+
+        creation_id = container_res.get("id")
+        print(f"⏳ Container created (ID: {creation_id}). Waiting for Meta to process video...")
+
+        status_url = f"{base_url}/{creation_id}?fields=status_code&access_token={access_token}"
+        max_attempts = 15
+        is_finished = False
+        for attempt in range(max_attempts):
+            time.sleep(10)
+            status_res = requests.get(status_url, timeout=30).json()
+            if "error" in status_res:
+                return False, f"Status Check Error: {status_res['error']['message']}"
+
+            status = status_res.get("status_code")
+            print(f"🔄 Meta Processing Status: {status} (Attempt {attempt+1}/{max_attempts})")
+
+            if status == "FINISHED":
+                is_finished = True
+                break
+            elif status == "ERROR":
+                return False, "Meta failed to process the video internally."
+
+        if not is_finished:
+            return False, "Instagram video processing timed out."
+
+        print("🚀 Meta processing complete! Publishing Reel now...")
+        publish_url = f"{base_url}/{ig_user_id}/media_publish"
+        publish_payload = {
+            "creation_id": creation_id,
+            "access_token": access_token
+        }
+        publish_res = requests.post(publish_url, data=publish_payload, timeout=30).json()
+
+        if "error" in publish_res:
+            return False, f"Publishing Error: {publish_res['error']['message']}"
+
+        return True, f"Instagram Reel successfully published! Post ID: {publish_res.get('id')}"
+
+    except Exception as e:
+        return False, f"Unexpected Meta Logic Error: {str(e)}"
+
+def upload_to_facebook(video_url, caption, user_access_token):
+    """Meta Graph API v20.0 integration for Facebook Pages."""
+    base_url = "https://graph.facebook.com/v20.0"
+
+    try:
+        pages_url = f"{base_url}/me/accounts?access_token={user_access_token}"
+        pages_res = requests.get(pages_url, timeout=30).json()
+
+        if "error" in pages_res:
+            return False, f"Meta Auth Error: {pages_res['error']['message']}"
+        if not pages_res.get("data"):
+            return False, "No Facebook Pages found linked to this account."
+
+        page_data = pages_res["data"][0]
+        page_id = page_data["id"]
+        page_token = page_data["access_token"]
+        page_name = page_data["name"]
+
+        print(f"📘 Authenticated Facebook Page: {page_name} (ID: {page_id})")
+        print(f"📤 Uploading & Publishing video to Facebook Page: {page_name}...")
+        video_post_url = f"{base_url}/{page_id}/videos"
+        
+        payload = {
+            "file_url": video_url,
+            "description": caption,
+            "access_token": page_token
+        }
+        
+        publish_res = requests.post(video_post_url, data=payload, timeout=60).json()
+
+        if "error" in publish_res:
+            return False, f"Facebook Publish Error: {publish_res['error']['message']}"
+
+        video_id = publish_res.get("id")
+        return True, f"Facebook Video successfully published! Video ID: {video_id}"
+
+    except Exception as e:
+        return False, f"Unexpected Facebook Logic Error: {str(e)}"
+
+
+# 🧵 MASTER THREADS ENGINE (Chain/Chreading Enabled) - FULLY CLEANED
+def upload_to_threads(video_url, thread_text, access_token):
+    """
+    Threads Graph API Integration for chained posts.
+    With Meta Sync Ping Verification & JSON Payload parsing.
+    """
+    base_url = "https://graph.threads.net/v1.0"
+    
+    try:
+        raw_posts = [t.strip() for t in thread_text.split('\n\n') if t.strip()]
+        if not raw_posts:
+            return False, "Threads text is empty."
+
+        # Fetch Threads User ID
+        me_res = requests.get(f"{base_url}/me?fields=id,username&access_token={access_token}", timeout=30).json()
+        if "error" in me_res:
+            return False, f"Threads Auth Error: {me_res['error'].get('message', 'Unknown')}"
+        threads_user_id = me_res.get("id")
+        print(f"🧵 Authenticated Threads User: @{me_res.get('username')} (ID: {threads_user_id})")
+
+        previous_post_id = None
+
+        for index, post_content in enumerate(raw_posts):
+            print(f"🧵 Building Thread part {index + 1}/{len(raw_posts)}...")
+            
+            # 🛡️ THE JSON FIX: Payload
+            container_payload = {
+                "text": post_content[:490]
+            }
+
+            if index == 0 and video_url:
+                container_payload["media_type"] = "VIDEO"
+                container_payload["video_url"] = video_url
+            else:
+                container_payload["media_type"] = "TEXT"
+                if previous_post_id:
+                    container_payload["reply_to_id"] = str(previous_post_id)
+
+            # 🚀 Token URL Query Parameter
+            auth_params = {"access_token": access_token}
+
+            # Container Creation with JSON
+            container_res = None
+            for retry in range(3):
+                container_req = requests.post(f"{base_url}/{threads_user_id}/threads", params=auth_params, json=container_payload, timeout=30)
+                try:
+                    container_res = container_req.json()
+                    if "error" not in container_res:
+                        break # Success
+                except Exception:
+                    pass
+                
+                print(f"⚠️ Meta API choked on Container. Retrying {retry+1}/3 in 20s...")
+                time.sleep(20)
+                    
+            if not container_res or "error" in container_res:
+                err_msg = container_res.get('error', {}).get('message', 'Unknown') if container_res else container_req.text
+                return False, f"Threads Container Failed after 3 retries: {err_msg}"
+            
+            creation_id = container_res.get("id")
+
+            # Video Processing Status Polling
+            if index == 0 and video_url:
+                print(f"⏳ Waiting for Threads to encode video (ID: {creation_id})...")
+                status_url = f"{base_url}/{creation_id}?fields=status,error_message&access_token={access_token}"
+                
+                is_finished = False
+                for attempt in range(20): 
+                    time.sleep(15)
+                    status_res = requests.get(status_url, timeout=30).json()
+                    status = status_res.get("status")
+                    print(f"🔄 Threads Processing Status: {status} (Attempt {attempt+1}/20)")
+                    
+                    # 🛡️ THE FIX: Accept both statuses
+                    if status in ["FINISHED", "PUBLISHED"]:
+                        is_finished = True
+                        break
+                    elif status == "ERROR":
+                        err_detail = status_res.get("error_message", "Encoding failed")
+                        return False, f"Threads Video Encoding Failed: {err_detail}"
+                
+                if not is_finished:
+                    return False, "Threads video processing timed out."
+
+            # Publish
+            print(f"🚀 Publishing Thread part {index + 1}...")
+            publish_payload = {
+                "creation_id": creation_id
+            }
+            
+            publish_res = None
+            for retry in range(3):
+                publish_req = requests.post(f"{base_url}/{threads_user_id}/threads_publish", params=auth_params, json=publish_payload, timeout=30)
+                try:
+                    publish_res = publish_req.json()
+                    if "error" not in publish_res:
+                        break
+                except Exception:
+                    pass
+                print(f"⚠️ Meta Publish choked. Retrying {retry+1}/3 in 20s...")
+                time.sleep(20)
+
+            if not publish_res or "error" in publish_res:
+                err_msg = publish_res.get('error', {}).get('message', 'Unknown') if publish_res else publish_req.text
+                return False, f"Threads Publish Error: {err_msg}"
+            
+            previous_post_id = publish_res.get("id")
+            print(f"✅ Published Thread part {index+1}! Post ID: {previous_post_id}")
+            
+            # 🛡️ PING VERIFICATION
+            if index < len(raw_posts) - 1:
+                print(f"📡 Pinging Meta global servers to verify Post {previous_post_id} is live before replying...")
+                verify_url = f"{base_url}/{previous_post_id}?fields=id&access_token={access_token}"
+                
+                is_live = False
+                for ping in range(6): 
+                    time.sleep(20) 
+                    verify_res = requests.get(verify_url, timeout=30).json()
+                    
+                    if "id" in verify_res:
+                        print("✅ Meta confirmed post is fully indexed! Safe to attach next reply.")
+                        is_live = True
+                        break
+                    else:
+                        print(f"🔄 Meta backend still syncing... Waiting ({ping+1}/6)")
+                        
+                if not is_live:
+                    print("⚠️ Meta is exceptionally slow. Attempting blind reply anyway...")
+                    time.sleep(10)
+
+        return True, f"✅ Full Threads Chain published successfully! Root ID: {previous_post_id}"
+
+    except Exception as e:
+        return False, f"Unexpected Threads Error: {str(e)}"
+def upload_to_linkedin(video_path, post_text, access_token):
+    """
+    LinkedIn 3-Step Video Upload & Publish Logic
+    """
+    headers = {
+        'Authorization': f'Bearer {access_token}',
+        'X-Restli-Protocol-Version': '2.0.0'
+    }
+    
+    try:
+        # STEP 1: Get User URN (Unique Profile ID)
+        me_response = requests.get('https://api.linkedin.com/v2/userinfo', headers={'Authorization': f'Bearer {access_token}'}, timeout=30).json()
+        if "sub" not in me_response:
+            return False, f"Auth Error: Could not fetch LinkedIn Profile. {me_response}"
+        
+        person_urn = f"urn:li:person:{me_response['sub']}"
+        print(f"💼 Authenticated LinkedIn User: {person_urn}")
+        
+        # STEP 2: Register Video Upload
+        print("📦 Registering video upload with LinkedIn servers...")
+        register_url = "https://api.linkedin.com/v2/assets?action=registerUpload"
+        register_payload = {
+            "registerUploadRequest": {
+                "recipes": ["urn:li:digitalmediaRecipe:feedshare-video"],
+                "owner": person_urn,
+                "serviceRelationships": [{"relationshipType": "OWNER", "identifier": "urn:li:userGeneratedContent"}]
+            }
+        }
+        
+        reg_res = requests.post(register_url, headers=headers, json=register_payload, timeout=30).json()
+        if "value" not in reg_res:
+            return False, f"Failed to register video: {reg_res}"
+            
+        upload_url = reg_res['value']['uploadMechanism']['com.linkedin.digitalmedia.uploading.MediaUploadHttpRequest']['uploadUrl']
+        asset_urn = reg_res['value']['asset']
+        
+        # STEP 3: Upload Binary Video Data
+        print(f"📤 Uploading video binary chunks to LinkedIn (Asset: {asset_urn})...")
+        with open(video_path, 'rb') as video_file:
+            # 🚨 FIX: Added timeout=300 to prevent infinite freeze
+            upload_res = requests.post(upload_url, headers={'Authorization': f'Bearer {access_token}'}, data=video_file, timeout=300)
+            if upload_res.status_code not in [200, 201]:
+                return False, f"Video upload failed (Status {upload_res.status_code}): {upload_res.text}"
+                
+        # STEP 4: Publish the Final Post
+        print("🚀 Compiling and publishing LinkedIn Post...")
+        publish_url = "https://api.linkedin.com/v2/ugcPosts"
+        publish_payload = {
+            "author": person_urn,
+            "lifecycleState": "PUBLISHED",
+            "specificContent": {
+                "com.linkedin.ugc.ShareContent": {
+                    "shareCommentary": {"text": post_text},
+                    "shareMediaCategory": "VIDEO",
+                    "media": [{"status": "READY", "media": asset_urn}]
+                }
+            },
+            "visibility": {"com.linkedin.ugc.MemberNetworkVisibility": "PUBLIC"}
+        }
+        
+        pub_res = requests.post(publish_url, headers=headers, json=publish_payload, timeout=60).json()
+        if "id" in pub_res:
+            return True, f"LinkedIn post published successfully! Post ID: {pub_res['id']}"
+        else:
+            return False, f"Publish error: {pub_res}"
+
+    except Exception as e:
+        return False, f"Unexpected LinkedIn Error: {str(e)}"
+
+def process_queue():
+    """Database check karta hai aur pending videos upload karta hai"""
+    current_utc_time = datetime.now(timezone.utc).isoformat()
+    print(f"[{datetime.now()}] 🔍 Checking database for pending videos scheduled up to now...")
+    
+    try:
+        response = supabase.table("master_scheduler_queue") \
+            .select("*") \
+            .in_("status", ["Pending", "pending", "Failed", "failed"]) \
+            .or_(f"next_retry_at.is.null,next_retry_at.lte.{current_utc_time}") \
+            .lte("scheduled_time", current_utc_time) \
+            .execute()
+        tasks = response.data
+    except Exception as e:
+        print(f"Database error: {e}")
+        return
+
+    if not tasks:
+        print("📭 No pending videos found. All caught up!")
+        return
+
+    for task in tasks:
+        # 🚨 FIX 1: TRUE ATOMIC CLAIM
+        # Try to claim the task by changing status ONLY if it's still Pending
+        
+        claim_result = (
+            supabase.table("master_scheduler_queue")
+            .update({"status": "Processing"})
+            .eq("id", task["id"])
+            .in_("status", ["Pending", "pending", "Failed", "failed"])
+            .select("*")
+            .execute()
+        )
+
+        if not claim_result.data:
+            print(f"⏩ Task {task['id']} was already claimed or could not be claimed. Skipping.")
+            continue
+
+        task = claim_result.data[0]
+        
+        platforms = [p.lower() for p in task.get('target_platforms', [])]
+        print(f"\n🚀 Processing Task ID: {task['id']} for platforms: {platforms}")
+        
+        # Tracking mechanism for partial success
+        platform_statuses = task.get('platform_statuses') or {}
+        has_errors = False
+        # 🚨 RETRY TRACKING VARIABLES
+        retry_count = task.get('retry_count') or 0
+        max_retries = 3
+        
+        try:
+            # 🚨 FIX 1: Fetch r2_key instead of old video_url
+            r2_key = task.get('r2_key')
+            if not r2_key:
+                raise Exception("r2_key is missing for this task. Cannot process.")
+                
+            # 🚨 FIX 2: Generate fresh presigned URL for this specific publishing run (1 hour expiry)
+            vid_url = generate_presigned_url(r2_key, expiration=3600)
+            if not vid_url:
+                raise Exception("Failed to generate presigned URL from Cloudflare R2")
+                
+            meta = task['metadata_payload']
+            creator_email = task['creator_handle']
+            
+            # --- YOUTUBE LOGIC ---
+            if "youtube" in platforms:
+                if platform_statuses.get("youtube") == "published":
+                    print("⏩ Skipping YouTube (Already published in previous run)")
+                else:
+                    temp_vid_path = None
+                    try:
+                        print("📺 Starting YouTube sequence...")
+                        profile_res = supabase.table("creator_profiles").select("youtube_token").eq("creator_handle", creator_email).execute()
+                        
+                        if not profile_res.data or not profile_res.data[0].get("youtube_token"):
+                            print(f"⚠️ Skipping YT: No YouTube refresh token found for {creator_email}")
+                            platform_statuses["youtube"] = "failed"
+                            has_errors = True
+                        else:
+                            user_specific_token = profile_res.data[0]["youtube_token"]
+                            
+                            temp_vid_path = download_video_safe(vid_url)
+                            yt_id = upload_to_youtube(temp_vid_path, meta, user_specific_token)
+                            print(f"✅ Success! YouTube Video ID: {yt_id}")
+                            platform_statuses["youtube"] = "published"
+                            
+                    except Exception as e:
+                        print(f"❌ YouTube Execution Failed: {str(e)}")
+                        platform_statuses["youtube"] = "failed"
+                        has_errors = True
+                    finally:
+                        # 🚨 FIX 3: INDEPENDENT TEMP FILE CLEANUP
+                        if temp_vid_path and os.path.exists(temp_vid_path):
+                            os.remove(temp_vid_path)
+                            print("🧹 YouTube temporary file cleaned up.")
+
+            # --- TWITTER LOGIC ---
+            if "twitter" in platforms:
+                if platform_statuses.get("twitter") == "published":
+                    print("⏩ Skipping Twitter (Already published in previous run)")
+                else:
+                    print("🐦 Starting Twitter sequence...")
+                    tw_profile_res = supabase.table("creator_profiles").select("twitter_token, twitter_access_secret").eq("creator_handle", creator_email).execute()
+                    
+                    if not tw_profile_res.data or not tw_profile_res.data[0].get("twitter_token"):
+                        print(f"⚠️ Skipping Twitter: No connected X account found for {creator_email}")
+                        platform_statuses["twitter"] = "failed"
+                        has_errors = True
+                    else:
+                        try:
+                            user_tokens = tw_profile_res.data[0]
+                            twitter_credentials = {
+                                "api_key": st.secrets["TWITTER_API_KEY"],
+                                "api_secret": st.secrets["TWITTER_API_SECRET"],
+                                "access_token": user_tokens.get("twitter_token"),
+                                "access_token_secret": user_tokens.get("twitter_access_secret")
+                            }
+                            thread_text = meta.get("twitter_thread_text", "")
+                            
+                            success, msg = execute_twitter_thread(twitter_credentials, thread_text, vid_url)
+                            if success:
+                                print(f"✅ {msg}")
+                                platform_statuses["twitter"] = "published"
+                            else:
+                                raise Exception(f"Twitter Execution Failed: {msg}")
+                        except Exception as e:
+                            print(f"❌ Twitter Execution Failed: {str(e)}")
+                            platform_statuses["twitter"] = "failed"
+                            has_errors = True
+
+            # --- META (INSTAGRAM) LOGIC ---
+            if "instagram" in platforms or "meta" in platforms:
+                if platform_statuses.get("instagram") == "published":
+                    print("⏩ Skipping Instagram (Already published in previous run)")
+                else:
+                    print("♾️ Starting Meta (Instagram) sequence...")
+                    profile_res = supabase.table("creator_profiles").select("instagram_token").eq("creator_handle", creator_email).execute()
+                    
+                    if not profile_res.data or not profile_res.data[0].get("instagram_token"):
+                        print(f"⚠️ Skipping Meta: No valid Meta token found")
+                        platform_statuses["instagram"] = "failed"
+                        has_errors = True
+                    else:
+                        try:
+                            ig_token = profile_res.data[0]["instagram_token"]
+                            ig_caption = meta.get("instagram_caption", "Powered by AI Creator OS 🚀")
+                            success, msg = upload_to_instagram(vid_url, ig_caption, ig_token)
+                            if success:
+                                print(f"✅ {msg}")
+                                platform_statuses["instagram"] = "published"
+                            else:
+                                raise Exception(f"Meta Execution Failed: {msg}")
+                        except Exception as e:
+                            print(f"❌ Meta Execution Failed: {str(e)}")
+                            platform_statuses["instagram"] = "failed"
+                            has_errors = True
+
+            # --- FACEBOOK LOGIC ---
+            if "facebook" in platforms:
+                 if platform_statuses.get("facebook") == "published":
+                    print("⏩ Skipping Facebook (Already published in previous run)")
+                 else:
+                    print("📘 Starting Facebook sequence...")
+                    profile_res = supabase.table("creator_profiles").select("facebook_token").eq("creator_handle", creator_email).execute()
+                    
+                    if not profile_res.data or not profile_res.data[0].get("facebook_token"):
+                        print(f"⚠️ Skipping FB: No valid Facebook token found")
+                        platform_statuses["facebook"] = "failed"
+                        has_errors = True
+                    else:
+                        try:
+                            fb_token = profile_res.data[0]["facebook_token"]
+                            fb_caption = meta.get("facebook_post_text", "Powered by AI Creator OS 🚀")
+                            success, msg = upload_to_facebook(vid_url, fb_caption, fb_token)
+                            if success:
+                                print(f"✅ {msg}")
+                                platform_statuses["facebook"] = "published"
+                            else:
+                                raise Exception(f"Facebook Execution Failed: {msg}")
+                        except Exception as e:
+                            print(f"❌ Facebook Execution Failed: {str(e)}")
+                            platform_statuses["facebook"] = "failed"
+                            has_errors = True
+
+            # --- THREADS LOGIC ---
+            if "threads" in platforms:
+                 if platform_statuses.get("threads") == "published":
+                    print("⏩ Skipping Threads (Already published in previous run)")
+                 else:
+                    print("🧵 Starting Threads sequence...")
+                    profile_res = supabase.table("creator_profiles").select("threads_token").eq("creator_handle", creator_email).execute()
+                    
+                    if not profile_res.data or not profile_res.data[0].get("threads_token"):
+                        print(f"⚠️ Skipping Threads: No valid token found")
+                        platform_statuses["threads"] = "failed"
+                        has_errors = True
+                    else:
+                        try:
+                            th_token = profile_res.data[0]["threads_token"]
+                            th_caption = meta.get("threads_content", "Powered by AI Creator OS 🚀")
+                            success, msg = upload_to_threads(vid_url, th_caption, th_token)
+                            if success:
+                                print(f"✅ {msg}")
+                                platform_statuses["threads"] = "published"
+                            else:
+                                raise Exception(f"Threads Execution Failed: {msg}")
+                        except Exception as e:
+                            print(f"❌ Threads Execution Failed: {str(e)}")
+                            platform_statuses["threads"] = "failed"
+                            has_errors = True
+
+            # --- LINKEDIN LOGIC ---
+            if "linkedin" in platforms:
+                if platform_statuses.get("linkedin") == "published":
+                    print("⏩ Skipping LinkedIn (Already published)")
+                else:
+                    temp_vid_path = None
+                    try:
+                        print("💼 Starting LinkedIn sequence...")
+                        profile_res = supabase.table("creator_profiles").select("linkedin_token").eq("creator_handle", creator_email).execute()
+                        
+                        if not profile_res.data or not profile_res.data[0].get("linkedin_token"):
+                            print(f"⚠️ Skipping LinkedIn: No valid token found")
+                            platform_statuses["linkedin"] = "failed"
+                            has_errors = True
+                        else:
+                            li_token = profile_res.data[0]["linkedin_token"]
+                            li_caption = meta.get("linkedin_post_text", "Powered by AI Creator OS 🚀")
+                            
+                            temp_vid_path = download_video_safe(vid_url)
+                            
+                            success, msg = upload_to_linkedin(temp_vid_path, li_caption, li_token)
+                            if success:
+                                print(f"✅ {msg}")
+                                platform_statuses["linkedin"] = "published"
+                            else:
+                                raise Exception(f"LinkedIn Execution Failed: {msg}")
+                    except Exception as e:
+                        print(f"❌ LinkedIn Execution Failed: {str(e)}")
+                        platform_statuses["linkedin"] = "failed"
+                        has_errors = True
+                    finally:
+                        # 🚨 FIX 3: INDEPENDENT TEMP FILE CLEANUP
+                        if temp_vid_path and os.path.exists(temp_vid_path):
+                            os.remove(temp_vid_path)
+                            print("🧹 LinkedIn temporary file cleaned up.")
+
+            # 🚨 FIX: EXPONENTIAL BACKOFF SMART RETRY LOGIC
+            if has_errors:
+                retry_count += 1
+                if retry_count <= max_retries:
+                    # Calculate next retry time
+                    if retry_count == 1:
+                        delay = timedelta(minutes=15)
+                    elif retry_count == 2:
+                        delay = timedelta(hours=1)
+                    else:
+                        delay = timedelta(hours=3)
+                        
+                    next_retry = (datetime.now(timezone.utc) + delay).isoformat()
+                    
+                    print(f"⚠️ Partial/Full Failure. Scheduling retry {retry_count}/{max_retries} at {next_retry}")
+                    supabase.table("master_scheduler_queue").update({
+                        "status": "Failed",
+                        "platform_statuses": platform_statuses,
+                        "retry_count": retry_count,
+                        "next_retry_at": next_retry
+                    }).eq("id", task["id"]).execute()
+                else:
+                    print(f"❌ Max retries ({max_retries}) reached. Marking as Permanent_Fail.")
+                    supabase.table("master_scheduler_queue").update({
+                        "status": "Permanent_Fail",
+                        "platform_statuses": platform_statuses,
+                        "retry_count": retry_count
+                    }).eq("id", task["id"]).execute()
+            else:
+                supabase.table("master_scheduler_queue").delete().eq("id", task["id"]).execute()
+                print("🗄️ Task deleted from queue (successfully published everywhere).")
+            
+        except Exception as e:
+            print(f"❌ Critical Error on Task {task['id']}: {str(e)}")
+            retry_count += 1
+            if retry_count <= max_retries:
+                delay = timedelta(minutes=15) if retry_count == 1 else (timedelta(hours=1) if retry_count == 2 else timedelta(hours=3))
+                next_retry = (datetime.now(timezone.utc) + delay).isoformat()
+                supabase.table("master_scheduler_queue").update({
+                    "status": "Failed",
+                    "platform_statuses": platform_statuses,
+                    "retry_count": retry_count,
+                    "next_retry_at": next_retry
+                }).eq("id", task["id"]).execute()
+            else:
+                supabase.table("master_scheduler_queue").update({
+                    "status": "Permanent_Fail",
+                    "platform_statuses": platform_statuses,
+                    "retry_count": retry_count
+                }).eq("id", task["id"]).execute()
