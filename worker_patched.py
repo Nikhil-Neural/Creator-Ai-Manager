@@ -511,7 +511,10 @@ def process_queue():
         
         claim_result = (
             supabase.table("master_scheduler_queue")
-            .update({"status": "Processing"})
+            .update({
+                "status": "Processing",
+                "processing_started_at": datetime.now(timezone.utc).isoformat()
+            })
             .eq("id", task["id"])
             .in_("status", ["Pending", "pending", "Failed", "failed"])
             .select("*")
@@ -519,7 +522,10 @@ def process_queue():
         )
 
         if not claim_result.data:
-            print(f"⏩ Task {task['id']} was already claimed or could not be claimed. Skipping.")
+            print(
+                f"⏩ Task {task['id']} was already claimed "
+                "or could not be claimed. Skipping."
+            )
             continue
 
         task = claim_result.data[0]
