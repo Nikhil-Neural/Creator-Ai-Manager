@@ -2,7 +2,7 @@ import streamlit as st
 from supabase import create_client, Client
 import json
 
-def insert_schedule_queue(creator_email, platforms, video_url, scheduled_time, metadata_payload):
+def insert_schedule_queue(creator_email, platforms, r2_key, scheduled_time, metadata_payload):
     """
     Restored to target the original master_scheduler_queue for true Omnichannel routing.
     """
@@ -13,7 +13,7 @@ def insert_schedule_queue(creator_email, platforms, video_url, scheduled_time, m
         payload = {
             "creator_handle": creator_email, # Tumhari table mein creator_handle hai
             "target_platforms": platforms,   # Tumhara original array (e.g. ['twitter'])
-            "video_url": video_url,
+            "r2_key": r2_key,
             "scheduled_time": scheduled_time.isoformat(),
             "metadata_payload": metadata_payload,
             "status": "Pending"
