@@ -9,7 +9,7 @@ from db_engine import get_supabase_admin_client
 supabase_admin = get_supabase_admin_client()
 from datetime import datetime
 # ✈️ Dynamic Telegram Storage aur Database Engines Connect Karna
-from storage_engine import upload_video_to_telegram
+from storage_engine import upload_video_to_r2
 from db_engine import insert_schedule_queue
 # ── Groq Cache Fix ─────────────────────────────────────
 try:
@@ -1399,13 +1399,15 @@ else:
                 with st.spinner("Initiating secure action pipeline..."):
                     try:
                         success_logs = []
-                        st.info("✈️ Uploading video binary chunks to secure Telegram node...")
+                        st.info("☁️ Uploading video to Cloudflare R2...")
                         file_bytes = uploaded_video.read()
+
+                        r2_key = upload_video_to_r2(
+                            file_bytes,
+                            file_name=uploaded_video.name
+                        )
                         
-                        # Triggering storage module function
-                        video_cloud_url = upload_video_to_telegram(file_bytes, file_name=uploaded_video.name)
-                        
-                        if video_cloud_url:
+                        if r2_key:
                             st.info("🗄️ Splitting blueprints & Syncing with Supabase Cluster...")
                             
                             # 🛠️ THE FIX: Added Facebook & Corrected Variable Names
@@ -1429,7 +1431,7 @@ else:
                                 db_response = insert_schedule_queue(
                                     creator_email=st.session_state.get("user_email"),
                                     platforms=[platform_name],  # Array containing single target platform
-                                    video_url=video_cloud_url,
+                                    r2_key=r2_key,
                                     scheduled_time=target_datetime, # Pure dynamic per-platform time matrix
                                     metadata_payload=metadata_payload
                                 )
@@ -1446,7 +1448,7 @@ else:
                                 st.success(f"🔥 BOOM! Action Plan execution complete:\n" + "\n".join(success_logs))
                                 st.balloons()
                         else:
-                            st.error("❌ Telegram node rejected the asset stream.")
+                            st.error("❌ Cloudflare R2 rejected the asset stream.")
                                 
                     except Exception as master_e:
                         st.error(f"⚠️ Core Engine Failure: {str(master_e)}")
