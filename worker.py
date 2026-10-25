@@ -13,50 +13,15 @@ from google.oauth2.credentials import Credentials
 from googleapiclient.http import MediaFileUpload
 
 
-# 1. Supabase Connection Setup — explicit environment selection
-ENVIRONMENT = os.getenv("WORKER_ENV", "production").strip().lower()
-
-if ENVIRONMENT == "staging":
-    secrets_path = os.path.join(
-        os.path.dirname(os.path.abspath(__file__)),
-        ".streamlit",
-        "staging_secrets.toml",
-    )
-
-    import tomllib
-
-    with open(secrets_path, "rb") as secrets_file:
-        worker_secrets = tomllib.load(secrets_file)
-
-    url = worker_secrets["SUPABASE_URL"]
-    key = worker_secrets["SUPABASE_SERVICE_KEY"]
-
-elif ENVIRONMENT == "production":
-    url = st.secrets["SUPABASE_URL"]
-    key = st.secrets["SUPABASE_SERVICE_KEY"]
-
-else:
-    raise RuntimeError(
-        f"Invalid WORKER_ENV={ENVIRONMENT!r}. "
-        "Use 'staging' or 'production'."
-    )
-
-# Fail closed if staging was selected but production URL was configured.
-if ENVIRONMENT == "staging":
-    if "YOUR_STAGING_PROJECT_URL" in url or not url.startswith("https://"):
-        raise RuntimeError("Invalid staging Supabase URL.")
-    if not url.endswith(".supabase.co"):
-        raise RuntimeError("Staging URL does not look like a Supabase project URL.")
+# 1. Single production database connection. Configure SUPABASE_URL and
+# SUPABASE_SERVICE_KEY in Streamlit secrets for the deployed app.
+url = st.secrets["SUPABASE_URL"]
+key = st.secrets["SUPABASE_SERVICE_KEY"]
 
 supabase: Client = create_client(url, key)
 
-# Keep read-only validation enabled during testing.
-DRY_RUN = True
-
-
-# SAFETY: Keep enabled while validating the queue. In this mode the worker
-# performs read-only checks and MUST NOT claim, publish, retry, update, or delete tasks.
-DRY_RUN = True
+# Real publishing is enabled by default. Do not set this to True in production.
+DRY_RUN = False
 SUPPORTED_PLATFORMS = {"youtube", "twitter", "instagram", "meta", "facebook", "threads", "linkedin"}
 
 def has_uncertain_publish_state(platform_statuses):
