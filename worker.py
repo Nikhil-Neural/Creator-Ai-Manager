@@ -34,6 +34,91 @@ def has_uncertain_publish_state(platform_statuses):
         for status in platform_statuses.values()
     )
 
+def finalize_exhausted_task(task_id, retry_count, platform_statuses, error_message):
+    """
+    Mark retries-exhausted task as Permanent_Fail.
+    Delete only when no platform is published or uncertain.
+    Keep partial-success rows for audit.
+    """
+    try:
+        permanent_result = (
+            supabase.table("master_scheduler_queue")
+            .update({
+                "status": "Permanent_Fail",
+                "platform_statuses": platform_statuses,
+                "retry_count": retry_count,
+                "last_error": str(error_message)[:5000],
+            })
+            .eq("id", task_id)
+            .eq("status", "Processing")
+            .select("id")
+            .execute()
+        )
+
+        if not permanent_result.data:
+            print(
+                f"🚨 Permanent_Fail not confirmed for task {task_id}. "
+                "Row retained; manual DB check required."
+            )
+            return
+
+        print(f"✅ Task {task_id} marked Permanent_Fail.")
+
+        # Never delete if any platform's publish outcome is uncertain.
+        if has_uncertain_publish_state(platform_statuses):
+            print(
+                f"🛑 Task {task_id} has uncertain publish state. "
+                "Retaining row for review."
+            )
+            return
+
+        # Preserve the audit record if any platform succeeded.
+        statuses = (
+            platform_statuses
+            if isinstance(platform_statuses, dict)
+            else {}
+        )
+        published = any(
+            isinstance(status, str)
+            and status.strip().lower() in {"published", "success"}
+            for status in statuses.values()
+        )
+
+        if published:
+            print(
+                f"📋 Task {task_id} partially published. "
+                "Permanent_Fail row retained for audit."
+            )
+            return
+
+        # Delete only after Permanent_Fail was confirmed and no
+        # platform is published or uncertain.
+        delete_result = (
+            supabase.table("master_scheduler_queue")
+            .delete()
+            .eq("id", task_id)
+            .eq("status", "Permanent_Fail")
+            .eq("retry_count", retry_count)
+            .select("id")
+            .execute()
+        )
+
+        if delete_result.data:
+            print(
+                f"🗑️ Exhausted task {task_id} deleted from queue."
+            )
+        else:
+            print(
+                f"⚠️ Cleanup not confirmed for task {task_id}. "
+                "Check the database manually."
+            )
+
+    except Exception as e:
+        print(
+            f"🚨 Could not finalize task {task_id}: {e}. "
+            "Check database state manually."
+        )
+
 def download_video_safe(vid_url, max_size_mb=250):
     """
     R2/Network se safely video download karta hai 250MB limit ke sath.
@@ -1394,30 +1479,17 @@ def process_queue():
                         )
 
                 else:
-                    print(f"❌ Max retries ({max_retries}) reached. Marking as Permanent_Fail.")
-                    
-                    permanent_result = (
-                        supabase.table("master_scheduler_queue")
-                        .update({
-                            "status": "Permanent_Fail",
-                            "platform_statuses": platform_statuses,
-                            "retry_count": retry_count
-                        })
-                        .eq("id", task["id"])
-                        .eq("status", "Processing")
-                        .select("id")
-                        .execute()
+                    print(
+                        f"❌ Max retries ({max_retries}) reached. "
+                        "Finalizing failed task."
                     )
 
-                    if not permanent_result.data:
-                        print(
-                            f"🚨 Permanent_Fail status could not be confirmed "
-                            f"for task {task['id']}. Check the database manually."
-                        )
-                    else:
-                        print(
-                            f"✅ Task {task['id']} marked Permanent_Fail."
-                        )
+                    finalize_exhausted_task(
+                        task_id=task["id"],
+                        retry_count=retry_count,
+                        platform_statuses=platform_statuses,
+                        error_message="Maximum retry attempts exhausted.",
+                    )
             
             else:
                 print(
@@ -1570,8 +1642,6 @@ def process_queue():
                 )        
 
         
-
-        
         except Exception as e:
             print(
                 f"❌ Critical Error on Task {task['id']}: {str(e)}"
@@ -1645,29 +1715,12 @@ def process_queue():
                         )
 
                 else:
-                    permanent_result = (
-                        supabase.table("master_scheduler_queue")
-                        .update({
-                            "status": "Permanent_Fail",
-                            "platform_statuses": platform_statuses,
-                            "retry_count": retry_count
-                        })
-                        .eq("id", task["id"])
-                        .eq("status", "Processing")
-                        .select("id")
-                        .execute()
+                    finalize_exhausted_task(
+                        task_id=task["id"],
+                        retry_count=retry_count,
+                        platform_statuses=platform_statuses,
+                        error_message=f"Maximum retries exhausted after error: {e}",
                     )
-
-                    if permanent_result.data:
-                        print(
-                            f"✅ Task {task['id']} marked Permanent_Fail."
-                        )
-                    else:
-                        print(
-                            f"🚨 Permanent_Fail update not confirmed "
-                            f"for task {task['id']}. "
-                            "Check the database manually."
-                        )
 
             except Exception as retry_error:
                 print(
