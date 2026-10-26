@@ -1420,24 +1420,37 @@ def process_queue():
                         )
             
             else:
-                delete_result = (
-                    supabase.table("master_scheduler_queue")
-                    .delete()
-                    .eq("id", task["id"])
-                    .eq("status", "Processing")
-                    .select("id")
-                    .execute()
+                print(
+                    f"✅ Task {task['id']} marked Permanent_Fail."
                 )
 
-                if delete_result.data:
-                    print(
-                        f"🗄️ Task {task['id']} deleted from queue "
-                        "(successfully published everywhere)."
+                try:
+                    delete_result = (
+                        supabase.table("master_scheduler_queue")
+                        .delete()
+                        .eq("id", task["id"])
+                        .eq("status", "Permanent_Fail")
+                        .eq("retry_count", retry_count)
+                        .select("id")
+                        .execute()
                     )
-                else:
+
+                    if delete_result.data:
+                        print(
+                            f"🗑️ Exhausted task {task['id']} "
+                            "deleted from queue."
+                        )
+                    else:
+                        print(
+                            f"⚠️ Cleanup not confirmed for task "
+                            f"{task['id']}; row retained or changed concurrently."
+                        )
+
+                except Exception as cleanup_error:
                     print(
-                        f"🚨 Queue deletion could not be confirmed for task "
-                        f"{task['id']}. Check the database manually."
+                        f"🚨 Cleanup failed for task {task['id']}: "
+                        f"{cleanup_error}. Permanent_Fail row retained "
+                        "if deletion did not succeed."
                     )
 
 
