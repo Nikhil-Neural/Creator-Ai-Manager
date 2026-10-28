@@ -475,17 +475,127 @@ def restore_session_from_db():
         
 restore_session_from_db()            
     
-st.markdown(
-    """
-    <div style="display: flex; align-items: baseline; gap: 10px;">
-        <h1 style="margin: 0;">🚀 Creator AI Manager OS</h1>
-        <span style="background-color: #ff4b4b; color: white; padding: 4px 10px; border-radius: 15px; font-size: 14px; font-weight: bold;">
-            ⚡ Shorts Only (Long-form coming soon)
-        </span>
-    </div>
-    """, 
-    unsafe_allow_html=True
-)
+# ── APP HEADER + ACTIVITY CENTER ───────────────────────────────────────────
+header_col, activity_col = st.columns([5, 1.35], vertical_alignment="center")
+with header_col:
+    st.markdown(
+        """
+        <div style="display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap;">
+            <h1 style="margin: 0;">🚀 Creator AI Manager OS</h1>
+            <span style="background-color: #ff4b4b; color: white; padding: 4px 10px; border-radius: 15px; font-size: 14px; font-weight: bold;">
+                ⚡ Shorts Only (Long-form coming soon)
+            </span>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+# Activity Center uses the authenticated Supabase client (not service-role admin)
+# so the table's owner RLS policies remain the security boundary.
+activity_user = st.session_state.get("user_email")
+activity_now = datetime.utcnow().isoformat() + "+00:00"
+activity_unread_count = 0
+if activity_user:
+    try:
+        unread_res = (
+            supabase.table("user_notifications")
+            .select("id", count="exact")
+            .eq("creator_handle", activity_user)
+            .is_("read_at", "null")
+            .gt("expires_at", activity_now)
+            .execute()
+        )
+        activity_unread_count = unread_res.count or 0
+    except Exception as e:
+        # Notification failures must never interrupt the publisher UI.
+        print(f"[ACTIVITY CENTER COUNT ERROR] {e}")
+
+with activity_col:
+    activity_open = st.button(
+        f"🔔 Activity Center ({activity_unread_count})",
+        key="open_activity_center",
+        use_container_width=True,
+    )
+
+if activity_open:
+    st.session_state["activity_center_open"] = not st.session_state.get("activity_center_open", False)
+
+if st.session_state.get("activity_center_open", False):
+    with st.container(border=True):
+        activity_title_col, activity_refresh_col = st.columns([4, 1])
+        with activity_title_col:
+            st.markdown("### 🔔 Activity Center")
+        with activity_refresh_col:
+            if st.button("↻ Refresh", key="refresh_activity_center"):
+                st.rerun()
+
+        if not activity_user:
+            st.info("Please log in to view your notifications.")
+        else:
+            try:
+                notifications_res = (
+                    supabase.table("user_notifications")
+                    .select("id, job_id, event_type, title, message, severity, created_at, expires_at, read_at")
+                    .eq("creator_handle", activity_user)
+                    .gt("expires_at", activity_now)
+                    .order("created_at", desc=True)
+                    .limit(50)
+                    .execute()
+                )
+                notifications = notifications_res.data or []
+                if not notifications:
+                    st.success("You're all caught up — no active notifications.")
+                else:
+                    if st.button("Mark all as read", key="mark_all_notifications_read"):
+                        try:
+                            (
+                                supabase.table("user_notifications")
+                                .update({"read_at": datetime.utcnow().isoformat() + "+00:00"})
+                                .eq("creator_handle", activity_user)
+                                .is_("read_at", "null")
+                                .gt("expires_at", datetime.utcnow().isoformat() + "+00:00")
+                                .execute()
+                            )
+                            st.rerun()
+                        except Exception as e:
+                            st.warning("Could not mark notifications as read. Please try again.")
+                            print(f"[ACTIVITY CENTER MARK-ALL ERROR] {e}")
+
+                    for notification in notifications:
+                        severity = str(notification.get("severity") or "info").lower()
+                        icon = {"success": "✅", "warning": "⚠️", "error": "❌", "info": "ℹ️"}.get(severity, "ℹ️")
+                        read_at = notification.get("read_at")
+                        label = "Read" if read_at else "Unread"
+                        with st.container(border=True):
+                            top_col, status_col = st.columns([4, 1])
+                            with top_col:
+                                st.markdown(f"**{icon} {notification.get('title') or 'Notification'}**")
+                            with status_col:
+                                st.caption(label)
+                            st.write(notification.get("message") or "No additional details.")
+                            created_at = notification.get("created_at")
+                            if created_at:
+                                st.caption(f"Created: {created_at}")
+                            if notification.get("job_id"):
+                                st.caption(f"Job ID: {notification['job_id']}")
+                            if not read_at and st.button("Mark as read", key=f"mark_notification_read_{notification['id']}"):
+                                try:
+                                    (
+                                        supabase.table("user_notifications")
+                                        .update({"read_at": datetime.utcnow().isoformat() + "+00:00"})
+                                        .eq("id", notification["id"])
+                                        .eq("creator_handle", activity_user)
+                                        .is_("read_at", "null")
+                                        .execute()
+                                    )
+                                    st.rerun()
+                                except Exception as e:
+                                    st.warning("Could not mark this notification as read. Please try again.")
+                                    print(f"[ACTIVITY CENTER MARK-READ ERROR] {e}")
+            except Exception as e:
+                st.warning("Activity Center is temporarily unavailable. Your publishing workflow is unaffected.")
+                print(f"[ACTIVITY CENTER FETCH ERROR] {e}")
+
 st.write(f"System Context: **{current_os_mode}** active")
 st.write("---")
 
