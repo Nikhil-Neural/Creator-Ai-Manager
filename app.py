@@ -40,10 +40,6 @@ import requests
 import json
 import re
 import tweepy
-import inspect
-
-st.write("Loaded function file:", inspect.getfile(insert_schedule_queue))
-st.write("Loaded function signature:", inspect.signature(insert_schedule_queue))
 # ==============================================================
 # 🔄 MASTER SYNC ENGINE (API to Supabase Cache)
 # ==============================================================
