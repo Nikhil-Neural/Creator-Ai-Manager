@@ -7,6 +7,7 @@ import streamlit as st
 from supabase import create_client, Client
 from storage_engine import generate_presigned_url
 from datetime import datetime, timezone, timedelta
+from zoneinfo import ZoneInfo
 # Google API Imports
 import googleapiclient.discovery
 from google.oauth2.credentials import Credentials
@@ -34,91 +35,72 @@ def has_uncertain_publish_state(platform_statuses):
         for status in platform_statuses.values()
     )
 
-def finalize_exhausted_task(task_id, retry_count, platform_statuses, error_message):
+def save_user_notification(
+    creator_handle,
+    job_id,
+    event_type,
+    title,
+    message,
+    severity="info",
+):
     """
-    Mark retries-exhausted task as Permanent_Fail.
-    Delete only when no platform is published or uncertain.
-    Keep partial-success rows for audit.
+    Persist a notification without affecting the publishing workflow.
+    Notification failures must never trigger another publishing attempt.
     """
     try:
-        permanent_result = (
-            supabase.table("master_scheduler_queue")
-            .update({
-                "status": "Permanent_Fail",
-                "platform_statuses": platform_statuses,
-                "retry_count": retry_count,
-                "last_error": str(error_message)[:5000],
-            })
-            .eq("id", task_id)
-            .eq("status", "Processing")
-            .select("id")
+        if not isinstance(creator_handle, str) or not creator_handle.strip():
+            print("⚠️ Notification skipped: invalid creator_handle.")
+            return False
+
+        allowed_events = {
+            "publish_success",
+            "publish_failure",
+            "needs_review",
+            "publishing_update",
+        }
+        allowed_severities = {"success", "warning", "error", "info"}
+
+        if event_type not in allowed_events:
+            print(f"⚠️ Notification skipped: invalid event_type={event_type}")
+            return False
+
+        if severity not in allowed_severities:
+            print(f"⚠️ Notification skipped: invalid severity={severity}")
+            return False
+
+        payload = {
+            "creator_handle": creator_handle.strip(),
+            "job_id": str(job_id) if job_id else None,
+            "event_type": event_type,
+            "title": str(title)[:200],
+            "message": str(message)[:2000],
+            "severity": severity,
+        }
+
+        result = (
+            supabase.table("user_notifications")
+            .insert(payload)
             .execute()
         )
 
-        if not permanent_result.data:
+        if not result.data:
             print(
-                f"🚨 Permanent_Fail not confirmed for task {task_id}. "
-                "Row retained; manual DB check required."
+                f"⚠️ Notification insert was not confirmed "
+                f"for job {job_id}."
             )
-            return
+            return False
 
-        print(f"✅ Task {task_id} marked Permanent_Fail.")
+        return True
 
-        # Never delete if any platform's publish outcome is uncertain.
-        if has_uncertain_publish_state(platform_statuses):
-            print(
-                f"🛑 Task {task_id} has uncertain publish state. "
-                "Retaining row for review."
-            )
-            return
-
-        # Preserve the audit record if any platform succeeded.
-        statuses = (
-            platform_statuses
-            if isinstance(platform_statuses, dict)
-            else {}
-        )
-        published = any(
-            isinstance(status, str)
-            and status.strip().lower() in {"published", "success"}
-            for status in statuses.values()
-        )
-
-        if published:
-            print(
-                f"📋 Task {task_id} partially published. "
-                "Permanent_Fail row retained for audit."
-            )
-            return
-
-        # Delete only after Permanent_Fail was confirmed and no
-        # platform is published or uncertain.
-        delete_result = (
-            supabase.table("master_scheduler_queue")
-            .delete()
-            .eq("id", task_id)
-            .eq("status", "Permanent_Fail")
-            .eq("retry_count", retry_count)
-            .select("id")
-            .execute()
-        )
-
-        if delete_result.data:
-            print(
-                f"🗑️ Exhausted task {task_id} deleted from queue."
-            )
-        else:
-            print(
-                f"⚠️ Cleanup not confirmed for task {task_id}. "
-                "Check the database manually."
-            )
-
-    except Exception as e:
+    except Exception as notification_error:
+        # Never raise from this helper: publishing must remain independent.
         print(
-            f"🚨 Could not finalize task {task_id}: {e}. "
-            "Check database state manually."
+            f"⚠️ Notification save failed for job {job_id}: "
+            f"{notification_error}"
         )
+        return False
 
+    
 def download_video_safe(vid_url, max_size_mb=250):
     """
     R2/Network se safely video download karta hai 250MB limit ke sath.
@@ -915,16 +897,33 @@ def save_platform_status(task_id, platform_statuses):
 
 def process_queue():
     """Database check karta hai aur pending videos upload karta hai"""
-    current_utc_time = datetime.now(timezone.utc).isoformat()
-    print(f"[{datetime.now()}] 🔍 Checking database for pending videos scheduled up to now...")
-    
+    current_utc = datetime.now(timezone.utc)
+    india_tz = ZoneInfo("Asia/Kolkata")
+
+    current_india = current_utc.astimezone(india_tz)
+    day_start_india = current_india.replace(
+        hour=0, minute=0, second=0, microsecond=0
+    )
+    day_start_utc = day_start_india.astimezone(timezone.utc)
+    next_day_start_utc = (
+        day_start_india + timedelta(days=1)
+    ).astimezone(timezone.utc)
+
+    current_utc_time = current_utc.isoformat()
+
+    print(
+        f"[{current_india.isoformat()}] "
+        "Checking today's eligible scheduled videos..."
+    )
+
     try:
-        response = supabase.table("master_scheduler_queue") \
-            .select("*") \
-            .in_("status", ["Pending", "pending", "Failed", "failed"]) \
-            .or_(f"next_retry_at.is.null,next_retry_at.lte.{current_utc_time}") \
-            .lte("scheduled_time", current_utc_time) \
+        response = (
+            supabase.table("master_scheduler_queue")
+            .select("*")
+            .in_("status", ["Pending", "pending"])
+            .lte("scheduled_time", current_utc_time)
             .execute()
+        )
         tasks = response.data
     except Exception as e:
         print(f"Database error: {e}")
@@ -975,7 +974,7 @@ def process_queue():
         try:
             stale_response = (
                 supabase.table("master_scheduler_queue")
-                .select("id, processing_started_at, platform_statuses")
+                .select("id, processing_started_at, platform_statuses, creator_handle")
                 .in_("status", ["Processing", "processing"])
                 .lt("processing_started_at", stale_cutoff)
                 .execute()
@@ -996,6 +995,18 @@ def process_queue():
                     )
                     if recovery_result.data:
                         print(f"🛑 Stale task {stale_task['id']} moved to Needs_Review; no automatic retry.")
+                        save_user_notification(
+                            creator_handle=stale_task.get("creator_handle"),
+                            job_id=stale_task["id"],
+                            event_type="needs_review",
+                            title="Manual review required",
+                            message=(
+                                "This publishing job remained in Processing for over 30 minutes. "
+                                "The worker moved it to Needs_Review to prevent duplicate publishing. "
+                                "Check the affected platform(s) manually before retrying."
+                            ),
+                            severity="warning",
+                        )
                     else:
                         print(f"ℹ️ Stale task {stale_task.get('id')} changed concurrently; recovery skipped.")
                 except Exception as recovery_error:
@@ -1059,7 +1070,7 @@ def process_queue():
                 "processing_started_at": datetime.now(timezone.utc).isoformat()
             })
             .eq("id", task["id"])
-            .in_("status", ["Pending", "pending", "Failed", "failed"])
+            .in_("status", ["Pending", "pending"])
             .select("*")
             .execute()
         )
@@ -1089,7 +1100,7 @@ def process_queue():
 
         # Safe defaults for exception handling
         retry_count = 0
-        max_retries = 3
+        platform_errors = {}
         retry_count_incremented = False
 
         try:
@@ -1205,6 +1216,7 @@ def process_queue():
                         if not profile_res.data or not profile_res.data[0].get("youtube_token"):
                             print(f"⚠️ Skipping YT: No YouTube refresh token found for {creator_email}")
                             platform_statuses["youtube"] = "failed"
+                            platform_errors["youtube"] = "Required access token is missing."
                             has_errors = True
                         else:
                             user_specific_token = profile_res.data[0]["youtube_token"]
@@ -1227,6 +1239,7 @@ def process_queue():
                         print(f"❌ YouTube Execution Failed: {str(e)}")
                         platform_statuses["youtube"] = "failed"
                         has_errors = True
+                        platform_errors["youtube"] = str(e)[:1000]
                     finally:
                         # 🚨 FIX 3: INDEPENDENT TEMP FILE CLEANUP
                         if temp_vid_path and os.path.exists(temp_vid_path):
@@ -1244,6 +1257,7 @@ def process_queue():
                     if not tw_profile_res.data or not tw_profile_res.data[0].get("twitter_token"):
                         print(f"⚠️ Skipping Twitter: No connected X account found for {creator_email}")
                         platform_statuses["twitter"] = "failed"
+                        platform_errors["twitter"] = "Required access token is missing."
                         has_errors = True
                     else:
                         try:
@@ -1276,6 +1290,7 @@ def process_queue():
                             print(f"❌ Twitter Execution Failed: {str(e)}")
                             platform_statuses["twitter"] = "failed"
                             has_errors = True
+                            platform_errors["twitter"] = str(e)[:1000]
 
             # --- META (INSTAGRAM) LOGIC ---
             if "instagram" in platforms or "meta" in platforms:
@@ -1288,6 +1303,7 @@ def process_queue():
                     if not profile_res.data or not profile_res.data[0].get("instagram_token"):
                         print(f"⚠️ Skipping Meta: No valid Meta token found")
                         platform_statuses["instagram"] = "failed"
+                        platform_errors["instagram"] = "Required access token is missing."
                         has_errors = True
                     else:
                         try:
@@ -1313,6 +1329,7 @@ def process_queue():
                             print(f"❌ Meta Execution Failed: {str(e)}")
                             platform_statuses["instagram"] = "failed"
                             has_errors = True
+                            platform_errors["instagram"] = str(e)[:1000]
 
             # --- FACEBOOK LOGIC ---
             if "facebook" in platforms:
@@ -1325,6 +1342,7 @@ def process_queue():
                     if not profile_res.data or not profile_res.data[0].get("facebook_token"):
                         print(f"⚠️ Skipping FB: No valid Facebook token found")
                         platform_statuses["facebook"] = "failed"
+                        platform_errors["facebook"] = "Required access token is missing."
                         has_errors = True
                     else:
                         try:
@@ -1350,6 +1368,7 @@ def process_queue():
                             print(f"❌ Facebook Execution Failed: {str(e)}")
                             platform_statuses["facebook"] = "failed"
                             has_errors = True
+                            platform_errors["facebook"] = str(e)[:1000]
 
             # --- THREADS LOGIC ---
             if "threads" in platforms:
@@ -1362,6 +1381,7 @@ def process_queue():
                     if not profile_res.data or not profile_res.data[0].get("threads_token"):
                         print(f"⚠️ Skipping Threads: No valid token found")
                         platform_statuses["threads"] = "failed"
+                        platform_errors["threads"] = "Required access token is missing."
                         has_errors = True
                     else:
                         try:
@@ -1387,6 +1407,7 @@ def process_queue():
                             print(f"❌ Threads Execution Failed: {str(e)}")
                             platform_statuses["threads"] = "failed"
                             has_errors = True
+                            platform_errors["threads"] = str(e)[:1000]
 
             # --- LINKEDIN LOGIC ---
             if "linkedin" in platforms:
@@ -1401,6 +1422,7 @@ def process_queue():
                         if not profile_res.data or not profile_res.data[0].get("linkedin_token"):
                             print(f"⚠️ Skipping LinkedIn: No valid token found")
                             platform_statuses["linkedin"] = "failed"
+                            platform_errors["linkedin"] = "Required access token is missing."
                             has_errors = True
                         else:
                             li_token = profile_res.data[0]["linkedin_token"]
@@ -1428,104 +1450,105 @@ def process_queue():
                         print(f"❌ LinkedIn Execution Failed: {str(e)}")
                         platform_statuses["linkedin"] = "failed"
                         has_errors = True
+                        platform_errors["linkedin"] = str(e)[:1000]
+
                     finally:
                         # 🚨 FIX 3: INDEPENDENT TEMP FILE CLEANUP
                         if temp_vid_path and os.path.exists(temp_vid_path):
                             os.remove(temp_vid_path)
                             print("🧹 LinkedIn temporary file cleaned up.")
 
-            # 🚨 FIX: EXPONENTIAL BACKOFF SMART RETRY LOGIC
+            # ONE-ATTEMPT POLICY:
+            # Do not schedule automatic retries after a confirmed platform failure.
             if has_errors:
-                
-                if not retry_count_incremented:
-                    retry_count += 1
-                    retry_count_incremented = True
-                if retry_count <= max_retries:
-                    # Calculate next retry time
-                    if retry_count == 1:
-                        delay = timedelta(minutes=15)
-                    elif retry_count == 2:
-                        delay = timedelta(hours=1)
-                    else:
-                        delay = timedelta(hours=3)
-                        
-                    next_retry = (datetime.now(timezone.utc) + delay).isoformat()
-                    
-                    print(f"⚠️ Partial/Full Failure. Scheduling retry {retry_count}/{max_retries} at {next_retry}")
-                    
-                    retry_result = (
-                        supabase.table("master_scheduler_queue")
-                        .update({
-                            "status": "Failed",
-                            "platform_statuses": platform_statuses,
-                            "retry_count": retry_count,
-                            "next_retry_at": next_retry
-                        })
-                        .eq("id", task["id"])
-                        .eq("status", "Processing")
-                        .select("id")
-                        .execute()
-                    )
-
-                    if not retry_result.data:
-                        print(
-                            f"🚨 Retry scheduling could not be confirmed for task "
-                            f"{task['id']}. Check the database manually."
-                        )
-                    else:
-                        print(
-                            f"✅ Retry scheduled for task {task['id']} "
-                            f"at {next_retry}"
-                        )
-
-                else:
-                    print(
-                        f"❌ Max retries ({max_retries}) reached. "
-                        "Finalizing failed task."
-                    )
-
-                    finalize_exhausted_task(
-                        task_id=task["id"],
-                        retry_count=retry_count,
-                        platform_statuses=platform_statuses,
-                        error_message="Maximum retry attempts exhausted.",
-                    )
-            
-            else:
-                print(
-                    f"✅ Task {task['id']} marked Permanent_Fail."
+                error_summary = "; ".join(
+                    f"{platform}: {error}"
+                    for platform, error in platform_errors.items()
                 )
 
-                try:
-                    delete_result = (
-                        supabase.table("master_scheduler_queue")
-                        .delete()
-                        .eq("id", task["id"])
-                        .eq("status", "Permanent_Fail")
-                        .eq("retry_count", retry_count)
-                        .select("id")
-                        .execute()
+                if not error_summary:
+                    error_summary = (
+                        task.get("last_error")
+                        or "One or more platform publishing attempts failed."
                     )
 
-                    if delete_result.data:
-                        print(
-                            f"🗑️ Exhausted task {task['id']} "
-                            "deleted from queue."
-                        )
-                    else:
-                        print(
-                            f"⚠️ Cleanup not confirmed for task "
-                            f"{task['id']}; row retained or changed concurrently."
-                        )
+                final_status = "Failed"
 
-                except Exception as cleanup_error:
-                    print(
-                        f"🚨 Cleanup failed for task {task['id']}: "
-                        f"{cleanup_error}. Permanent_Fail row retained "
-                        "if deletion did not succeed."
+                update_payload = {
+                    "status": final_status,
+                    "platform_statuses": platform_statuses,
+                    "last_error": error_summary[:5000],
+                    "next_retry_at": None,
+                }
+
+            else:
+                final_status = "Published"
+
+                update_payload = {
+                    "status": final_status,
+                    "platform_statuses": platform_statuses,
+                    "last_error": None,
+                    "next_retry_at": None,
+                }
+
+            try:
+                final_result = (
+                    supabase.table("master_scheduler_queue")
+                    .update(update_payload)
+                    .eq("id", task["id"])
+                    .eq("status", "Processing")
+                    .select("id, status")
+                    .execute()
+                )
+
+                if not final_result.data:
+                    raise RuntimeError(
+                        f"Final status update was not confirmed for task {task['id']}."
                     )
 
+            except Exception as e:
+                print(
+                    f"CRITICAL: Could not confirm final status for "
+                    f"task {task['id']}: {e}"
+                )
+                raise
 
+            # Notification is written only after the final queue status is confirmed.
+            try:
+                final_status_saved = final_result.data[0].get("status")
+
+                if final_status_saved == "Published":
+                    save_user_notification(
+                        creator_handle=task.get("creator_handle"),
+                        job_id=task["id"],
+                        event_type="publish_success",
+                        title="Publishing completed",
+                        message=(
+                            f"Your scheduled publishing job completed successfully "
+                            f"for: {', '.join(platforms)}."
+                        ),
+                        severity="success",
+                    )
+
+                elif final_status_saved == "Failed":
+                    save_user_notification(
+                        creator_handle=task.get("creator_handle"),
+                        job_id=task["id"],
+                        event_type="publish_failure",
+                        title="Publishing failed",
+                        message=(
+                            f"Your publishing job failed for one or more platforms. "
+                            f"Details: {update_payload.get('last_error') or 'Check job status.'}"
+                        ),
+                        severity="error",
+                    )
+
+            except Exception as notification_error:
+                # Notification problems must not change publishing status.
+                print(
+                    f"⚠️ Could not create final notification for task "
+                    f"{task['id']}: {notification_error}"
+                )
 
         
         except PublishOutcomeUnknown as e:
@@ -1540,6 +1563,7 @@ def process_queue():
                     .update({
                         "status": "Needs_Review",
                         "platform_statuses": platform_statuses,
+                        "last_error": str(e)[:5000],
                     })
                     .eq("id", task["id"])
                     .eq("status", "Processing")
@@ -1551,6 +1575,18 @@ def process_queue():
                     print(
                         f"✅ Task {task['id']} marked Needs_Review. "
                         "Check the affected platform(s) manually before retrying."
+                    )
+                    save_user_notification(
+                        creator_handle=task.get("creator_handle"),
+                        job_id=task["id"],
+                        event_type="needs_review",
+                        title="Manual review required",
+                        message=(
+                            "The publishing outcome could not be confirmed. "
+                            "Check the affected platform(s) manually before retrying. "
+                            f"Details: {str(e)[:1000]}"
+                        ),
+                        severity="warning",
                     )
                 else:
                     print(
@@ -1580,6 +1616,7 @@ def process_queue():
                     .update({
                         "status": "Needs_Review",
                         "platform_statuses": platform_statuses,
+                        "last_error": str(e)[:5000],
                     })
                     .eq("id", task["id"])
                     .eq("status", "Processing")
@@ -1591,6 +1628,19 @@ def process_queue():
                     print(
                         f"🛑 Task {task['id']} marked Needs_Review. "
                         "Automatic retry must not proceed."
+                    )
+                    save_user_notification(
+                        creator_handle=task.get("creator_handle"),
+                        job_id=task["id"],
+                        event_type="needs_review",
+                        title="Manual review required",
+                        message=(
+                            "The worker could not confirm that platform publishing status "
+                            "was saved correctly. Check the platform and database status "
+                            "manually before retrying. "
+                            f"Details: {str(e)[:1000]}"
+                        ),
+                        severity="warning",
                     )
                 else:
                     print(
@@ -1617,6 +1667,7 @@ def process_queue():
                     .update({
                         "status": "Permanent_Fail",
                         "platform_statuses": platform_statuses,
+                        "last_error": str(e)[:5000],
                     })
                     .eq("id", task["id"])
                     .eq("status", "Processing")
@@ -1628,6 +1679,18 @@ def process_queue():
                     print(
                         f"✅ Invalid task {task['id']} marked "
                         "Permanent_Fail. No retry scheduled."
+                    )
+                    save_user_notification(
+                        creator_handle=task.get("creator_handle"),
+                        job_id=task["id"],
+                        event_type="publish_failure",
+                        title="Invalid publishing task",
+                        message=(
+                            "This publishing job could not be processed because its "
+                            "configuration or data is invalid. Automatic retry is disabled. "
+                            f"Details: {str(e)[:1000]}"
+                        ),
+                        severity="error",
                     )
                 else:
                     print(
@@ -1665,69 +1728,69 @@ def process_queue():
                     )
                     if review_result.data:
                         print(f"🛑 Task {task['id']} marked Needs_Review; no retry scheduled.")
+                        save_user_notification(
+                            creator_handle=task.get("creator_handle"),
+                            job_id=task["id"],
+                            event_type="needs_review",
+                            title="Manual review required",
+                            message=(
+                                "The publishing outcome could not be confirmed. "
+                                "Check the affected platform(s) manually before retrying. "
+                                f"Details: {str(e)[:1000]}"
+                            ),
+                            severity="warning",
+                        )
                     else:
                         print(f"🚨 Could not confirm Needs_Review for task {task['id']}; manual DB check required.")
                 except Exception as review_error:
                     print(f"🚨 Could not save Needs_Review for task {task['id']}: {review_error}. Manual DB check required; no retry attempted.")
                 continue
 
-            if not retry_count_incremented:
-                retry_count += 1
-                retry_count_incremented = True
-
-
+            # ONE-ATTEMPT POLICY:
+            # No automatic retries for unexpected errors.
             try:
-                if retry_count <= max_retries:
-                    if retry_count == 1:
-                        delay = timedelta(minutes=15)
-                    elif retry_count == 2:
-                        delay = timedelta(hours=1)
-                    else:
-                        delay = timedelta(hours=3)
+                failure_result = (
+                    supabase.table("master_scheduler_queue")
+                    .update({
+                        "status": "Failed",
+                        "platform_statuses": platform_statuses,
+                        "last_error": str(e)[:5000],
+                        "next_retry_at": None,
+                    })
+                    .eq("id", task["id"])
+                    .eq("status", "Processing")
+                    .select("id")
+                    .execute()
+                )
 
-                    next_retry = (
-                        datetime.now(timezone.utc) + delay
-                    ).isoformat()
-
-                    retry_result = (
-                        supabase.table("master_scheduler_queue")
-                        .update({
-                            "status": "Failed",
-                            "platform_statuses": platform_statuses,
-                            "retry_count": retry_count,
-                            "next_retry_at": next_retry
-                        })
-                        .eq("id", task["id"])
-                        .eq("status", "Processing")
-                        .select("id")
-                        .execute()
+                if failure_result.data:
+                    print(
+                        f"❌ Task {task['id']} marked Failed after "
+                        "an unexpected error. Automatic retry disabled."
                     )
-
-                    if retry_result.data:
-                        print(
-                            f"✅ Retry scheduled for task {task['id']} "
-                            f"at {next_retry}"
-                        )
-                    else:
-                        print(
-                            f"🚨 Retry update not confirmed for task "
-                            f"{task['id']}. Check the database manually."
-                        )
-
+                    save_user_notification(
+                        creator_handle=task.get("creator_handle"),
+                        job_id=task["id"],
+                        event_type="publish_failure",
+                        title="Publishing failed",
+                        message=(
+                            "Your publishing job failed because of an unexpected worker error. "
+                            "Automatic retry is disabled. "
+                            f"Details: {str(e)[:1000]}"
+                        ),
+                        severity="error",
+                    )
                 else:
-                    finalize_exhausted_task(
-                        task_id=task["id"],
-                        retry_count=retry_count,
-                        platform_statuses=platform_statuses,
-                        error_message=f"Maximum retries exhausted after error: {e}",
+                    print(
+                        f"🚨 Failed status update was not confirmed for "
+                        f"task {task['id']}. Manual DB review required."
                     )
 
-            except Exception as retry_error:
+            except Exception as status_error:
                 print(
-                    f"🚨 Could not save retry/failure state for task "
-                    f"{task['id']}: {retry_error}. "
-                    "Check the database manually; do not assume "
-                    "the task status was updated."
+                    f"🚨 Could not save Failed status for task "
+                    f"{task['id']}: {status_error}. "
+                    "Manual DB review required; no retry attempted."
                 )
 
 if __name__ == "__main__":
