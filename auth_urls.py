@@ -180,28 +180,51 @@ def get_meta_access_token(auth_code):
         return None
 
 def get_youtube_access_token(auth_code):
-    """Kachhe Auth Code ko Google ke server par bhej kar asli Access Token laata hai."""
+    """Exchange Google's authorization code and require a durable refresh token."""
     client_id = st.secrets.get("YOUTUBE_CLIENT_ID", "")
-    client_secret = st.secrets.get("YOUTUBE_CLIENT_SECRET", "") 
+    client_secret = st.secrets.get("YOUTUBE_CLIENT_SECRET", "")
     redirect_uri = "https://creator-ai-manager-tgrh5ifkgfqme6kdomcvxb.streamlit.app/"
-    
     token_url = "https://oauth2.googleapis.com/token"
-    payload = {
-        "client_id": client_id,
-        "client_secret": client_secret,
-        "code": auth_code,
-        "grant_type": "authorization_code",
-        "redirect_uri": redirect_uri
-    }
-    
+
+    if not client_id or not client_secret:
+        return "SYSTEM_ERROR: Missing YOUTUBE_CLIENT_ID or YOUTUBE_CLIENT_SECRET in Streamlit secrets."
+
     try:
-        response = requests.post(token_url, data=payload)
-        if response.status_code == 200:
-            return response.json().get("access_token")
-        else:
-            return f"GOOGLE_ERROR: {response.text}" 
-    except Exception as e:
-        return f"SYSTEM_ERROR: {str(e)}"
+        response = requests.post(
+            token_url,
+            data={
+                "client_id": client_id,
+                "client_secret": client_secret,
+                "code": auth_code,
+                "grant_type": "authorization_code",
+                "redirect_uri": redirect_uri,
+            },
+            timeout=20,
+        )
+        try:
+            payload = response.json()
+        except ValueError:
+            return f"GOOGLE_ERROR: Google token endpoint returned invalid JSON (HTTP {response.status_code})."
+
+        if response.status_code != 200:
+            detail = payload.get("error_description") or payload.get("error") or f"HTTP {response.status_code}"
+            return f"GOOGLE_ERROR: {detail}"
+
+        access_token = payload.get("access_token")
+        refresh_token = payload.get("refresh_token")
+        if not access_token:
+            return "GOOGLE_ERROR: Google did not return an access token. Please reconnect YouTube."
+        if not refresh_token:
+            # Do not return an access token as a substitute for a refresh token.
+            return "GOOGLE_ERROR: Google did not return a refresh token. The saved connection was not changed. Disconnect YouTube and reconnect, then approve access."
+
+        return {
+            "access_token": access_token,
+            "refresh_token": refresh_token,
+            "expires_in": payload.get("expires_in"),
+        }
+    except requests.RequestException as exc:
+        return f"SYSTEM_ERROR: Google token request failed: {exc}"
     
 def get_threads_access_token(auth_code):
     url = "https://graph.threads.net/oauth/access_token"
