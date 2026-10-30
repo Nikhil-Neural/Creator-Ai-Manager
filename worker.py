@@ -12,6 +12,8 @@ from zoneinfo import ZoneInfo
 import googleapiclient.discovery
 from google.oauth2.credentials import Credentials
 from googleapiclient.http import MediaFileUpload
+from googleapiclient.errors import HttpError
+from google.auth.exceptions import RefreshError
 
 
 # 1. Single production database connection. Configure SUPABASE_URL and
@@ -222,8 +224,8 @@ def upload_to_youtube(video_path, meta, user_refresh_token):
         None,
         refresh_token=user_refresh_token, 
         token_uri="https://oauth2.googleapis.com/token",
-        client_id=st.secrets["GOOGLE_CLIENT_ID"],
-        client_secret=st.secrets["GOOGLE_CLIENT_SECRET"]
+        client_id=st.secrets["YOUTUBE_CLIENT_ID"],
+        client_secret=st.secrets["YOUTUBE_CLIENT_SECRET"]
     )
     
     youtube = googleapiclient.discovery.build("youtube", "v3", credentials=creds)
@@ -262,11 +264,23 @@ def upload_to_youtube(video_path, meta, user_refresh_token):
 
     try:
         response = request.execute()
+    except RefreshError as e:
+        detail = str(e)
+        if "invalid_grant" in detail.lower() or "revoked" in detail.lower() or "expired" in detail.lower():
+            raise RuntimeError("YOUTUBE_RECONNECT_REQUIRED: Your YouTube connection expired or was revoked. Reconnect YouTube in Creator OS.") from e
+        raise RuntimeError(f"YouTube credential refresh failed: {detail}") from e
+    except HttpError as e:
+        status = getattr(getattr(e, "resp", None), "status", None)
+        if status == 401:
+            raise RuntimeError("YOUTUBE_RECONNECT_REQUIRED: Google rejected the YouTube credentials. Reconnect YouTube in Creator OS.") from e
+        if status is not None and 400 <= int(status) < 500:
+            # Google returned a definite client error response; this is not an unknown upload outcome.
+            raise RuntimeError(f"YouTube API rejected the upload (HTTP {status}): {e}") from e
+        # A server-side error may occur after the upload was accepted; do not blindly retry.
+        raise PublishOutcomeUnknown(f"YouTube upload outcome could not be confirmed: {e}") from e
     except Exception as e:
-        # The upload outcome may be unknown. Do not blindly retry.
-        raise PublishOutcomeUnknown(
-            f"YouTube upload outcome could not be confirmed: {e}"
-        ) from e
+        # Network/transport failures can leave the upload outcome unknown. Do not blindly retry.
+        raise PublishOutcomeUnknown(f"YouTube upload outcome could not be confirmed: {e}") from e
 
     video_id = response.get("id") if isinstance(response, dict) else None
 
@@ -1216,7 +1230,7 @@ def process_queue():
                         if not profile_res.data or not profile_res.data[0].get("youtube_token"):
                             print(f"⚠️ Skipping YT: No YouTube refresh token found for {creator_email}")
                             platform_statuses["youtube"] = "failed"
-                            platform_errors["youtube"] = "Required access token is missing."
+                            platform_errors["youtube"] = "YouTube refresh token is missing. Please reconnect YouTube in Creator OS."
                             has_errors = True
                         else:
                             user_specific_token = profile_res.data[0]["youtube_token"]
@@ -1241,10 +1255,13 @@ def process_queue():
                         has_errors = True
                         platform_errors["youtube"] = str(e)[:1000]
                     finally:
-                        # 🚨 FIX 3: INDEPENDENT TEMP FILE CLEANUP
+                        # Cleanup must never mask the original upload/authentication error.
                         if temp_vid_path and os.path.exists(temp_vid_path):
-                            os.remove(temp_vid_path)
-                            print("🧹 YouTube temporary file cleaned up.")
+                            try:
+                                os.remove(temp_vid_path)
+                                print("🧹 YouTube temporary file cleaned up.")
+                            except OSError as cleanup_error:
+                                print(f"⚠️ YouTube temp-file cleanup failed (original upload result preserved): {cleanup_error}")
 
             # --- TWITTER LOGIC ---
             if "twitter" in platforms:

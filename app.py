@@ -212,18 +212,25 @@ if "code" in st.query_params and "state" in st.query_params:
             # 🔴 YOUTUBE
             elif state_ticket.startswith("youtube"):
                 st.info("🔄 Authenticating Google...")
-                real_access_token = get_youtube_access_token(auth_code)
-                if isinstance(real_access_token, str) and ("GOOGLE_ERROR" in real_access_token or "SYSTEM_ERROR" in real_access_token):
-                    st.error(f"❌ YouTube Auth Failed: {real_access_token}")
-                elif real_access_token:
-                    supabase_admin.table("creator_profiles").update({
-                        "youtube_token": real_access_token
-                    }).eq("creator_handle", user_email_from_db).execute()
-                    
-                    st.session_state["yt_connected"] = True
-                    st.session_state["channels_synced"] = True
-                    st.success("🎉 YouTube Channel Successfully Linked! ❤️")
-                    st.query_params.clear()
+                youtube_tokens = get_youtube_access_token(auth_code)
+                if isinstance(youtube_tokens, str) and ("GOOGLE_ERROR" in youtube_tokens or "SYSTEM_ERROR" in youtube_tokens):
+                    st.error(f"❌ YouTube Auth Failed: {youtube_tokens}")
+                elif isinstance(youtube_tokens, dict) and youtube_tokens.get("refresh_token"):
+                    try:
+                        supabase_admin.table("creator_profiles").update({
+                            # This column now stores the long-lived OAuth refresh token.
+                            "youtube_token": youtube_tokens["refresh_token"]
+                        }).eq("creator_handle", user_email_from_db).execute()
+                    except Exception as db_error:
+                        st.error(f"❌ YouTube connected, but saving the refresh token failed. Please retry connection. Details: {db_error}")
+                    else:
+                        st.session_state["yt_connected"] = True
+                        st.session_state["channels_synced"] = True
+                        st.success("🎉 YouTube Channel Successfully Linked! ❤️")
+                        st.query_params.clear()
+                else:
+                    # Do not overwrite an existing saved token with an access token or an empty value.
+                    st.error("❌ Google did not return a refresh token. Your saved connection was not changed. Please disconnect YouTube and reconnect, then approve access.")
 
             # 💼 LINKEDIN
             elif state_ticket.startswith("linkedin"):
